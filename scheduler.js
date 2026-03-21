@@ -2,6 +2,10 @@ const cron = require("node-cron");
 const { ChannelType } = require("discord.js");
 const { readConfig } = require("./configStore");
 
+const ANNOUNCE_CHANNEL_ID = "1483909734653497394";
+const REQUIRED_ROLE_ID = "1483903817589194778";
+const OPTIONAL_ROLE_ID = "1484618223461863516";
+
 function formatDate(d) {
   return `${String(d.getDate()).padStart(2, "0")}/${String(
     d.getMonth() + 1
@@ -24,6 +28,46 @@ function getNextMondayWeek() {
     d.setDate(nextMonday.getDate() + i);
     return d;
   });
+}
+
+async function sendScheduleAnnouncement(client, week) {
+  try {
+    const channel = await client.channels.fetch(ANNOUNCE_CHANNEL_ID);
+    if (!channel || channel.type !== ChannelType.GuildText) {
+      console.log("⚠️ Canale annuncio schedule non trovato o non testuale");
+      return;
+    }
+
+    const guild = channel.guild;
+    if (!guild) {
+      console.log("⚠️ Guild non trovata per il canale annuncio");
+      return;
+    }
+
+    let mentions = [`<@&${REQUIRED_ROLE_ID}>`];
+
+    const optionalRole = await guild.roles.fetch(OPTIONAL_ROLE_ID).catch(() => null);
+
+    if (optionalRole && optionalRole.members && optionalRole.members.size > 0) {
+      mentions.push(`<@&${OPTIONAL_ROLE_ID}>`);
+    }
+
+    const message =
+      `${mentions.join(" ")}\n` +
+      `È uscito lo schedule della prossima settimana **${formatDate(week[0])} - ${formatDate(week[6])}**.\n` +
+      `Quando potete, mettete la vostra presenza e l'orario disponibile.`;
+
+    await channel.send({
+      content: message,
+      allowedMentions: {
+        roles: [REQUIRED_ROLE_ID, ...(optionalRole && optionalRole.members.size > 0 ? [OPTIONAL_ROLE_ID] : [])],
+      },
+    });
+
+    console.log("✅ Messaggio annuncio schedule inviato");
+  } catch (err) {
+    console.error("❌ Errore invio annuncio schedule:", err);
+  }
 }
 
 function startScheduler(client) {
@@ -70,6 +114,8 @@ function startScheduler(client) {
           console.error(`❌ Errore cron su ${id}:`, err);
         }
       }
+
+      await sendScheduleAnnouncement(client, week);
     },
     {
       timezone: "Europe/Rome",
