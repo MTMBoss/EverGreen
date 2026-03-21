@@ -7,17 +7,21 @@ const {
   AttachmentBuilder,
   ChannelType,
 } = require("discord.js");
+
 const { startScheduler } = require("./scheduler");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
-const CHANNEL_IDS = process.env.SCHEDULE_CHANNELS.split(",");
-
 const TARGET_CHANNEL_1 = process.env.TARGET_CHANNEL_1;
 const TARGET_CHANNEL_2 = process.env.TARGET_CHANNEL_2;
 const SEPARATOR_PATH = process.env.SEPARATOR_PATH || "./separator.png";
+
+// 🔥 FIX: non crasha se env manca
+const CHANNEL_IDS = process.env.SCHEDULE_CHANNELS
+  ? process.env.SCHEDULE_CHANNELS.split(",").map(id => id.trim()).filter(Boolean)
+  : [];
 
 function normalizeLine(text) {
   return text.replace(/^[•>\-\s]+/, "").replace(/\s+/g, " ").trim();
@@ -38,7 +42,7 @@ function isResultLine(line) {
 }
 
 function isMapLine(line) {
-  const parts = normalizeLine(line).split("/").map((p) => p.trim());
+  const parts = normalizeLine(line).split("/").map(p => p.trim());
   return parts.length === 3;
 }
 
@@ -124,7 +128,7 @@ function buildPart2Draft(data) {
 }
 
 function getImageAttachments(message) {
-  return [...message.attachments.values()].filter((att) =>
+  return [...message.attachments.values()].filter(att =>
     att.contentType?.startsWith("image/")
   );
 }
@@ -147,7 +151,7 @@ client.once(Events.ClientReady, () => {
   startScheduler(client, CHANNEL_IDS);
 });
 
-client.on(Events.InteractionCreate, async (interaction) => {
+client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isMessageContextMenuCommand()) return;
 
   let deferred = false;
@@ -166,20 +170,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const msg = interaction.targetMessage;
     const parsed = parseMatchMessage(msg.content || "");
 
+    // PREPARA PARTE 2
     if (interaction.commandName === "Prepara Parte 2") {
-      if (!parsed.title && !parsed.dateLine) {
-        await interaction.editReply({
-          content: "❌ Non sono riuscito a ricavare titolo e data da questo messaggio.",
-        });
-        return;
-      }
-
       await interaction.editReply({
         content: buildPart2Draft(parsed),
       });
       return;
     }
 
+    // PUBBLICA MATCH
     const images = getImageAttachments(msg);
     const hasPart1 = Boolean(parsed.timeLine) || parsed.mapLines.length > 0;
     const hasPart2 = Boolean(parsed.resultLine);
@@ -189,24 +188,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (!ch1 || !ch2) {
       await interaction.editReply({
-        content: "❌ Non trovo uno dei canali di destinazione.",
-      });
-      return;
-    }
-
-    if (
-      ch1.type !== ChannelType.GuildText ||
-      ch2.type !== ChannelType.GuildText
-    ) {
-      await interaction.editReply({
-        content: "❌ Uno dei canali di destinazione non è un canale testuale.",
-      });
-      return;
-    }
-
-    if (!hasPart1 && !hasPart2) {
-      await interaction.editReply({
-        content: "❌ Non ho trovato una parte valida nel messaggio selezionato.",
+        content: "❌ Canali non trovati.",
       });
       return;
     }
@@ -218,27 +200,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (hasPart2) {
       await ch2.send({
         content: buildPart2Message(parsed),
-        files: images.slice(0, 10).map((a) => a.url),
+        files: images.slice(0, 10).map(a => a.url),
       });
 
       await sendSeparator(ch2);
     }
 
     await interaction.editReply({
-      content: "✅ Pubblicato correttamente",
+      content: "✅ Pubblicato",
     });
+
   } catch (err) {
-    console.error("❌ Errore interaction:", err);
+    console.error("❌ Errore:", err);
 
     if (!deferred) return;
 
     try {
       await interaction.editReply({
-        content: "❌ Errore durante l'esecuzione del comando.",
+        content: "❌ Errore durante il comando.",
       });
-    } catch (replyErr) {
-      console.error("❌ Errore anche nella editReply:", replyErr);
-    }
+    } catch {}
   }
 });
 

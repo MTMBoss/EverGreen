@@ -26,10 +26,15 @@ function getNextMondayWeek() {
 }
 
 function startScheduler(client, channelIds) {
+  if (!channelIds || channelIds.length === 0) {
+    console.log("⚠️ Nessun canale schedule configurato");
+    return;
+  }
+
   cron.schedule(
     "35 19 * * 5",
     async () => {
-      console.log("📅 Esecuzione cron schedule...");
+      console.log("📅 Esecuzione cron...");
 
       const giorni = ["LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM"];
       const week = getNextMondayWeek();
@@ -56,9 +61,9 @@ function startScheduler(client, channelIds) {
             await msg.react("3️⃣");
           }
 
-          console.log(`✅ Schedule inviato nel canale ${id}`);
+          console.log(`✅ Inviato in ${id}`);
         } catch (err) {
-          console.error(`❌ Errore cron su canale ${id}:`, err);
+          console.error(`❌ Errore su ${id}:`, err);
         }
       }
     },

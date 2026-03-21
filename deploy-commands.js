@@ -24,8 +24,8 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
       { body: commands }
     );
 
-    console.log("✅ Comandi registrati correttamente");
+    console.log("✅ Comandi registrati");
   } catch (error) {
-    console.error("❌ Errore registrazione comando:", error);
+    console.error(error);
   }
 })();
