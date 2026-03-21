@@ -13,10 +13,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
-const CHANNEL_IDS = [
-  "1483903818709340348",
-  "1428766410170957895",
-];
+const CHANNEL_IDS = process.env.SCHEDULE_CHANNELS.split(",");
 
 const TARGET_CHANNEL_1 = process.env.TARGET_CHANNEL_1;
 const TARGET_CHANNEL_2 = process.env.TARGET_CHANNEL_2;
