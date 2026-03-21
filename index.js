@@ -9,19 +9,18 @@ const {
 } = require("discord.js");
 
 const { startScheduler } = require("./scheduler");
+const {
+  readConfig,
+  setTargetChannel1,
+  setTargetChannel2,
+  setScheduleChannels,
+} = require("./configStore");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
-const TARGET_CHANNEL_1 = process.env.TARGET_CHANNEL_1;
-const TARGET_CHANNEL_2 = process.env.TARGET_CHANNEL_2;
 const SEPARATOR_PATH = process.env.SEPARATOR_PATH || "./separator.png";
-
-// 🔥 FIX: non crasha se env manca
-const CHANNEL_IDS = process.env.SCHEDULE_CHANNELS
-  ? process.env.SCHEDULE_CHANNELS.split(",").map(id => id.trim()).filter(Boolean)
-  : [];
 
 function normalizeLine(text) {
   return text.replace(/^[•>\-\s]+/, "").replace(/\s+/g, " ").trim();
@@ -148,68 +147,139 @@ async function sendPart1Inline(channel, text) {
 
 client.once(Events.ClientReady, () => {
   console.log(`✅ Loggato come ${client.user.tag}`);
-  startScheduler(client, CHANNEL_IDS);
+  startScheduler(client);
 });
 
 client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isMessageContextMenuCommand()) return;
-
   let deferred = false;
 
   try {
-    if (
-      interaction.commandName !== "Prepara Parte 2" &&
-      interaction.commandName !== "Pubblica Match"
-    ) {
-      return;
-    }
+    if (interaction.isMessageContextMenuCommand()) {
+      if (
+        interaction.commandName !== "Prepara Parte 2" &&
+        interaction.commandName !== "Pubblica Match"
+      ) {
+        return;
+      }
 
-    await interaction.deferReply({ flags: 64 });
-    deferred = true;
+      await interaction.deferReply({ flags: 64 });
+      deferred = true;
 
-    const msg = interaction.targetMessage;
-    const parsed = parseMatchMessage(msg.content || "");
+      const msg = interaction.targetMessage;
+      const parsed = parseMatchMessage(msg.content || "");
 
-    // PREPARA PARTE 2
-    if (interaction.commandName === "Prepara Parte 2") {
+      if (interaction.commandName === "Prepara Parte 2") {
+        await interaction.editReply({
+          content: buildPart2Draft(parsed),
+        });
+        return;
+      }
+
+      const config = readConfig();
+      const images = getImageAttachments(msg);
+      const hasPart1 = Boolean(parsed.timeLine) || parsed.mapLines.length > 0;
+      const hasPart2 = Boolean(parsed.resultLine);
+
+      const ch1 = config.targetChannel1
+        ? await client.channels.fetch(config.targetChannel1)
+        : null;
+
+      const ch2 = config.targetChannel2
+        ? await client.channels.fetch(config.targetChannel2)
+        : null;
+
+      if (!hasPart1 && !hasPart2) {
+        await interaction.editReply({
+          content: "❌ Non ho trovato una parte valida nel messaggio selezionato.",
+        });
+        return;
+      }
+
+      if (hasPart1) {
+        if (!ch1 || ch1.type !== ChannelType.GuildText) {
+          await interaction.editReply({
+            content: "❌ Canale parte 1 non configurato correttamente.",
+          });
+          return;
+        }
+
+        await sendPart1Inline(ch1, buildPart1Message(parsed));
+      }
+
+      if (hasPart2) {
+        if (!ch2 || ch2.type !== ChannelType.GuildText) {
+          await interaction.editReply({
+            content: "❌ Canale parte 2 non configurato correttamente.",
+          });
+          return;
+        }
+
+        await ch2.send({
+          content: buildPart2Message(parsed),
+          files: images.slice(0, 10).map(a => a.url),
+        });
+
+        await sendSeparator(ch2);
+      }
+
       await interaction.editReply({
-        content: buildPart2Draft(parsed),
+        content: "✅ Pubblicato",
       });
       return;
     }
 
-    // PUBBLICA MATCH
-    const images = getImageAttachments(msg);
-    const hasPart1 = Boolean(parsed.timeLine) || parsed.mapLines.length > 0;
-    const hasPart2 = Boolean(parsed.resultLine);
+    if (interaction.isChatInputCommand()) {
+      await interaction.deferReply({ flags: 64 });
+      deferred = true;
 
-    const ch1 = await client.channels.fetch(TARGET_CHANNEL_1);
-    const ch2 = await client.channels.fetch(TARGET_CHANNEL_2);
+      if (interaction.commandName === "set-canale-parte1") {
+        const channel = interaction.options.getChannel("canale", true);
+        setTargetChannel1(channel.id);
 
-    if (!ch1 || !ch2) {
-      await interaction.editReply({
-        content: "❌ Canali non trovati.",
-      });
-      return;
+        await interaction.editReply({
+          content: `✅ Canale parte 1 impostato su ${channel}.`,
+        });
+        return;
+      }
+
+      if (interaction.commandName === "set-canale-parte2") {
+        const channel = interaction.options.getChannel("canale", true);
+        setTargetChannel2(channel.id);
+
+        await interaction.editReply({
+          content: `✅ Canale parte 2 impostato su ${channel}.`,
+        });
+        return;
+      }
+
+      if (interaction.commandName === "set-canali-schedule") {
+        const channel1 = interaction.options.getChannel("canale1", true);
+        const channel2 = interaction.options.getChannel("canale2", false);
+
+        const ids = [channel1.id];
+        if (channel2) ids.push(channel2.id);
+
+        setScheduleChannels(ids);
+
+        await interaction.editReply({
+          content: `✅ Canali schedule aggiornati: ${ids.map(id => `<#${id}>`).join(", ")}`,
+        });
+        return;
+      }
+
+      if (interaction.commandName === "mostra-config") {
+        const config = readConfig();
+
+        await interaction.editReply({
+          content:
+            `**Configurazione attuale**\n` +
+            `Parte 1: ${config.targetChannel1 ? `<#${config.targetChannel1}>` : "non impostato"}\n` +
+            `Parte 2: ${config.targetChannel2 ? `<#${config.targetChannel2}>` : "non impostato"}\n` +
+            `Schedule: ${config.scheduleChannels.length > 0 ? config.scheduleChannels.map(id => `<#${id}>`).join(", ") : "non impostato"}`,
+        });
+        return;
+      }
     }
-
-    if (hasPart1) {
-      await sendPart1Inline(ch1, buildPart1Message(parsed));
-    }
-
-    if (hasPart2) {
-      await ch2.send({
-        content: buildPart2Message(parsed),
-        files: images.slice(0, 10).map(a => a.url),
-      });
-
-      await sendSeparator(ch2);
-    }
-
-    await interaction.editReply({
-      content: "✅ Pubblicato",
-    });
-
   } catch (err) {
     console.error("❌ Errore:", err);
 

@@ -1,5 +1,13 @@
 require("dotenv").config();
-const { REST, Routes, ApplicationCommandType } = require("discord.js");
+
+const {
+  REST,
+  Routes,
+  ApplicationCommandType,
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+  ChannelType,
+} = require("discord.js");
 
 const commands = [
   {
@@ -10,6 +18,58 @@ const commands = [
     name: "Prepara Parte 2",
     type: ApplicationCommandType.Message,
   },
+
+  new SlashCommandBuilder()
+    .setName("set-canale-parte1")
+    .setDescription("Imposta il canale di destinazione per la parte 1")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addChannelOption(option =>
+      option
+        .setName("canale")
+        .setDescription("Canale testuale per la parte 1")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set-canale-parte2")
+    .setDescription("Imposta il canale di destinazione per la parte 2")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addChannelOption(option =>
+      option
+        .setName("canale")
+        .setDescription("Canale testuale per la parte 2")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set-canali-schedule")
+    .setDescription("Imposta 1 o 2 canali per lo schedule settimanale")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addChannelOption(option =>
+      option
+        .setName("canale1")
+        .setDescription("Primo canale schedule")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canale2")
+        .setDescription("Secondo canale schedule")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(false)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("mostra-config")
+    .setDescription("Mostra la configurazione attuale del bot")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .toJSON(),
 ];
 
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
@@ -24,8 +84,8 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
       { body: commands }
     );
 
-    console.log("✅ Comandi registrati");
+    console.log("✅ Comandi registrati correttamente");
   } catch (error) {
-    console.error(error);
+    console.error("❌ Errore registrazione comandi:", error);
   }
 })();

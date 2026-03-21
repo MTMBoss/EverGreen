@@ -1,5 +1,6 @@
 const cron = require("node-cron");
 const { ChannelType } = require("discord.js");
+const { readConfig } = require("./configStore");
 
 function formatDate(d) {
   return `${String(d.getDate()).padStart(2, "0")}/${String(
@@ -25,15 +26,18 @@ function getNextMondayWeek() {
   });
 }
 
-function startScheduler(client, channelIds) {
-  if (!channelIds || channelIds.length === 0) {
-    console.log("⚠️ Nessun canale schedule configurato");
-    return;
-  }
-
+function startScheduler(client) {
   cron.schedule(
     "35 19 * * 5",
     async () => {
+      const config = readConfig();
+      const channelIds = config.scheduleChannels || [];
+
+      if (channelIds.length === 0) {
+        console.log("⚠️ Nessun canale schedule configurato");
+        return;
+      }
+
       console.log("📅 Esecuzione cron...");
 
       const giorni = ["LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM"];
@@ -61,9 +65,9 @@ function startScheduler(client, channelIds) {
             await msg.react("3️⃣");
           }
 
-          console.log(`✅ Inviato in ${id}`);
+          console.log(`✅ Schedule inviato in ${id}`);
         } catch (err) {
-          console.error(`❌ Errore su ${id}:`, err);
+          console.error(`❌ Errore cron su ${id}:`, err);
         }
       }
     },
