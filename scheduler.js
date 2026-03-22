@@ -1,14 +1,22 @@
 const cron = require("node-cron");
 const { ChannelType } = require("discord.js");
-const { readConfig } = require("./configStore");
+const { readConfig, writeConfig } = require("./configStore");
 
 const ANNOUNCE_CHANNEL_ID = "1483909734653497394";
 const REQUIRED_ROLE_ID = "1483903817589194778";
 const OPTIONAL_ROLE_ID = "1484618223461863516";
 
+const SCHEDULE_EMOJIS = ["1️⃣", "2️⃣", "3️⃣"];
+
 function formatDate(d) {
   return `${String(d.getDate()).padStart(2, "0")}/${String(
     d.getMonth() + 1
+  ).padStart(2, "0")}`;
+}
+
+function formatISODate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
   ).padStart(2, "0")}`;
 }
 
@@ -28,6 +36,23 @@ function getNextMondayWeek() {
     d.setDate(nextMonday.getDate() + i);
     return d;
   });
+}
+
+function getCurrentWeekMonday() {
+  const today = new Date();
+  const jsDay = today.getDay(); // DOM=0, LUN=1, ..., SAB=6
+  const diff = jsDay === 0 ? -6 : 1 - jsDay;
+
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+
+  return monday;
+}
+
+function getTodayScheduleIndex() {
+  const jsDay = new Date().getDay(); // DOM=0, LUN=1...
+  return jsDay === 0 ? 6 : jsDay - 1; // LUN=0 ... DOM=6
 }
 
 async function sendScheduleAnnouncement(client, week) {
@@ -60,7 +85,10 @@ async function sendScheduleAnnouncement(client, week) {
     await channel.send({
       content: message,
       allowedMentions: {
-        roles: [REQUIRED_ROLE_ID, ...(optionalRole && optionalRole.members.size > 0 ? [OPTIONAL_ROLE_ID] : [])],
+        roles: [
+          REQUIRED_ROLE_ID,
+          ...(optionalRole && optionalRole.members.size > 0 ? [OPTIONAL_ROLE_ID] : []),
+        ],
       },
     });
 
@@ -70,9 +98,69 @@ async function sendScheduleAnnouncement(client, week) {
   }
 }
 
+async function removeBotReactionsFromToday(client) {
+  try {
+    const config = readConfig();
+    const currentSchedule = config.currentSchedule;
+
+    if (!currentSchedule || !currentSchedule.weekStart || !currentSchedule.channels) {
+      console.log("⚠️ Nessuno schedule salvato da aggiornare");
+      return;
+    }
+
+    const currentMonday = formatISODate(getCurrentWeekMonday());
+
+    if (currentSchedule.weekStart !== currentMonday) {
+      console.log(
+        `ℹ️ Nessuno schedule attivo per questa settimana. Salvato: ${currentSchedule.weekStart}, atteso: ${currentMonday}`
+      );
+      return;
+    }
+
+    const todayIndex = getTodayScheduleIndex();
+    const giornoNomi = ["LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM"];
+
+    for (const [channelId, messageIds] of Object.entries(currentSchedule.channels)) {
+      try {
+        const messageId = messageIds?.[todayIndex];
+        if (!messageId) continue;
+
+        const channel = await client.channels.fetch(channelId);
+        if (!channel || channel.type !== ChannelType.GuildText) continue;
+
+        const msg = await channel.messages.fetch(messageId).catch(() => null);
+        if (!msg) {
+          console.log(`⚠️ Messaggio ${messageId} non trovato in ${channelId}`);
+          continue;
+        }
+
+        for (const emoji of SCHEDULE_EMOJIS) {
+          const reaction = msg.reactions.cache.find((r) => r.emoji.name === emoji);
+
+          if (reaction && reaction.me) {
+            await reaction.users.remove(client.user.id).catch((err) => {
+              console.error(
+                `❌ Errore rimuovendo la reaction ${emoji} dal messaggio ${messageId}:`,
+                err
+              );
+            });
+          }
+        }
+
+        console.log(`✅ Reaction del bot rimosse per ${giornoNomi[todayIndex]} in ${channelId}`);
+      } catch (err) {
+        console.error(`❌ Errore aggiornando il canale ${channelId}:`, err);
+      }
+    }
+  } catch (err) {
+    console.error("❌ Errore nella rimozione giornaliera delle reaction:", err);
+  }
+}
+
 function startScheduler(client) {
+  // CREAZIONE SCHEDULE - venerdì 19:35
   cron.schedule(
-    "35 19 * * 5",
+    "45 13 * * 7",
     async () => {
       const config = readConfig();
       const channelIds = config.scheduleChannels || [];
@@ -82,10 +170,12 @@ function startScheduler(client) {
         return;
       }
 
-      console.log("📅 Esecuzione cron...");
+      console.log("📅 Esecuzione cron creazione schedule...");
 
       const giorni = ["LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM"];
       const week = getNextMondayWeek();
+
+      const savedChannels = {};
 
       for (const id of channelIds) {
         try {
@@ -94,10 +184,10 @@ function startScheduler(client) {
           if (!channel || channel.type !== ChannelType.GuildText) continue;
 
           await channel.send(
-            `## TRAINING SCHEDULE ${formatDate(week[0])} - ${formatDate(
-              week[6]
-            )}`
+            `## TRAINING SCHEDULE ${formatDate(week[0])} - ${formatDate(week[6])}`
           );
+
+          savedChannels[id] = [];
 
           for (let i = 0; i < 7; i++) {
             const msg = await channel.send(
@@ -107,6 +197,8 @@ function startScheduler(client) {
             await msg.react("1️⃣");
             await msg.react("2️⃣");
             await msg.react("3️⃣");
+
+            savedChannels[id].push(msg.id);
           }
 
           console.log(`✅ Schedule inviato in ${id}`);
@@ -115,7 +207,26 @@ function startScheduler(client) {
         }
       }
 
+      const updatedConfig = readConfig();
+      updatedConfig.currentSchedule = {
+        weekStart: formatISODate(week[0]),
+        channels: savedChannels,
+      };
+      writeConfig(updatedConfig);
+
       await sendScheduleAnnouncement(client, week);
+    },
+    {
+      timezone: "Europe/Rome",
+    }
+  );
+
+  // RIMOZIONE REACTION DEL BOT - ogni giorno alle 15:00
+  cron.schedule(
+    "0 15 * * *",
+    async () => {
+      console.log("🕒 Esecuzione cron rimozione reaction giornaliera...");
+      await removeBotReactionsFromToday(client);
     },
     {
       timezone: "Europe/Rome",
