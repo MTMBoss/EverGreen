@@ -14,6 +14,9 @@ const {
   setTargetChannel1,
   setTargetChannel2,
   setScheduleChannels,
+  setScheduleAnnouncementChannel,
+  setRequiredRoleId,
+  setOptionalRoleId,
 } = require("./configStore");
 
 const client = new Client({
