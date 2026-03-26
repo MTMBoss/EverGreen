@@ -64,6 +64,36 @@ const commands = [
         .setRequired(false)
     )
     .toJSON(),
+new SlashCommandBuilder()
+  .setName("set-canale-annuncio-schedule")
+  .setDescription("Imposta il canale dove pubblicare l'annuncio di uscita schedule")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .addChannelOption(option =>
+    option
+      .setName("canale")
+      .setDescription("Canale testuale per l'annuncio schedule")
+      .addChannelTypes(ChannelType.GuildText)
+      .setRequired(true)
+  )
+  .toJSON(),
+
+new SlashCommandBuilder()
+  .setName("set-ruoli-schedule")
+  .setDescription("Imposta i ruoli da taggare quando esce lo schedule")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .addRoleOption(option =>
+    option
+      .setName("ruolo_obbligatorio")
+      .setDescription("Ruolo obbligatorio")
+      .setRequired(true)
+  )
+  .addRoleOption(option =>
+    option
+      .setName("ruolo_opzionale")
+      .setDescription("Ruolo opzionale")
+      .setRequired(false)
+  )
+  .toJSON(),
 
   new SlashCommandBuilder()
     .setName("mostra-config")
