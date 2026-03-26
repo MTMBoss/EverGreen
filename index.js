@@ -303,7 +303,9 @@ client.on(Events.InteractionCreate, async interaction => {
             `**Configurazione attuale**\n` +
             `Parte 1: ${config.targetChannel1 ? `<#${config.targetChannel1}>` : "non impostato"}\n` +
             `Parte 2: ${config.targetChannel2 ? `<#${config.targetChannel2}>` : "non impostato"}\n` +
-            `Schedule: ${config.scheduleChannels.length > 0 ? config.scheduleChannels.map(id => `<#${id}>`).join(", ") : "non impostato"}`,
+            `Annuncio schedule: ${config.scheduleAnnouncementChannel ? `<#${config.scheduleAnnouncementChannel}>` : "non impostato"}\n` +
+`Ruolo obbligatorio: ${config.requiredRoleId ? `<@&${config.requiredRoleId}>` : "non impostato"}\n` +
+`Ruolo opzionale: ${config.optionalRoleId ? `<@&${config.optionalRoleId}>` : "non impostato"}`
         });
         return;
       }
