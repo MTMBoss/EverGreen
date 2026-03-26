@@ -1,5 +1,9 @@
 {
   "targetChannel1": "",
   "targetChannel2": "",
-  "scheduleChannels": []
+  "scheduleChannels": [],
+  "scheduleAnnouncementChannel": "",
+  "requiredRoleId": "",
+  "optionalRoleId": "",
+  "currentSchedule": null
 }
