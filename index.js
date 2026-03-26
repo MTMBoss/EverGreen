@@ -88,31 +88,6 @@ function parseMatchMessage(content) {
     if (isMapLine(line)) {
       mapLines.push(line);
     }
-if (interaction.commandName === "set-canale-annuncio-schedule") {
-  const channel = interaction.options.getChannel("canale", true);
-  setScheduleAnnouncementChannel(channel.id);
-
-  await interaction.editReply({
-    content: `✅ Canale annuncio schedule impostato su ${channel}.`,
-  });
-  return;
-}
-
-if (interaction.commandName === "set-ruoli-schedule") {
-  const requiredRole = interaction.options.getRole("ruolo_obbligatorio", true);
-  const optionalRole = interaction.options.getRole("ruolo_opzionale", false);
-
-  setRequiredRoleId(requiredRole.id);
-  setOptionalRoleId(optionalRole ? optionalRole.id : "");
-
-  await interaction.editReply({
-    content:
-      `✅ Ruoli aggiornati:\n` +
-      `Obbligatorio: <@&${requiredRole.id}>\n` +
-      `Opzionale: ${optionalRole ? `<@&${optionalRole.id}>` : "nessuno"}`,
-  });
-  return;
-}
   }
 
   return { title, dateLine, timeLine, resultLine, mapLines };
@@ -295,6 +270,32 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      if (interaction.commandName === "set-canale-annuncio-schedule") {
+        const channel = interaction.options.getChannel("canale", true);
+        setScheduleAnnouncementChannel(channel.id);
+
+        await interaction.editReply({
+          content: `✅ Canale annuncio schedule impostato su ${channel}.`,
+        });
+        return;
+      }
+
+      if (interaction.commandName === "set-ruoli-schedule") {
+        const requiredRole = interaction.options.getRole("ruolo_obbligatorio", true);
+        const optionalRole = interaction.options.getRole("ruolo_opzionale", false);
+
+        setRequiredRoleId(requiredRole.id);
+        setOptionalRoleId(optionalRole ? optionalRole.id : "");
+
+        await interaction.editReply({
+          content:
+            `✅ Ruoli schedule aggiornati:\n` +
+            `Obbligatorio: <@&${requiredRole.id}>\n` +
+            `Opzionale: ${optionalRole ? `<@&${optionalRole.id}>` : "nessuno"}`,
+        });
+        return;
+      }
+
       if (interaction.commandName === "mostra-config") {
         const config = readConfig();
 
@@ -303,9 +304,10 @@ client.on(Events.InteractionCreate, async interaction => {
             `**Configurazione attuale**\n` +
             `Parte 1: ${config.targetChannel1 ? `<#${config.targetChannel1}>` : "non impostato"}\n` +
             `Parte 2: ${config.targetChannel2 ? `<#${config.targetChannel2}>` : "non impostato"}\n` +
+            `Schedule: ${config.scheduleChannels.length > 0 ? config.scheduleChannels.map(id => `<#${id}>`).join(", ") : "non impostato"}\n` +
             `Annuncio schedule: ${config.scheduleAnnouncementChannel ? `<#${config.scheduleAnnouncementChannel}>` : "non impostato"}\n` +
-`Ruolo obbligatorio: ${config.requiredRoleId ? `<@&${config.requiredRoleId}>` : "non impostato"}\n` +
-`Ruolo opzionale: ${config.optionalRoleId ? `<@&${config.optionalRoleId}>` : "non impostato"}`
+            `Ruolo obbligatorio: ${config.requiredRoleId ? `<@&${config.requiredRoleId}>` : "non impostato"}\n` +
+            `Ruolo opzionale: ${config.optionalRoleId ? `<@&${config.optionalRoleId}>` : "non impostato"}`,
         });
         return;
       }
