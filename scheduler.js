@@ -2,7 +2,7 @@ const cron = require("node-cron");
 const { ChannelType } = require("discord.js");
 const { readConfig, writeConfig } = require("./configStore");
 
-const ANNOUNCE_CHANNEL_ID = "1483909734653497394";
+const ANNOUNCE_CHANNEL_ID = "1483903818709340348";
 const REQUIRED_ROLE_ID = "1483903817589194778";
 const OPTIONAL_ROLE_ID = "1484618223461863516";
 
