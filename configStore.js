@@ -9,6 +9,10 @@ const DEFAULT_CONFIG = {
   scheduleChannels: process.env.SCHEDULE_CHANNELS
     ? process.env.SCHEDULE_CHANNELS.split(",").map(id => id.trim()).filter(Boolean)
     : [],
+  scheduleAnnouncementChannel: process.env.SCHEDULE_ANNOUNCE_CHANNEL || "",
+  requiredRoleId: process.env.REQUIRED_ROLE_ID || "",
+  optionalRoleId: process.env.OPTIONAL_ROLE_ID || "",
+  currentSchedule: null,
 };
 
 function ensureConfigFile() {
@@ -30,6 +34,10 @@ function readConfig() {
       scheduleChannels: Array.isArray(parsed.scheduleChannels)
         ? parsed.scheduleChannels
         : [],
+      scheduleAnnouncementChannel: parsed.scheduleAnnouncementChannel || "",
+      requiredRoleId: parsed.requiredRoleId || "",
+      optionalRoleId: parsed.optionalRoleId || "",
+      currentSchedule: parsed.currentSchedule || null,
     };
   } catch (error) {
     console.error("❌ Errore lettura config.json:", error);
@@ -62,10 +70,34 @@ function setScheduleChannels(channelIds) {
   return config;
 }
 
+function setScheduleAnnouncementChannel(channelId) {
+  const config = readConfig();
+  config.scheduleAnnouncementChannel = channelId;
+  writeConfig(config);
+  return config;
+}
+
+function setRequiredRoleId(roleId) {
+  const config = readConfig();
+  config.requiredRoleId = roleId;
+  writeConfig(config);
+  return config;
+}
+
+function setOptionalRoleId(roleId) {
+  const config = readConfig();
+  config.optionalRoleId = roleId;
+  writeConfig(config);
+  return config;
+}
+
 module.exports = {
   readConfig,
   writeConfig,
   setTargetChannel1,
   setTargetChannel2,
   setScheduleChannels,
+  setScheduleAnnouncementChannel,
+  setRequiredRoleId,
+  setOptionalRoleId,
 };
