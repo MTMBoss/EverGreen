@@ -171,7 +171,7 @@ async function removeBotReactionsFromToday(client) {
 
 function startScheduler(client) {
   cron.schedule(
-    "30 18 * * 4",
+    "30 8 * * 5",
     async () => {
       const config = readConfig();
       const channelIds = config.scheduleChannels || [];
