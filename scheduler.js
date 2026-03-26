@@ -2,7 +2,6 @@ const cron = require("node-cron");
 const { ChannelType } = require("discord.js");
 const { readConfig, writeConfig } = require("./configStore");
 
-
 const SCHEDULE_EMOJIS = ["1️⃣", "2️⃣", "3️⃣"];
 
 function formatDate(d) {
@@ -37,7 +36,7 @@ function getNextMondayWeek() {
 
 function getCurrentWeekMonday() {
   const today = new Date();
-  const jsDay = today.getDay(); // DOM=0, LUN=1, ..., SAB=6
+  const jsDay = today.getDay();
   const diff = jsDay === 0 ? -6 : 1 - jsDay;
 
   const monday = new Date(today);
@@ -48,13 +47,21 @@ function getCurrentWeekMonday() {
 }
 
 function getTodayScheduleIndex() {
-  const jsDay = new Date().getDay(); // DOM=0, LUN=1...
-  return jsDay === 0 ? 6 : jsDay - 1; // LUN=0 ... DOM=6
+  const jsDay = new Date().getDay();
+  return jsDay === 0 ? 6 : jsDay - 1;
 }
 
 async function sendScheduleAnnouncement(client, week) {
   try {
-    const channel = await client.channels.fetch(ANNOUNCE_CHANNEL_ID);
+    const config = readConfig();
+    const channelId = config.scheduleAnnouncementChannel;
+
+    if (!channelId) {
+      console.log("⚠️ Canale annuncio schedule non configurato");
+      return;
+    }
+
+    const channel = await client.channels.fetch(channelId);
     if (!channel || channel.type !== ChannelType.GuildText) {
       console.log("⚠️ Canale annuncio schedule non trovato o non testuale");
       return;
@@ -65,61 +72,21 @@ async function sendScheduleAnnouncement(client, week) {
       console.log("⚠️ Guild non trovata per il canale annuncio");
       return;
     }
-async function sendScheduleAnnouncement(client, week) {
-  try {
-    const config = readConfig();
-    const channelId = config.scheduleAnnouncementChannel;
-
-    if (!channelId) {
-      console.log("⚠️ Canale annuncio non configurato");
-      return;
-    }
-
-    const channel = await client.channels.fetch(channelId);
-    if (!channel || channel.type !== ChannelType.GuildText) return;
-
-    const guild = channel.guild;
 
     const requiredRoleId = config.requiredRoleId;
     const optionalRoleId = config.optionalRoleId;
 
     let mentions = [];
-
     if (requiredRoleId) {
       mentions.push(`<@&${requiredRoleId}>`);
     }
 
     let optionalRole = null;
-
     if (optionalRoleId) {
       optionalRole = await guild.roles.fetch(optionalRoleId).catch(() => null);
       if (optionalRole?.members?.size > 0) {
         mentions.push(`<@&${optionalRoleId}>`);
       }
-    }
-
-    await channel.send({
-      content:
-        `${mentions.join(" ")}\n` +
-        `È uscito lo schedule della settimana **${formatDate(week[0])} - ${formatDate(week[6])}**`,
-      allowedMentions: {
-        roles: [
-          ...(requiredRoleId ? [requiredRoleId] : []),
-          ...(optionalRole?.members?.size > 0 ? [optionalRoleId] : []),
-        ],
-      },
-    });
-
-  } catch (err) {
-    console.error(err);
-  }
-}
-    let mentions = [`<@&${REQUIRED_ROLE_ID}>`];
-
-    const optionalRole = await guild.roles.fetch(OPTIONAL_ROLE_ID).catch(() => null);
-
-    if (optionalRole && optionalRole.members && optionalRole.members.size > 0) {
-      mentions.push(`<@&${OPTIONAL_ROLE_ID}>`);
     }
 
     const message =
@@ -131,8 +98,8 @@ async function sendScheduleAnnouncement(client, week) {
       content: message,
       allowedMentions: {
         roles: [
-          REQUIRED_ROLE_ID,
-          ...(optionalRole && optionalRole.members.size > 0 ? [OPTIONAL_ROLE_ID] : []),
+          ...(requiredRoleId ? [requiredRoleId] : []),
+          ...(optionalRole?.members?.size > 0 ? [optionalRoleId] : []),
         ],
       },
     });
@@ -180,10 +147,10 @@ async function removeBotReactionsFromToday(client) {
         }
 
         for (const emoji of SCHEDULE_EMOJIS) {
-          const reaction = msg.reactions.cache.find((r) => r.emoji.name === emoji);
+          const reaction = msg.reactions.cache.find(r => r.emoji.name === emoji);
 
           if (reaction && reaction.me) {
-            await reaction.users.remove(client.user.id).catch((err) => {
+            await reaction.users.remove(client.user.id).catch(err => {
               console.error(
                 `❌ Errore rimuovendo la reaction ${emoji} dal messaggio ${messageId}:`,
                 err
@@ -203,9 +170,8 @@ async function removeBotReactionsFromToday(client) {
 }
 
 function startScheduler(client) {
-  // CREAZIONE SCHEDULE - venerdì 19:35
   cron.schedule(
-    "30 13 * * 4",
+    "30 18 * * 4",
     async () => {
       const config = readConfig();
       const channelIds = config.scheduleChannels || [];
@@ -266,7 +232,6 @@ function startScheduler(client) {
     }
   );
 
-  // RIMOZIONE REACTION DEL BOT - ogni giorno alle 15:00
   cron.schedule(
     "0 15 * * *",
     async () => {
