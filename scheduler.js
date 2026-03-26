@@ -2,9 +2,6 @@ const cron = require("node-cron");
 const { ChannelType } = require("discord.js");
 const { readConfig, writeConfig } = require("./configStore");
 
-const ANNOUNCE_CHANNEL_ID = "1483903818709340348";
-const REQUIRED_ROLE_ID = "1483903817589194778";
-const OPTIONAL_ROLE_ID = "1484618223461863516";
 
 const SCHEDULE_EMOJIS = ["1️⃣", "2️⃣", "3️⃣"];
 
@@ -68,7 +65,55 @@ async function sendScheduleAnnouncement(client, week) {
       console.log("⚠️ Guild non trovata per il canale annuncio");
       return;
     }
+async function sendScheduleAnnouncement(client, week) {
+  try {
+    const config = readConfig();
+    const channelId = config.scheduleAnnouncementChannel;
 
+    if (!channelId) {
+      console.log("⚠️ Canale annuncio non configurato");
+      return;
+    }
+
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || channel.type !== ChannelType.GuildText) return;
+
+    const guild = channel.guild;
+
+    const requiredRoleId = config.requiredRoleId;
+    const optionalRoleId = config.optionalRoleId;
+
+    let mentions = [];
+
+    if (requiredRoleId) {
+      mentions.push(`<@&${requiredRoleId}>`);
+    }
+
+    let optionalRole = null;
+
+    if (optionalRoleId) {
+      optionalRole = await guild.roles.fetch(optionalRoleId).catch(() => null);
+      if (optionalRole?.members?.size > 0) {
+        mentions.push(`<@&${optionalRoleId}>`);
+      }
+    }
+
+    await channel.send({
+      content:
+        `${mentions.join(" ")}\n` +
+        `È uscito lo schedule della settimana **${formatDate(week[0])} - ${formatDate(week[6])}**`,
+      allowedMentions: {
+        roles: [
+          ...(requiredRoleId ? [requiredRoleId] : []),
+          ...(optionalRole?.members?.size > 0 ? [optionalRoleId] : []),
+        ],
+      },
+    });
+
+  } catch (err) {
+    console.error(err);
+  }
+}
     let mentions = [`<@&${REQUIRED_ROLE_ID}>`];
 
     const optionalRole = await guild.roles.fetch(OPTIONAL_ROLE_ID).catch(() => null);
