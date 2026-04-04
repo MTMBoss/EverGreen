@@ -24,7 +24,6 @@ const {
   handleMessageCreate,
   handleMessageUpdate,
   handleMessageDelete,
-  syncAllGuildTextChannels,
 } = require("./channelLogger");
 
 const client = new Client({
@@ -164,18 +163,6 @@ async function sendPart1Inline(channel, text) {
 client.once(Events.ClientReady, async () => {
   console.log(`✅ Loggato come ${client.user.tag}`);
   startScheduler(client);
-
-  for (const [, guild] of client.guilds.cache) {
-    try {
-      await guild.channels.fetch();
-      const result = await syncAllGuildTextChannels(guild);
-      console.log(
-        `🧾 Log channels sincronizzati in ${guild.name}: ${result.length}`
-      );
-    } catch (error) {
-      console.error(`❌ Errore sync canali log in ${guild.name}:`, error);
-    }
-  }
 });
 
 client.on(Events.MessageCreate, async message => {
