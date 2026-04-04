@@ -43,6 +43,7 @@ function attachmentList(message) {
   return [...message.attachments.values()].map(att => ({
     name: att.name || "file",
     url: att.url,
+    proxyURL: att.proxyURL || att.url,
     contentType: att.contentType || null,
     size: att.size || 0,
   }));
@@ -62,6 +63,28 @@ function clip(text, max = 1024) {
   const value = String(text ?? "");
   if (value.length <= max) return value || "*vuoto*";
   return `${value.slice(0, max - 3)}...`;
+}
+
+function isImageAttachment(att) {
+  return Boolean(att?.contentType?.startsWith("image/"));
+}
+
+function buildAttachmentFiles(attachments, imageOnly = false, maxFiles = 10) {
+  if (!attachments || attachments.length === 0) return [];
+
+  const filtered = imageOnly
+    ? attachments.filter(isImageAttachment)
+    : attachments;
+
+  return filtered
+    .slice(0, maxFiles)
+    .map(att => att.proxyURL || att.url)
+    .filter(Boolean);
+}
+
+function getFirstImageUrl(attachments) {
+  const image = (attachments || []).find(isImageAttachment);
+  return image?.proxyURL || image?.url || null;
 }
 
 async function getFixedLogsCategory(guild) {
@@ -87,7 +110,9 @@ async function ensureLogChannel(sourceChannel) {
 
   const savedId = getLogChannelId(guild.id, sourceChannel.id);
   if (savedId) {
-    const saved = guild.channels.cache.get(savedId) || await guild.channels.fetch(savedId).catch(() => null);
+    const saved =
+      guild.channels.cache.get(savedId) ||
+      (await guild.channels.fetch(savedId).catch(() => null));
     if (saved) return saved;
   }
 
@@ -197,7 +222,15 @@ async function handleMessageCreate(message) {
     )
     .setTimestamp(new Date());
 
-  await logChannel.send({ embeds: [embed] });
+  const firstImageUrl = getFirstImageUrl(attachments);
+  if (firstImageUrl) {
+    embed.setImage(firstImageUrl);
+  }
+
+  await logChannel.send({
+    embeds: [embed],
+    files: buildAttachmentFiles(attachments, true, 10),
+  });
 
   if ((message.content || "").length > 1024) {
     await sendLongTextFile(
@@ -249,11 +282,23 @@ async function handleMessageUpdate(oldMessage, newMessage) {
       {
         name: "Dopo",
         value: clip(newContent || "*vuoto*"),
+      },
+      {
+        name: "Allegati attuali",
+        value: clip(formatAttachmentLines(attachments)),
       }
     )
     .setTimestamp(new Date());
 
-  await logChannel.send({ embeds: [embed] });
+  const firstImageUrl = getFirstImageUrl(attachments);
+  if (firstImageUrl) {
+    embed.setImage(firstImageUrl);
+  }
+
+  await logChannel.send({
+    embeds: [embed],
+    files: buildAttachmentFiles(attachments, true, 10),
+  });
 
   if ((oldContent || "").length > 1024) {
     await sendLongTextFile(
@@ -295,7 +340,15 @@ async function handleMessageDelete(message) {
     )
     .setTimestamp(new Date());
 
-  await logChannel.send({ embeds: [embed] });
+  const firstImageUrl = getFirstImageUrl(saved?.attachments || []);
+  if (firstImageUrl) {
+    embed.setImage(firstImageUrl);
+  }
+
+  await logChannel.send({
+    embeds: [embed],
+    files: buildAttachmentFiles(saved?.attachments || [], true, 10),
+  });
 
   if ((saved?.content || "").length > 1024) {
     await sendLongTextFile(
@@ -316,9 +369,7 @@ async function handleMessageDelete(message) {
 
 async function syncAllGuildTextChannels(guild) {
   const channels = guild.channels.cache.filter(
-    channel =>
-      channel.type === ChannelType.GuildText &&
-      !isLogChannel(channel)
+    channel => channel.type === ChannelType.GuildText && !isLogChannel(channel)
   );
 
   const created = [];
