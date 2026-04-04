@@ -6,6 +6,7 @@ const {
   Events,
   AttachmentBuilder,
   ChannelType,
+  Partials,
 } = require("discord.js");
 
 const { startScheduler } = require("./scheduler");
@@ -19,8 +20,20 @@ const {
   setOptionalRoleId,
 } = require("./configStore");
 
+const {
+  handleMessageCreate,
+  handleMessageUpdate,
+  handleMessageDelete,
+  syncAllGuildTextChannels,
+} = require("./channelLogger");
+
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+  partials: [Partials.Channel, Partials.Message],
 });
 
 const SEPARATOR_PATH = process.env.SEPARATOR_PATH || "./separator.png";
@@ -148,9 +161,45 @@ async function sendPart1Inline(channel, text) {
   });
 }
 
-client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
   console.log(`✅ Loggato come ${client.user.tag}`);
   startScheduler(client);
+
+  for (const [, guild] of client.guilds.cache) {
+    try {
+      await guild.channels.fetch();
+      const result = await syncAllGuildTextChannels(guild);
+      console.log(
+        `🧾 Log channels sincronizzati in ${guild.name}: ${result.length}`
+      );
+    } catch (error) {
+      console.error(`❌ Errore sync canali log in ${guild.name}:`, error);
+    }
+  }
+});
+
+client.on(Events.MessageCreate, async message => {
+  try {
+    await handleMessageCreate(message);
+  } catch (error) {
+    console.error("❌ Errore logger messageCreate:", error);
+  }
+});
+
+client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
+  try {
+    await handleMessageUpdate(oldMessage, newMessage);
+  } catch (error) {
+    console.error("❌ Errore logger messageUpdate:", error);
+  }
+});
+
+client.on(Events.MessageDelete, async message => {
+  try {
+    await handleMessageDelete(message);
+  } catch (error) {
+    console.error("❌ Errore logger messageDelete:", error);
+  }
 });
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -265,7 +314,9 @@ client.on(Events.InteractionCreate, async interaction => {
         setScheduleChannels(ids);
 
         await interaction.editReply({
-          content: `✅ Canali schedule aggiornati: ${ids.map(id => `<#${id}>`).join(", ")}`,
+          content: `✅ Canali schedule aggiornati: ${ids
+            .map(id => `<#${id}>`)
+            .join(", ")}`,
         });
         return;
       }
@@ -281,8 +332,14 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (interaction.commandName === "set-ruoli-schedule") {
-        const requiredRole = interaction.options.getRole("ruolo_obbligatorio", true);
-        const optionalRole = interaction.options.getRole("ruolo_opzionale", false);
+        const requiredRole = interaction.options.getRole(
+          "ruolo_obbligatorio",
+          true
+        );
+        const optionalRole = interaction.options.getRole(
+          "ruolo_opzionale",
+          false
+        );
 
         setRequiredRoleId(requiredRole.id);
         setOptionalRoleId(optionalRole ? optionalRole.id : "");
@@ -291,7 +348,9 @@ client.on(Events.InteractionCreate, async interaction => {
           content:
             `✅ Ruoli schedule aggiornati:\n` +
             `Obbligatorio: <@&${requiredRole.id}>\n` +
-            `Opzionale: ${optionalRole ? `<@&${optionalRole.id}>` : "nessuno"}`,
+            `Opzionale: ${
+              optionalRole ? `<@&${optionalRole.id}>` : "nessuno"
+            }`,
         });
         return;
       }
@@ -302,12 +361,37 @@ client.on(Events.InteractionCreate, async interaction => {
         await interaction.editReply({
           content:
             `**Configurazione attuale**\n` +
-            `Parte 1: ${config.targetChannel1 ? `<#${config.targetChannel1}>` : "non impostato"}\n` +
-            `Parte 2: ${config.targetChannel2 ? `<#${config.targetChannel2}>` : "non impostato"}\n` +
-            `Schedule: ${config.scheduleChannels.length > 0 ? config.scheduleChannels.map(id => `<#${id}>`).join(", ") : "non impostato"}\n` +
-            `Annuncio schedule: ${config.scheduleAnnouncementChannel ? `<#${config.scheduleAnnouncementChannel}>` : "non impostato"}\n` +
-            `Ruolo obbligatorio: ${config.requiredRoleId ? `<@&${config.requiredRoleId}>` : "non impostato"}\n` +
-            `Ruolo opzionale: ${config.optionalRoleId ? `<@&${config.optionalRoleId}>` : "non impostato"}`,
+            `Parte 1: ${
+              config.targetChannel1
+                ? `<#${config.targetChannel1}>`
+                : "non impostato"
+            }\n` +
+            `Parte 2: ${
+              config.targetChannel2
+                ? `<#${config.targetChannel2}>`
+                : "non impostato"
+            }\n` +
+            `Schedule: ${
+              config.scheduleChannels.length > 0
+                ? config.scheduleChannels.map(id => `<#${id}>`).join(", ")
+                : "non impostato"
+            }\n` +
+            `Annuncio schedule: ${
+              config.scheduleAnnouncementChannel
+                ? `<#${config.scheduleAnnouncementChannel}>`
+                : "non impostato"
+            }\n` +
+            `Ruolo obbligatorio: ${
+              config.requiredRoleId
+                ? `<@&${config.requiredRoleId}>`
+                : "non impostato"
+            }\n` +
+            `Ruolo opzionale: ${
+              config.optionalRoleId
+                ? `<@&${config.optionalRoleId}>`
+                : "non impostato"
+            }\n` +
+            `Logger canali: attivo`,
         });
         return;
       }
