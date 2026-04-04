@@ -12,7 +12,7 @@ const {
   getLogChannelId,
 } = require("./messageLogStore");
 
-const LOG_CATEGORY_NAME = "LOGS";
+const LOG_CATEGORY_ID = "1490082824605401219";
 const LOG_CHANNEL_PREFIX = "log-";
 
 function sanitizeChannelName(name) {
@@ -64,24 +64,20 @@ function clip(text, max = 1024) {
   return `${value.slice(0, max - 3)}...`;
 }
 
-async function ensureLogsCategory(guild) {
-  let category = guild.channels.cache.find(
-    c => c.type === ChannelType.GuildCategory && c.name === LOG_CATEGORY_NAME
-  );
+async function getFixedLogsCategory(guild) {
+  const category = await guild.channels.fetch(LOG_CATEGORY_ID).catch(() => null);
 
-  if (category) return category;
+  if (!category) {
+    throw new Error(
+      `Categoria log non trovata: ${LOG_CATEGORY_ID}. Controlla che esista nel server giusto.`
+    );
+  }
 
-  category = await guild.channels.create({
-    name: LOG_CATEGORY_NAME,
-    type: ChannelType.GuildCategory,
-    permissionOverwrites: [
-      {
-        id: guild.roles.everyone.id,
-        deny: [PermissionsBitField.Flags.ViewChannel],
-      },
-    ],
-    reason: "Creazione automatica categoria log",
-  });
+  if (category.type !== ChannelType.GuildCategory) {
+    throw new Error(
+      `Il canale ${LOG_CATEGORY_ID} esiste ma non è una categoria.`
+    );
+  }
 
   return category;
 }
@@ -91,11 +87,11 @@ async function ensureLogChannel(sourceChannel) {
 
   const savedId = getLogChannelId(guild.id, sourceChannel.id);
   if (savedId) {
-    const saved = guild.channels.cache.get(savedId);
+    const saved = guild.channels.cache.get(savedId) || await guild.channels.fetch(savedId).catch(() => null);
     if (saved) return saved;
   }
 
-  const category = await ensureLogsCategory(guild);
+  const category = await getFixedLogsCategory(guild);
   const desiredName = `${LOG_CHANNEL_PREFIX}${sanitizeChannelName(sourceChannel.name)}`;
 
   let logChannel = guild.channels.cache.find(
@@ -322,8 +318,7 @@ async function syncAllGuildTextChannels(guild) {
   const channels = guild.channels.cache.filter(
     channel =>
       channel.type === ChannelType.GuildText &&
-      !isLogChannel(channel) &&
-      channel.name !== LOG_CATEGORY_NAME.toLowerCase()
+      !isLogChannel(channel)
   );
 
   const created = [];
