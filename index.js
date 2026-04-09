@@ -14,11 +14,18 @@ const {
   readConfig,
   setTargetChannel1,
   setTargetChannel2,
+  setPngChannel,
   setScheduleChannels,
   setScheduleAnnouncementChannel,
   setRequiredRoleId,
   setOptionalRoleId,
 } = require("./configStore");
+
+const {
+  extractMatchDate,
+  getSeparatorActions,
+  commitSeparatorState,
+} = require("./publicationTracker");
 
 const {
   handleMessageCreate,
@@ -35,7 +42,10 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message],
 });
 
-const SEPARATOR_PATH = process.env.SEPARATOR_PATH || "./separator.png";
+const WEEK_SEPARATOR_PATH =
+  process.env.WEEK_SEPARATOR_PATH || "./separator-week.png";
+const MONTH_SEPARATOR_PATH =
+  process.env.MONTH_SEPARATOR_PATH || "./separator-month.png";
 
 function normalizeLine(text) {
   return text.replace(/^[•>\-\s]+/, "").replace(/\s+/g, " ").trim();
@@ -147,17 +157,34 @@ function getImageAttachments(message) {
   );
 }
 
-async function sendSeparator(channel) {
+async function sendWeekSeparator(channel) {
   await channel.send({
-    files: [new AttachmentBuilder(SEPARATOR_PATH)],
+    files: [new AttachmentBuilder(WEEK_SEPARATOR_PATH)],
   });
 }
 
-async function sendPart1Inline(channel, text) {
+async function sendMonthSeparator(channel) {
   await channel.send({
-    content: text.endsWith("\n") ? text : `${text}\n`,
-    files: [new AttachmentBuilder(SEPARATOR_PATH)],
+    files: [new AttachmentBuilder(MONTH_SEPARATOR_PATH)],
   });
+}
+
+async function ensureDateSeparators(channel, dateLine) {
+  const matchDate = extractMatchDate(dateLine);
+
+  if (!matchDate) return false;
+
+  const actions = getSeparatorActions(channel.id, matchDate);
+
+  if (actions.monthChanged) {
+    await sendMonthSeparator(channel);
+    await sendWeekSeparator(channel);
+  } else if (actions.weekChanged) {
+    await sendWeekSeparator(channel);
+  }
+
+  commitSeparatorState(channel.id, matchDate);
+  return true;
 }
 
 client.once(Events.ClientReady, async () => {
@@ -196,7 +223,8 @@ client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isMessageContextMenuCommand()) {
       if (
         interaction.commandName !== "Prepara Parte 2" &&
-        interaction.commandName !== "Pubblica Match"
+        interaction.commandName !== "Pubblica Match" &&
+        interaction.commandName !== "Pubblica PNG"
       ) {
         return;
       }
@@ -210,6 +238,39 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.commandName === "Prepara Parte 2") {
         await interaction.editReply({
           content: buildPart2Draft(parsed),
+        });
+        return;
+      }
+
+      if (interaction.commandName === "Pubblica PNG") {
+        const config = readConfig();
+        const pngChannel = config.pngChannel
+          ? await client.channels.fetch(config.pngChannel)
+          : null;
+
+        if (!pngChannel || pngChannel.type !== ChannelType.GuildText) {
+          await interaction.editReply({
+            content: "❌ Canale PNG non configurato correttamente.",
+          });
+          return;
+        }
+
+        if (
+          !parsed.title ||
+          !parsed.dateLine ||
+          !parsed.timeLine ||
+          parsed.mapLines.length === 0
+        ) {
+          await interaction.editReply({
+            content: "❌ Il messaggio non contiene dati sufficienti per generare il PNG.",
+          });
+          return;
+        }
+
+        await ensureDateSeparators(pngChannel, parsed.dateLine);
+
+        await interaction.editReply({
+          content: `✅ Comando PNG pronto. Nel prossimo step colleghiamo la vera immagine nel canale ${pngChannel}.`,
         });
         return;
       }
@@ -242,7 +303,11 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
 
-        await sendPart1Inline(ch1, buildPart1Message(parsed));
+        await ensureDateSeparators(ch1, parsed.dateLine);
+
+        await ch1.send({
+          content: buildPart1Message(parsed),
+        });
       }
 
       if (hasPart2) {
@@ -253,12 +318,12 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
 
+        await ensureDateSeparators(ch2, parsed.dateLine);
+
         await ch2.send({
           content: buildPart2Message(parsed),
           files: images.slice(0, 10).map(a => a.url),
         });
-
-        await sendSeparator(ch2);
       }
 
       await interaction.editReply({
@@ -287,6 +352,16 @@ client.on(Events.InteractionCreate, async interaction => {
 
         await interaction.editReply({
           content: `✅ Canale parte 2 impostato su ${channel}.`,
+        });
+        return;
+      }
+
+      if (interaction.commandName === "set-canale-png") {
+        const channel = interaction.options.getChannel("canale", true);
+        setPngChannel(channel.id);
+
+        await interaction.editReply({
+          content: `✅ Canale PNG impostato su ${channel}.`,
         });
         return;
       }
@@ -356,6 +431,11 @@ client.on(Events.InteractionCreate, async interaction => {
             `Parte 2: ${
               config.targetChannel2
                 ? `<#${config.targetChannel2}>`
+                : "non impostato"
+            }\n` +
+            `PNG: ${
+              config.pngChannel
+                ? `<#${config.pngChannel}>`
                 : "non impostato"
             }\n` +
             `Schedule: ${
