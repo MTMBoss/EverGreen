@@ -48,6 +48,8 @@ const WEEK_SEPARATOR_PATH =
   process.env.WEEK_SEPARATOR_PATH || "./separator-week.png";
 const MONTH_SEPARATOR_PATH =
   process.env.MONTH_SEPARATOR_PATH || "./separator-month.png";
+const DEFAULT_SEPARATOR_PATH =
+  process.env.DEFAULT_SEPARATOR_PATH || "./separator.png";
 
 function normalizeLine(text) {
   return text.replace(/^[•>\-\s]+/, "").replace(/\s+/g, " ").trim();
@@ -168,6 +170,11 @@ async function sendWeekSeparator(channel) {
 async function sendMonthSeparator(channel) {
   await channel.send({
     files: [new AttachmentBuilder(MONTH_SEPARATOR_PATH)],
+  });
+}
+async function sendDefaultSeparator(channel) {
+  await channel.send({
+    files: [new AttachmentBuilder(DEFAULT_SEPARATOR_PATH)],
   });
 }
 
@@ -308,35 +315,39 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (hasPart1) {
-        if (!ch1 || ch1.type !== ChannelType.GuildText) {
-          await interaction.editReply({
-            content: "❌ Canale parte 1 non configurato correttamente.",
-          });
-          return;
-        }
+  if (!ch1 || ch1.type !== ChannelType.GuildText) {
+    await interaction.editReply({
+      content: "❌ Canale parte 1 non configurato correttamente.",
+    });
+    return;
+  }
 
-        await ensureDateSeparators(ch1, parsed.dateLine);
+  await ensureDateSeparators(ch1, parsed.dateLine);
 
-        await ch1.send({
-          content: buildPart1Message(parsed),
-        });
-      }
+  await ch1.send({
+    content: buildPart1Message(parsed),
+  });
 
-      if (hasPart2) {
-        if (!ch2 || ch2.type !== ChannelType.GuildText) {
-          await interaction.editReply({
-            content: "❌ Canale parte 2 non configurato correttamente.",
-          });
-          return;
-        }
+  await sendDefaultSeparator(ch1);
+}
 
-        await ensureDateSeparators(ch2, parsed.dateLine);
+    if (hasPart2) {
+  if (!ch2 || ch2.type !== ChannelType.GuildText) {
+    await interaction.editReply({
+      content: "❌ Canale parte 2 non configurato correttamente.",
+    });
+    return;
+  }
 
-        await ch2.send({
-          content: buildPart2Message(parsed),
-          files: images.slice(0, 10).map(a => a.url),
-        });
-      }
+  await ensureDateSeparators(ch2, parsed.dateLine);
+
+  await ch2.send({
+    content: buildPart2Message(parsed),
+    files: images.slice(0, 10).map(a => a.url),
+  });
+
+  await sendDefaultSeparator(ch2);
+}
 
       await interaction.editReply({
         content: "✅ Pubblicato",
