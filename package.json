@@ -3,13 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-"scripts": {
-  "start": "node index.js",
-  "deploy": "node deploy-commands.js",
-  "start:bot": "node deploy-commands.js && node index.js",
-  "push": "git add . && git commit -m \"update\" && git push",
-  "test": "echo \"Error: no test specified\" && exit 1"
-}
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js",
+    "start:bot": "node deploy-commands.js && node index.js",
+    "push": "git add . && git commit -m \"update\" && git push",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {
     "node": ">=18"
