@@ -95,18 +95,18 @@ function sideStyle(side) {
 
   if (value === "rosso") {
     return {
-      rowFill: "#6f000c",
-      rowStroke: "#b93a47",
-      badgeStroke: "#ff6d79",
-      badgeText: "#ff6d79",
+      rowFill: "#6d000c",
+      rowStroke: "#b43a46",
+      badgeStroke: "#ff6774",
+      badgeText: "#ff6774",
     };
   }
 
   return {
-    rowFill: "#0c2268",
-    rowStroke: "#3d6fd9",
-    badgeStroke: "#5d92ff",
-    badgeText: "#5d92ff",
+    rowFill: "#10296f",
+    rowStroke: "#3d70dd",
+    badgeStroke: "#5b90ff",
+    badgeText: "#5b90ff",
   };
 }
 
@@ -118,7 +118,7 @@ async function drawBackground(ctx, width, height) {
   }
 
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, "#25003e");
+  gradient.addColorStop(0, "#22003a");
   gradient.addColorStop(0.45, "#36005f");
   gradient.addColorStop(1, "#12001f");
   ctx.fillStyle = gradient;
@@ -129,14 +129,14 @@ async function drawLogo(ctx, width) {
   if (!fs.existsSync(LOGO_PATH)) return;
 
   const logo = await loadImage(LOGO_PATH);
-  const logoWidth = 135;
-  const logoHeight = 135;
+  const logoWidth = 148;
+  const logoHeight = 148;
   const x = width / 2 - logoWidth / 2;
-  const y = 34;
+  const y = 28;
 
   ctx.save();
-  ctx.shadowColor = "#a94cff";
-  ctx.shadowBlur = 16;
+  ctx.shadowColor = "#a24cff";
+  ctx.shadowBlur = 12;
   ctx.drawImage(logo, x, y, logoWidth, logoHeight);
   ctx.restore();
 }
@@ -150,7 +150,7 @@ async function renderMatchImage(parsed) {
 
   await drawBackground(ctx, width, height);
 
-  ctx.fillStyle = "rgba(15, 0, 25, 0.10)";
+  ctx.fillStyle = "rgba(15, 0, 25, 0.08)";
   ctx.fillRect(0, 0, width, height);
 
   const { team1, team2 } = splitTitle(parsed.title);
@@ -162,60 +162,60 @@ async function renderMatchImage(parsed) {
   const team2Text = team2.toUpperCase();
 
   const team1Size = fitText(ctx, team1Text, 760, 96, 60);
-  const team2Size = fitText(ctx, team2Text, 540, 90, 56);
+  const team2Size = fitText(ctx, team2Text, 560, 88, 54);
 
-  drawText(ctx, team1Text, width / 2, 255, {
+  drawText(ctx, team1Text, width / 2, 286, {
     font: `bold ${team1Size}px Sans`,
-    fillStyle: "#b86cff",
+    fillStyle: "#b56aff",
     shadowColor: "#8a3fff",
-    shadowBlur: 8,
-    strokeStyle: "#7a33cf",
-    lineWidth: 1.2,
+    shadowBlur: 7,
+    strokeStyle: "#7b38cf",
+    lineWidth: 1.1,
   });
 
-  drawText(ctx, "VS", width / 2, 355, {
+  drawText(ctx, "VS", width / 2, 385, {
     font: "bold 58px Sans",
     fillStyle: "#39ff14",
-    shadowColor: "#2eff00",
+    shadowColor: "#2fff00",
     shadowBlur: 4,
   });
 
-  drawText(ctx, team2Text, width / 2, 470, {
+  drawText(ctx, team2Text, width / 2, 505, {
     font: `bold ${team2Size}px Sans`,
-    fillStyle: "#efefef",
+    fillStyle: "#e7e7e7",
     shadowColor: "#ffffff",
-    shadowBlur: 4,
-    strokeStyle: "#666666",
-    lineWidth: 1.2,
+    shadowBlur: 3,
+    strokeStyle: "#757575",
+    lineWidth: 1.1,
   });
 
-  drawText(ctx, parsed.dateLine || "", width / 2 - 120, 565, {
-    font: "bold 34px Sans",
-    fillStyle: "#d5c5ef",
+  drawText(ctx, parsed.dateLine || "", width / 2 - 118, 615, {
+    font: "bold 33px Sans",
+    fillStyle: "#d6c4ee",
     shadowColor: "#8d57d1",
     shadowBlur: 2,
   });
 
-  drawText(ctx, parsed.timeLine || "", width / 2 + 175, 565, {
+  drawText(ctx, parsed.timeLine || "", width / 2 + 175, 615, {
     font: "bold 40px Sans",
     fillStyle: "#39ff14",
-    shadowColor: "#2eff00",
+    shadowColor: "#2fff00",
     shadowBlur: 3,
   });
 
   ctx.save();
-  ctx.strokeStyle = "rgba(166, 92, 255, 0.55)";
+  ctx.strokeStyle = "rgba(169, 96, 255, 0.55)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(0, 640);
-  ctx.lineTo(width, 640);
+  ctx.moveTo(0, 700);
+  ctx.lineTo(width, 700);
   ctx.stroke();
   ctx.restore();
 
   const rowX = 42;
   const rowWidth = 996;
-  const rowHeight = 122;
-  const startY = 680;
+  const rowHeight = 124;
+  const startY = 740;
   const rowGap = 20;
   const rowRadius = 14;
 
@@ -227,54 +227,54 @@ async function renderMatchImage(parsed) {
     roundedRect(ctx, rowX, y, rowWidth, rowHeight, rowRadius);
     ctx.fillStyle = style.rowFill;
     ctx.fill();
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.8;
     ctx.strokeStyle = style.rowStroke;
     ctx.stroke();
     ctx.restore();
 
-    drawText(ctx, (item.mode || "").toUpperCase(), rowX + 28, y + 76, {
+    drawText(ctx, (item.mode || "").toUpperCase(), rowX + 28, y + 78, {
       font: "bold 31px Sans",
       fillStyle: "#e4cdf4",
       textAlign: "left",
     });
 
     const mapText = (item.map || "").toUpperCase();
-    const mapSize = fitText(ctx, mapText, 420, 41, 26);
+    const mapSize = fitText(ctx, mapText, 420, 40, 26);
 
-    drawText(ctx, mapText, width / 2, y + 76, {
+    drawText(ctx, mapText, width / 2, y + 78, {
       font: `bold ${mapSize}px Sans`,
       fillStyle: "#ffffff",
-      shadowColor: "rgba(255,255,255,0.10)",
+      shadowColor: "rgba(255,255,255,0.08)",
       shadowBlur: 1,
     });
 
     const badgeText = (item.side || "").toUpperCase();
-    ctx.font = "bold 24px Sans";
-    const badgeWidth = Math.max(108, Math.min(150, ctx.measureText(badgeText).width + 30));
-    const badgeHeight = 44;
+    ctx.font = "bold 23px Sans";
+    const badgeWidth = Math.max(106, Math.min(148, ctx.measureText(badgeText).width + 28));
+    const badgeHeight = 42;
     const badgeX = rowX + rowWidth - badgeWidth - 22;
     const badgeY = y + 30;
 
     ctx.save();
     roundedRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 18);
-    ctx.fillStyle = "rgba(0,0,0,0.08)";
+    ctx.fillStyle = "rgba(0,0,0,0.07)";
     ctx.fill();
     ctx.lineWidth = 2;
     ctx.strokeStyle = style.badgeStroke;
     ctx.stroke();
     ctx.restore();
 
-    drawText(ctx, badgeText, badgeX + badgeWidth / 2, badgeY + 30, {
-      font: "bold 23px Sans",
+    drawText(ctx, badgeText, badgeX + badgeWidth / 2, badgeY + 29, {
+      font: "bold 22px Sans",
       fillStyle: style.badgeText,
     });
   });
 
-  drawText(ctx, "EVG · EVERGREEN GAMING", width / 2, 1835, {
-    font: "bold 22px Sans",
-    fillStyle: "#7f6ab3",
-    shadowColor: "#7f6ab3",
-    shadowBlur: 2,
+  drawText(ctx, "EVG · EVERGREEN GAMING", width / 2, 1830, {
+    font: "bold 24px Sans",
+    fillStyle: "#846fb6",
+    shadowColor: "#846fb6",
+    shadowBlur: 1.5,
   });
 
   return canvas.toBuffer("image/png");
