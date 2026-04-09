@@ -129,14 +129,19 @@ async function drawLogo(ctx, width) {
   if (!fs.existsSync(LOGO_PATH)) return;
 
   const logo = await loadImage(LOGO_PATH);
-  const logoWidth = 148;
-  const logoHeight = 148;
+
+  const targetWidth = 145;
+  const ratio = targetWidth / logo.width;
+
+  const logoWidth = Math.round(logo.width * ratio);
+  const logoHeight = Math.round(logo.height * ratio);
+
   const x = width / 2 - logoWidth / 2;
-  const y = 28;
+  const y = 30;
 
   ctx.save();
   ctx.shadowColor = "#a24cff";
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 10;
   ctx.drawImage(logo, x, y, logoWidth, logoHeight);
   ctx.restore();
 }
@@ -250,7 +255,10 @@ async function renderMatchImage(parsed) {
 
     const badgeText = (item.side || "").toUpperCase();
     ctx.font = "bold 23px Sans";
-    const badgeWidth = Math.max(106, Math.min(148, ctx.measureText(badgeText).width + 28));
+    const badgeWidth = Math.max(
+      106,
+      Math.min(148, ctx.measureText(badgeText).width + 28)
+    );
     const badgeHeight = 42;
     const badgeX = rowX + rowWidth - badgeWidth - 22;
     const badgeY = y + 30;
