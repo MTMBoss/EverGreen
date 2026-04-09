@@ -5,6 +5,9 @@ const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const BACKGROUND_PATH =
   process.env.MATCH_BG_PATH || path.join(__dirname, "assets", "match-bg.png");
 
+const LOGO_PATH =
+  process.env.MATCH_LOGO_PATH || path.join(__dirname, "assets", "logo.png");
+
 function normalizeLine(text) {
   return (text || "").replace(/^[•>\-\s]+/, "").replace(/\s+/g, " ").trim();
 }
@@ -43,11 +46,11 @@ function roundedRect(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
-function fitText(ctx, text, maxWidth, startSize, minSize, fontWeight = "bold") {
+function fitText(ctx, text, maxWidth, startSize, minSize, weight = "bold") {
   let size = startSize;
 
   while (size >= minSize) {
-    ctx.font = `${fontWeight} ${size}px Sans`;
+    ctx.font = `${weight} ${size}px Sans`;
     if (ctx.measureText(text).width <= maxWidth) return size;
     size -= 2;
   }
@@ -55,41 +58,87 @@ function fitText(ctx, text, maxWidth, startSize, minSize, fontWeight = "bold") {
   return minSize;
 }
 
-function drawGlowText(ctx, text, x, y, options = {}) {
+function drawText(ctx, text, x, y, options = {}) {
   const {
-    fillStyle = "#ffffff",
-    shadowColor = fillStyle,
-    shadowBlur = 18,
-    textAlign = "center",
     font = "bold 40px Sans",
+    fillStyle = "#ffffff",
+    textAlign = "center",
+    shadowColor = null,
+    shadowBlur = 0,
+    strokeStyle = null,
+    lineWidth = 0,
   } = options;
 
   ctx.save();
-  ctx.textAlign = textAlign;
   ctx.font = font;
+  ctx.textAlign = textAlign;
+  ctx.textBaseline = "alphabetic";
   ctx.fillStyle = fillStyle;
-  ctx.shadowColor = shadowColor;
-  ctx.shadowBlur = shadowBlur;
+
+  if (shadowColor && shadowBlur > 0) {
+    ctx.shadowColor = shadowColor;
+    ctx.shadowBlur = shadowBlur;
+  }
+
+  if (strokeStyle && lineWidth > 0) {
+    ctx.lineWidth = lineWidth;
+    ctx.strokeStyle = strokeStyle;
+    ctx.strokeText(text, x, y);
+  }
+
   ctx.fillText(text, x, y);
   ctx.restore();
 }
 
-function sideColors(side) {
-  const normalized = (side || "").toLowerCase();
+function sideStyle(side) {
+  const value = (side || "").toLowerCase();
 
-  if (normalized === "rosso") {
+  if (value === "rosso") {
     return {
-      row: "rgba(90, 10, 20, 0.88)",
-      border: "rgba(255, 90, 90, 0.65)",
-      tag: "#ff6b6b",
+      rowFill: "#6f000c",
+      rowStroke: "#b93a47",
+      badgeStroke: "#ff6d79",
+      badgeText: "#ff6d79",
     };
   }
 
   return {
-    row: "rgba(10, 28, 90, 0.88)",
-    border: "rgba(90, 150, 255, 0.65)",
-    tag: "#6fa8ff",
+    rowFill: "#0c2268",
+    rowStroke: "#3d6fd9",
+    badgeStroke: "#5d92ff",
+    badgeText: "#5d92ff",
   };
+}
+
+async function drawBackground(ctx, width, height) {
+  if (fs.existsSync(BACKGROUND_PATH)) {
+    const bg = await loadImage(BACKGROUND_PATH);
+    ctx.drawImage(bg, 0, 0, width, height);
+    return;
+  }
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  gradient.addColorStop(0, "#25003e");
+  gradient.addColorStop(0.45, "#36005f");
+  gradient.addColorStop(1, "#12001f");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+async function drawLogo(ctx, width) {
+  if (!fs.existsSync(LOGO_PATH)) return;
+
+  const logo = await loadImage(LOGO_PATH);
+  const logoWidth = 120;
+  const logoHeight = 120;
+  const x = width / 2 - logoWidth / 2;
+  const y = 42;
+
+  ctx.save();
+  ctx.shadowColor = "#b04cff";
+  ctx.shadowBlur = 18;
+  ctx.drawImage(logo, x, y, logoWidth, logoHeight);
+  ctx.restore();
 }
 
 async function renderMatchImage(parsed) {
@@ -99,127 +148,124 @@ async function renderMatchImage(parsed) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  ctx.clearRect(0, 0, width, height);
+  await drawBackground(ctx, width, height);
 
-  if (fs.existsSync(BACKGROUND_PATH)) {
-    const bg = await loadImage(BACKGROUND_PATH);
-    ctx.drawImage(bg, 0, 0, width, height);
-  } else {
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, "#24003a");
-    gradient.addColorStop(0.5, "#3b0066");
-    gradient.addColorStop(1, "#070012");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-  }
-
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillStyle = "rgba(15, 0, 25, 0.18)";
   ctx.fillRect(0, 0, width, height);
 
   const { team1, team2 } = splitTitle(parsed.title);
   const maps = parsed.mapLines.slice(0, 3).map(parseMapLine);
 
-  const titleMaxWidth = 760;
-  const team1Size = fitText(ctx, team1.toUpperCase(), titleMaxWidth, 92, 54);
-  const team2Size = fitText(ctx, team2.toUpperCase(), titleMaxWidth, 92, 54);
+  await drawLogo(ctx, width);
 
-  drawGlowText(ctx, team1.toUpperCase(), width / 2, 270, {
-    fillStyle: "#c77dff",
-    shadowColor: "#b84dff",
-    shadowBlur: 26,
+  const team1Text = team1.toUpperCase();
+  const team2Text = team2.toUpperCase();
+
+  const team1Size = fitText(ctx, team1Text, 760, 92, 58);
+  const team2Size = fitText(ctx, team2Text, 520, 92, 58);
+
+  drawText(ctx, team1Text, width / 2, 270, {
     font: `bold ${team1Size}px Sans`,
+    fillStyle: "#b86cff",
+    shadowColor: "#8f39ff",
+    shadowBlur: 10,
+    strokeStyle: "#7f36d8",
+    lineWidth: 1.5,
   });
 
-  drawGlowText(ctx, "VS", width / 2, 385, {
+  drawText(ctx, "VS", width / 2, 370, {
+    font: "bold 58px Sans",
     fillStyle: "#39ff14",
-    shadowColor: "#39ff14",
-    shadowBlur: 24,
-    font: "bold 64px Sans",
+    shadowColor: "#2eff00",
+    shadowBlur: 6,
   });
 
-  drawGlowText(ctx, team2.toUpperCase(), width / 2, 510, {
-    fillStyle: "#f2f2f2",
-    shadowColor: "#ffffff",
-    shadowBlur: 18,
+  drawText(ctx, team2Text, width / 2, 485, {
     font: `bold ${team2Size}px Sans`,
+    fillStyle: "#efefef",
+    shadowColor: "#ffffff",
+    shadowBlur: 6,
+    strokeStyle: "#666666",
+    lineWidth: 1.5,
   });
 
-  drawGlowText(ctx, parsed.dateLine || "", width / 2 - 90, 610, {
-    fillStyle: "#d9c7ff",
-    shadowColor: "#a76cff",
-    shadowBlur: 14,
+  drawText(ctx, parsed.dateLine || "", width / 2 - 80, 585, {
+    font: "bold 38px Sans",
+    fillStyle: "#d5c5ef",
+    shadowColor: "#8d57d1",
+    shadowBlur: 4,
+  });
+
+  drawText(ctx, parsed.timeLine || "", width / 2 + 170, 585, {
     font: "bold 42px Sans",
-  });
-
-  drawGlowText(ctx, parsed.timeLine || "", width / 2 + 220, 610, {
     fillStyle: "#39ff14",
-    shadowColor: "#39ff14",
-    shadowBlur: 18,
-    font: "bold 48px Sans",
+    shadowColor: "#2eff00",
+    shadowBlur: 4,
   });
 
-  const startY = 760;
-  const rowHeight = 130;
-  const rowGap = 26;
-  const rowX = 70;
-  const rowWidth = width - 140;
+  const rowX = 55;
+  const rowWidth = 970;
+  const rowHeight = 118;
+  const startY = 710;
+  const rowGap = 24;
+  const rowRadius = 16;
 
   maps.forEach((item, index) => {
     const y = startY + index * (rowHeight + rowGap);
-    const colors = sideColors(item.side);
+    const style = sideStyle(item.side);
 
     ctx.save();
-    roundedRect(ctx, rowX, y, rowWidth, rowHeight, 24);
-    ctx.fillStyle = colors.row;
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = colors.border;
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#d8c7ff";
-    ctx.font = "bold 34px Sans";
-    ctx.fillText((item.mode || "").toUpperCase(), rowX + 28, y + 78);
-    ctx.restore();
-
-    const mapText = (item.map || "").toUpperCase();
-    const mapSize = fitText(ctx, mapText, 430, 42, 26);
-
-    ctx.save();
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `bold ${mapSize}px Sans`;
-    ctx.fillText(mapText, width / 2, y + 78);
-    ctx.restore();
-
-    const sideText = (item.side || "").toUpperCase();
-    ctx.font = "bold 28px Sans";
-    const sideWidth = Math.max(110, Math.min(180, ctx.measureText(sideText).width + 42));
-
-    ctx.save();
-    roundedRect(ctx, rowX + rowWidth - sideWidth - 24, y + 32, sideWidth, 52, 22);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+    roundedRect(ctx, rowX, y, rowWidth, rowHeight, rowRadius);
+    ctx.fillStyle = style.rowFill;
     ctx.fill();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = colors.tag;
+    ctx.strokeStyle = style.rowStroke;
     ctx.stroke();
     ctx.restore();
 
+    drawText(ctx, (item.mode || "").toUpperCase(), rowX + 28, y + 74, {
+      font: "bold 32px Sans",
+      fillStyle: "#e4cdf4",
+      textAlign: "left",
+    });
+
+    const mapText = (item.map || "").toUpperCase();
+    const mapSize = fitText(ctx, mapText, 400, 40, 26);
+
+    drawText(ctx, mapText, width / 2, y + 74, {
+      font: `bold ${mapSize}px Sans`,
+      fillStyle: "#ffffff",
+      shadowColor: "rgba(255,255,255,0.15)",
+      shadowBlur: 2,
+    });
+
+    const badgeText = (item.side || "").toUpperCase();
+    ctx.font = "bold 24px Sans";
+    const badgeWidth = Math.max(110, Math.min(155, ctx.measureText(badgeText).width + 34));
+    const badgeHeight = 46;
+    const badgeX = rowX + rowWidth - badgeWidth - 22;
+    const badgeY = y + 28;
+
     ctx.save();
-    ctx.textAlign = "center";
-    ctx.fillStyle = colors.tag;
-    ctx.font = "bold 28px Sans";
-    ctx.fillText(sideText, rowX + rowWidth - sideWidth / 2 - 24, y + 68);
+    roundedRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 18);
+    ctx.fillStyle = "rgba(0,0,0,0.10)";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = style.badgeStroke;
+    ctx.stroke();
     ctx.restore();
+
+    drawText(ctx, badgeText, badgeX + badgeWidth / 2, badgeY + 31, {
+      font: "bold 24px Sans",
+      fillStyle: style.badgeText,
+    });
   });
 
-  drawGlowText(ctx, "EVG · EVERGREEN GAMING", width / 2, 1790, {
+  drawText(ctx, "EVG · EVERGREEN GAMING", width / 2, 1830, {
+    font: "bold 24px Sans",
     fillStyle: "#8d74c9",
     shadowColor: "#8d74c9",
-    shadowBlur: 10,
-    font: "bold 28px Sans",
+    shadowBlur: 4,
   });
 
   return canvas.toBuffer("image/png");
