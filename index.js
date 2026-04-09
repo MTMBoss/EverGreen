@@ -27,6 +27,8 @@ const {
   commitSeparatorState,
 } = require("./publicationTracker");
 
+const { renderMatchImage } = require("./matchImageRenderer");
+
 const {
   handleMessageCreate,
   handleMessageUpdate,
@@ -269,8 +271,18 @@ client.on(Events.InteractionCreate, async interaction => {
 
         await ensureDateSeparators(pngChannel, parsed.dateLine);
 
+        const imageBuffer = await renderMatchImage(parsed);
+
+        await pngChannel.send({
+          files: [
+            new AttachmentBuilder(imageBuffer, {
+              name: "match.png",
+            }),
+          ],
+        });
+
         await interaction.editReply({
-          content: `✅ Comando PNG pronto. Nel prossimo step colleghiamo la vera immagine nel canale ${pngChannel}.`,
+          content: `✅ PNG pubblicato in ${pngChannel}.`,
         });
         return;
       }
