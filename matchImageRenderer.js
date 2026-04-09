@@ -63,6 +63,7 @@ function drawText(ctx, text, x, y, options = {}) {
     font = "bold 40px Sans",
     fillStyle = "#ffffff",
     textAlign = "center",
+    textBaseline = "alphabetic",
     shadowColor = null,
     shadowBlur = 0,
     strokeStyle = null,
@@ -72,7 +73,7 @@ function drawText(ctx, text, x, y, options = {}) {
   ctx.save();
   ctx.font = font;
   ctx.textAlign = textAlign;
-  ctx.textBaseline = "alphabetic";
+  ctx.textBaseline = textBaseline;
   ctx.fillStyle = fillStyle;
 
   if (shadowColor && shadowBlur > 0) {
@@ -130,20 +131,71 @@ async function drawLogo(ctx, width) {
 
   const logo = await loadImage(LOGO_PATH);
 
-  const targetWidth = 145;
+  const targetWidth = 165;
   const ratio = targetWidth / logo.width;
 
   const logoWidth = Math.round(logo.width * ratio);
   const logoHeight = Math.round(logo.height * ratio);
 
   const x = width / 2 - logoWidth / 2;
-  const y = 30;
+  const y = 42;
 
   ctx.save();
   ctx.shadowColor = "#a24cff";
   ctx.shadowBlur = 10;
   ctx.drawImage(logo, x, y, logoWidth, logoHeight);
   ctx.restore();
+}
+
+function drawDateTimeGroup(ctx, width, dateText, timeText) {
+  const dateFont = "bold 33px Sans";
+  const timeFont = "bold 40px Sans";
+  const gap = 26;
+  const separatorGap = 16;
+  const separatorText = "·";
+  const y = 615;
+
+  ctx.save();
+  ctx.font = dateFont;
+  const dateWidth = ctx.measureText(dateText).width;
+
+  ctx.font = "bold 18px Sans";
+  const separatorWidth = ctx.measureText(separatorText).width;
+
+  ctx.font = timeFont;
+  const timeWidth = ctx.measureText(timeText).width;
+  ctx.restore();
+
+  const totalWidth =
+    dateWidth + separatorGap + separatorWidth + separatorGap + gap + timeWidth;
+
+  const startX = width / 2 - totalWidth / 2;
+
+  drawText(ctx, dateText, startX, y, {
+    font: dateFont,
+    fillStyle: "#d6c4ee",
+    textAlign: "left",
+    shadowColor: "#8d57d1",
+    shadowBlur: 2,
+  });
+
+  const separatorX = startX + dateWidth + separatorGap;
+  drawText(ctx, separatorText, separatorX, y - 1, {
+    font: "bold 18px Sans",
+    fillStyle: "#b58be7",
+    textAlign: "left",
+    shadowColor: "#8d57d1",
+    shadowBlur: 1,
+  });
+
+  const timeX = startX + dateWidth + separatorGap + separatorWidth + separatorGap + gap;
+  drawText(ctx, timeText, timeX, y, {
+    font: timeFont,
+    fillStyle: "#39ff14",
+    textAlign: "left",
+    shadowColor: "#2fff00",
+    shadowBlur: 3,
+  });
 }
 
 async function renderMatchImage(parsed) {
@@ -169,7 +221,7 @@ async function renderMatchImage(parsed) {
   const team1Size = fitText(ctx, team1Text, 760, 96, 60);
   const team2Size = fitText(ctx, team2Text, 560, 88, 54);
 
-  drawText(ctx, team1Text, width / 2, 286, {
+  drawText(ctx, team1Text, width / 2, 300, {
     font: `bold ${team1Size}px Sans`,
     fillStyle: "#b56aff",
     shadowColor: "#8a3fff",
@@ -178,35 +230,28 @@ async function renderMatchImage(parsed) {
     lineWidth: 1.1,
   });
 
-  drawText(ctx, "VS", width / 2, 385, {
+  drawText(ctx, "VS", width / 2, 400, {
     font: "bold 58px Sans",
     fillStyle: "#39ff14",
     shadowColor: "#2fff00",
     shadowBlur: 4,
   });
 
-  drawText(ctx, team2Text, width / 2, 505, {
+  drawText(ctx, team2Text, width / 2, 520, {
     font: `bold ${team2Size}px Sans`,
-    fillStyle: "#e7e7e7",
+    fillStyle: "#e2e2e2",
     shadowColor: "#ffffff",
     shadowBlur: 3,
     strokeStyle: "#757575",
     lineWidth: 1.1,
   });
 
-  drawText(ctx, parsed.dateLine || "", width / 2 - 118, 615, {
-    font: "bold 33px Sans",
-    fillStyle: "#d6c4ee",
-    shadowColor: "#8d57d1",
-    shadowBlur: 2,
-  });
-
-  drawText(ctx, parsed.timeLine || "", width / 2 + 175, 615, {
-    font: "bold 40px Sans",
-    fillStyle: "#39ff14",
-    shadowColor: "#2fff00",
-    shadowBlur: 3,
-  });
+  drawDateTimeGroup(
+    ctx,
+    width,
+    parsed.dateLine || "",
+    parsed.timeLine || ""
+  );
 
   ctx.save();
   ctx.strokeStyle = "rgba(169, 96, 255, 0.55)";
@@ -227,6 +272,7 @@ async function renderMatchImage(parsed) {
   maps.forEach((item, index) => {
     const y = startY + index * (rowHeight + rowGap);
     const style = sideStyle(item.side);
+    const centerY = y + rowHeight / 2;
 
     ctx.save();
     roundedRect(ctx, rowX, y, rowWidth, rowHeight, rowRadius);
@@ -237,18 +283,20 @@ async function renderMatchImage(parsed) {
     ctx.stroke();
     ctx.restore();
 
-    drawText(ctx, (item.mode || "").toUpperCase(), rowX + 28, y + 78, {
+    drawText(ctx, (item.mode || "").toUpperCase(), rowX + 28, centerY + 2, {
       font: "bold 31px Sans",
       fillStyle: "#e4cdf4",
       textAlign: "left",
+      textBaseline: "middle",
     });
 
     const mapText = (item.map || "").toUpperCase();
     const mapSize = fitText(ctx, mapText, 420, 40, 26);
 
-    drawText(ctx, mapText, width / 2, y + 78, {
+    drawText(ctx, mapText, width / 2, centerY + 2, {
       font: `bold ${mapSize}px Sans`,
       fillStyle: "#ffffff",
+      textBaseline: "middle",
       shadowColor: "rgba(255,255,255,0.08)",
       shadowBlur: 1,
     });
@@ -272,9 +320,10 @@ async function renderMatchImage(parsed) {
     ctx.stroke();
     ctx.restore();
 
-    drawText(ctx, badgeText, badgeX + badgeWidth / 2, badgeY + 29, {
+    drawText(ctx, badgeText, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2 + 1, {
       font: "bold 22px Sans",
       fillStyle: style.badgeText,
+      textBaseline: "middle",
     });
   });
 
