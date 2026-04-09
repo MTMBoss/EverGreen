@@ -18,6 +18,10 @@ const commands = [
     name: "Prepara Parte 2",
     type: ApplicationCommandType.Message,
   },
+  {
+    name: "Pubblica PNG",
+    type: ApplicationCommandType.Message,
+  },
 
   new SlashCommandBuilder()
     .setName("set-canale-parte1")
@@ -40,6 +44,19 @@ const commands = [
       option
         .setName("canale")
         .setDescription("Canale testuale per la parte 2")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set-canale-png")
+    .setDescription("Imposta il canale di destinazione per i match in PNG")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addChannelOption(option =>
+      option
+        .setName("canale")
+        .setDescription("Canale testuale per le immagini match")
         .addChannelTypes(ChannelType.GuildText)
         .setRequired(true)
     )
