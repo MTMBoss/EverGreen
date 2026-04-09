@@ -6,6 +6,7 @@ const CONFIG_PATH = path.join(__dirname, "config.json");
 const DEFAULT_CONFIG = {
   targetChannel1: process.env.TARGET_CHANNEL_1 || "",
   targetChannel2: process.env.TARGET_CHANNEL_2 || "",
+  pngChannel: process.env.PNG_CHANNEL || "",
   scheduleChannels: process.env.SCHEDULE_CHANNELS
     ? process.env.SCHEDULE_CHANNELS.split(",").map(id => id.trim()).filter(Boolean)
     : [],
@@ -13,6 +14,7 @@ const DEFAULT_CONFIG = {
   requiredRoleId: process.env.REQUIRED_ROLE_ID || "",
   optionalRoleId: process.env.OPTIONAL_ROLE_ID || "",
   currentSchedule: null,
+  publicationState: {},
 };
 
 function ensureConfigFile() {
@@ -31,6 +33,7 @@ function readConfig() {
     return {
       targetChannel1: parsed.targetChannel1 || "",
       targetChannel2: parsed.targetChannel2 || "",
+      pngChannel: parsed.pngChannel || "",
       scheduleChannels: Array.isArray(parsed.scheduleChannels)
         ? parsed.scheduleChannels
         : [],
@@ -38,6 +41,10 @@ function readConfig() {
       requiredRoleId: parsed.requiredRoleId || "",
       optionalRoleId: parsed.optionalRoleId || "",
       currentSchedule: parsed.currentSchedule || null,
+      publicationState:
+        parsed.publicationState && typeof parsed.publicationState === "object"
+          ? parsed.publicationState
+          : {},
     };
   } catch (error) {
     console.error("❌ Errore lettura config.json:", error);
@@ -59,6 +66,34 @@ function setTargetChannel1(channelId) {
 function setTargetChannel2(channelId) {
   const config = readConfig();
   config.targetChannel2 = channelId;
+  writeConfig(config);
+  return config;
+}
+
+function setPngChannel(channelId) {
+  const config = readConfig();
+  config.pngChannel = channelId;
+  writeConfig(config);
+  return config;
+}
+
+function getChannelPublicationState(channelId) {
+  const config = readConfig();
+  const state = config.publicationState?.[channelId];
+
+  return {
+    lastWeekKey: state?.lastWeekKey || "",
+    lastMonthKey: state?.lastMonthKey || "",
+  };
+}
+
+function setChannelPublicationState(channelId, state) {
+  const config = readConfig();
+  config.publicationState = config.publicationState || {};
+  config.publicationState[channelId] = {
+    lastWeekKey: state?.lastWeekKey || "",
+    lastMonthKey: state?.lastMonthKey || "",
+  };
   writeConfig(config);
   return config;
 }
@@ -96,6 +131,9 @@ module.exports = {
   writeConfig,
   setTargetChannel1,
   setTargetChannel2,
+  setPngChannel,
+  getChannelPublicationState,
+  setChannelPublicationState,
   setScheduleChannels,
   setScheduleAnnouncementChannel,
   setRequiredRoleId,
