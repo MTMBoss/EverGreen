@@ -131,7 +131,7 @@ async function drawLogo(ctx, width) {
 
   const logo = await loadImage(LOGO_PATH);
 
-  const targetWidth = 200;
+  const targetWidth = 300;
   const ratio = targetWidth / logo.width;
 
   const logoWidth = Math.round(logo.width * ratio);
