@@ -131,14 +131,14 @@ async function drawLogo(ctx, width) {
 
   const logo = await loadImage(LOGO_PATH);
 
-  const targetWidth = 165;
+  const targetWidth = 180;
   const ratio = targetWidth / logo.width;
 
   const logoWidth = Math.round(logo.width * ratio);
   const logoHeight = Math.round(logo.height * ratio);
 
   const x = width / 2 - logoWidth / 2;
-  const y = 42;
+  const y = 38;
 
   ctx.save();
   ctx.shadowColor = "#a24cff";
@@ -153,13 +153,13 @@ function drawDateTimeGroup(ctx, width, dateText, timeText) {
   const gap = 26;
   const separatorGap = 16;
   const separatorText = "·";
-  const y = 615;
+  const y = 625;
 
   ctx.save();
   ctx.font = dateFont;
   const dateWidth = ctx.measureText(dateText).width;
 
-  ctx.font = "bold 18px Sans";
+  ctx.font = "bold 16px Sans";
   const separatorWidth = ctx.measureText(separatorText).width;
 
   ctx.font = timeFont;
@@ -181,11 +181,11 @@ function drawDateTimeGroup(ctx, width, dateText, timeText) {
 
   const separatorX = startX + dateWidth + separatorGap;
   drawText(ctx, separatorText, separatorX, y - 1, {
-    font: "bold 18px Sans",
-    fillStyle: "#b58be7",
+    font: "bold 16px Sans",
+    fillStyle: "#9f7fd1",
     textAlign: "left",
     shadowColor: "#8d57d1",
-    shadowBlur: 1,
+    shadowBlur: 0.5,
   });
 
   const timeX = startX + dateWidth + separatorGap + separatorWidth + separatorGap + gap;
@@ -221,7 +221,7 @@ async function renderMatchImage(parsed) {
   const team1Size = fitText(ctx, team1Text, 760, 96, 60);
   const team2Size = fitText(ctx, team2Text, 560, 88, 54);
 
-  drawText(ctx, team1Text, width / 2, 300, {
+  drawText(ctx, team1Text, width / 2, 308, {
     font: `bold ${team1Size}px Sans`,
     fillStyle: "#b56aff",
     shadowColor: "#8a3fff",
@@ -230,19 +230,19 @@ async function renderMatchImage(parsed) {
     lineWidth: 1.1,
   });
 
-  drawText(ctx, "VS", width / 2, 400, {
+  drawText(ctx, "VS", width / 2, 408, {
     font: "bold 58px Sans",
     fillStyle: "#39ff14",
     shadowColor: "#2fff00",
     shadowBlur: 4,
   });
 
-  drawText(ctx, team2Text, width / 2, 520, {
+  drawText(ctx, team2Text, width / 2, 530, {
     font: `bold ${team2Size}px Sans`,
-    fillStyle: "#e2e2e2",
+    fillStyle: "#dddddd",
     shadowColor: "#ffffff",
-    shadowBlur: 3,
-    strokeStyle: "#757575",
+    shadowBlur: 2,
+    strokeStyle: "#787878",
     lineWidth: 1.1,
   });
 
@@ -328,8 +328,8 @@ async function renderMatchImage(parsed) {
   });
 
   drawText(ctx, "EVG · EVERGREEN GAMING", width / 2, 1830, {
-    font: "bold 24px Sans",
-    fillStyle: "#846fb6",
+    font: "bold 25px Sans",
+    fillStyle: "#8872bb",
     shadowColor: "#846fb6",
     shadowBlur: 1.5,
   });
