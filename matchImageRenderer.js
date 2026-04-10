@@ -8,6 +8,14 @@ const BACKGROUND_PATH =
 const LOGO_PATH =
   process.env.MATCH_LOGO_PATH || path.join(__dirname, "assets", "logo.png");
 
+const BASE_WIDTH = 1080;
+const BASE_HEIGHT = 1920;
+const SCALE = 2;
+
+function s(value) {
+  return Math.round(value * SCALE);
+}
+
 function normalizeLine(text) {
   return (text || "").replace(/^[•>\-\s]+/, "").replace(/\s+/g, " ").trim();
 }
@@ -52,7 +60,7 @@ function fitText(ctx, text, maxWidth, startSize, minSize, weight = "bold") {
   while (size >= minSize) {
     ctx.font = `${weight} ${size}px Sans`;
     if (ctx.measureText(text).width <= maxWidth) return size;
-    size -= 2;
+    size -= s(1);
   }
 
   return minSize;
@@ -60,7 +68,7 @@ function fitText(ctx, text, maxWidth, startSize, minSize, weight = "bold") {
 
 function drawText(ctx, text, x, y, options = {}) {
   const {
-    font = "bold 40px Sans",
+    font = `bold ${s(40)}px Sans`,
     fillStyle = "#ffffff",
     textAlign = "center",
     textBaseline = "alphabetic",
@@ -96,18 +104,18 @@ function sideStyle(side) {
 
   if (value === "rosso") {
     return {
-      rowFill: "#6e000c",
-      rowStroke: "#b43a46",
-      badgeStroke: "#ff6774",
-      badgeText: "#ff6774",
+      rowFill: "#520008",
+      rowStroke: "#98303c",
+      badgeStroke: "#f06270",
+      badgeText: "#f06270",
     };
   }
 
   return {
-    rowFill: "#0f256c",
-    rowStroke: "#3c6fdb",
-    badgeStroke: "#5b90ff",
-    badgeText: "#5b90ff",
+    rowFill: "#0a1f57",
+    rowStroke: "#315ec4",
+    badgeStroke: "#5487f7",
+    badgeText: "#5487f7",
   };
 }
 
@@ -119,47 +127,122 @@ async function drawBackground(ctx, width, height) {
   }
 
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, "#22003a");
-  gradient.addColorStop(0.45, "#36005f");
-  gradient.addColorStop(1, "#12001f");
+  gradient.addColorStop(0, "#180028");
+  gradient.addColorStop(0.45, "#2b0047");
+  gradient.addColorStop(1, "#0d0016");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
+}
+
+function findVisibleBounds(image) {
+  const tempCanvas = createCanvas(image.width, image.height);
+  const tempCtx = tempCanvas.getContext("2d");
+
+  tempCtx.drawImage(image, 0, 0, image.width, image.height);
+
+  const imageData = tempCtx.getImageData(0, 0, image.width, image.height);
+  const { data, width, height } = imageData;
+
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+
+      const isVisible = a > 10 && (r > 18 || g > 18 || b > 18);
+
+      if (!isVisible) continue;
+
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+
+  if (maxX === -1 || maxY === -1) {
+    return {
+      sx: 0,
+      sy: 0,
+      sw: image.width,
+      sh: image.height,
+    };
+  }
+
+  const padding = 6;
+
+  minX = Math.max(0, minX - padding);
+  minY = Math.max(0, minY - padding);
+  maxX = Math.min(width - 1, maxX + padding);
+  maxY = Math.min(height - 1, maxY + padding);
+
+  return {
+    sx: minX,
+    sy: minY,
+    sw: maxX - minX + 1,
+    sh: maxY - minY + 1,
+  };
 }
 
 async function drawLogo(ctx, width) {
   if (!fs.existsSync(LOGO_PATH)) return;
 
   const logo = await loadImage(LOGO_PATH);
+  const bounds = findVisibleBounds(logo);
 
-  const targetWidth = 250;
-  const ratio = targetWidth / logo.width;
+  if ("imageSmoothingEnabled" in ctx) {
+    ctx.imageSmoothingEnabled = true;
+  }
+  if ("imageSmoothingQuality" in ctx) {
+    ctx.imageSmoothingQuality = "high";
+  }
 
-  const logoWidth = Math.round(logo.width * ratio);
-  const logoHeight = Math.round(logo.height * ratio);
+  const targetHeight = s(180);
+  const ratio = targetHeight / bounds.sh;
+
+  const logoWidth = Math.round(bounds.sw * ratio);
+  const logoHeight = Math.round(bounds.sh * ratio);
 
   const x = width / 2 - logoWidth / 2;
-  const y = 34;
+  const y = s(26);
 
   ctx.save();
-  ctx.shadowColor = "#a24cff";
-  ctx.shadowBlur = 9;
-  ctx.drawImage(logo, x, y, logoWidth, logoHeight);
+  ctx.shadowColor = "#8b3dff";
+  ctx.shadowBlur = s(6);
+  ctx.drawImage(
+    logo,
+    bounds.sx,
+    bounds.sy,
+    bounds.sw,
+    bounds.sh,
+    x,
+    y,
+    logoWidth,
+    logoHeight
+  );
   ctx.restore();
 }
 
 function drawDateTimeGroup(ctx, width, dateText, timeText) {
-  const dateFont = "bold 32px Sans";
-  const timeFont = "bold 40px Sans";
+  const dateFont = `bold ${s(32)}px Sans`;
+  const timeFont = `bold ${s(39)}px Sans`;
   const separatorText = "·";
-  const separatorGap = 14;
-  const afterSeparatorGap = 22;
-  const y = 590;
+  const separatorGap = s(12);
+  const afterSeparatorGap = s(18);
+  const y = s(590);
 
   ctx.save();
   ctx.font = dateFont;
   const dateWidth = ctx.measureText(dateText).width;
 
-  ctx.font = "bold 14px Sans";
+  ctx.font = `bold ${s(14)}px Sans`;
   const separatorWidth = ctx.measureText(separatorText).width;
 
   ctx.font = timeFont;
@@ -173,161 +256,224 @@ function drawDateTimeGroup(ctx, width, dateText, timeText) {
 
   drawText(ctx, dateText, startX, y, {
     font: dateFont,
-    fillStyle: "#d5c3ec",
+    fillStyle: "#c6b2df",
     textAlign: "left",
-    shadowColor: "#8d57d1",
-    shadowBlur: 1.5,
+    shadowColor: "#6f42aa",
+    shadowBlur: s(0.8),
   });
 
   const separatorX = startX + dateWidth + separatorGap;
-  drawText(ctx, separatorText, separatorX, y - 1, {
-    font: "bold 14px Sans",
-    fillStyle: "#9f7fd1",
+  drawText(ctx, separatorText, separatorX, y - s(1), {
+    font: `bold ${s(14)}px Sans`,
+    fillStyle: "#8365b1",
     textAlign: "left",
   });
 
-  const timeX = startX + dateWidth + separatorGap + separatorWidth + afterSeparatorGap;
+  const timeX =
+    startX + dateWidth + separatorGap + separatorWidth + afterSeparatorGap;
   drawText(ctx, timeText, timeX, y, {
     font: timeFont,
-    fillStyle: "#39ff14",
+    fillStyle: "#30ef10",
     textAlign: "left",
     shadowColor: "#2fff00",
-    shadowBlur: 2.5,
+    shadowBlur: s(1.8),
   });
 }
 
+function getRowsLayout(count) {
+  if (count <= 3) {
+    return {
+      rowHeight: s(122),
+      rowGap: s(18),
+      startY: s(720),
+      modeFont: s(31),
+      mapFontStart: s(40),
+      mapFontMin: s(26),
+      badgeFont: s(22),
+      badgeHeight: s(42),
+      badgePadding: s(26),
+    };
+  }
+
+  if (count === 4) {
+    return {
+      rowHeight: s(112),
+      rowGap: s(16),
+      startY: s(710),
+      modeFont: s(29),
+      mapFontStart: s(38),
+      mapFontMin: s(24),
+      badgeFont: s(21),
+      badgeHeight: s(40),
+      badgePadding: s(24),
+    };
+  }
+
+  if (count === 5) {
+    return {
+      rowHeight: s(102),
+      rowGap: s(14),
+      startY: s(700),
+      modeFont: s(27),
+      mapFontStart: s(36),
+      mapFontMin: s(22),
+      badgeFont: s(20),
+      badgeHeight: s(38),
+      badgePadding: s(22),
+    };
+  }
+
+  return {
+    rowHeight: s(94),
+    rowGap: s(12),
+    startY: s(692),
+    modeFont: s(25),
+    mapFontStart: s(34),
+    mapFontMin: s(20),
+    badgeFont: s(19),
+    badgeHeight: s(36),
+    badgePadding: s(20),
+  };
+}
+
 async function renderMatchImage(parsed) {
-  const width = 1080;
-  const height = 1920;
+  const width = s(BASE_WIDTH);
+  const height = s(BASE_HEIGHT);
 
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
   await drawBackground(ctx, width, height);
 
-  ctx.fillStyle = "rgba(15, 0, 25, 0.06)";
+  ctx.fillStyle = "rgba(10, 0, 20, 0.20)";
   ctx.fillRect(0, 0, width, height);
 
   const { team1, team2 } = splitTitle(parsed.title);
-  const maps = parsed.mapLines.slice(0, 3).map(parseMapLine);
+  const maps = parsed.mapLines.map(parseMapLine);
 
   await drawLogo(ctx, width);
 
   const team1Text = team1.toUpperCase();
   const team2Text = team2.toUpperCase();
 
-  const team1Size = fitText(ctx, team1Text, 760, 94, 60);
-  const team2Size = fitText(ctx, team2Text, 520, 86, 54);
+  const team1Size = fitText(ctx, team1Text, s(760), s(92), s(58));
+  const team2Size = fitText(ctx, team2Text, s(520), s(84), s(52));
 
-  drawText(ctx, team1Text, width / 2, 280, {
+  drawText(ctx, team1Text, width / 2, s(286), {
     font: `bold ${team1Size}px Sans`,
-    fillStyle: "#b56aff",
-    shadowColor: "#8a3fff",
-    shadowBlur: 6,
-    strokeStyle: "#7b38cf",
-    lineWidth: 1,
+    fillStyle: "#a45aed",
+    shadowColor: "#6f30c8",
+    shadowBlur: s(3.2),
+    strokeStyle: "#6b2fc0",
+    lineWidth: s(0.6),
   });
 
-  drawText(ctx, "VS", width / 2, 378, {
-    font: "bold 58px Sans",
-    fillStyle: "#39ff14",
+  drawText(ctx, "VS", width / 2, s(382), {
+    font: `bold ${s(56)}px Sans`,
+    fillStyle: "#31ef12",
     shadowColor: "#2fff00",
-    shadowBlur: 3,
+    shadowBlur: s(1.8),
   });
 
-  drawText(ctx, team2Text, width / 2, 492, {
+  drawText(ctx, team2Text, width / 2, s(494), {
     font: `bold ${team2Size}px Sans`,
-    fillStyle: "#dddddd",
-    shadowColor: "#ffffff",
-    shadowBlur: 1.8,
-    strokeStyle: "#7c7c7c",
-    lineWidth: 1,
+    fillStyle: "#d3d3d3",
+    shadowColor: "#efefef",
+    shadowBlur: s(0.8),
+    strokeStyle: "#727272",
+    lineWidth: s(0.6),
   });
 
-  drawDateTimeGroup(
-    ctx,
-    width,
-    parsed.dateLine || "",
-    parsed.timeLine || ""
-  );
+  drawDateTimeGroup(ctx, width, parsed.dateLine || "", parsed.timeLine || "");
 
   ctx.save();
-  ctx.strokeStyle = "rgba(169, 96, 255, 0.55)";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(145, 82, 220, 0.35)";
+  ctx.lineWidth = s(1);
   ctx.beginPath();
-  ctx.moveTo(0, 680);
-  ctx.lineTo(width, 680);
+  ctx.moveTo(0, s(684));
+  ctx.lineTo(width, s(684));
   ctx.stroke();
   ctx.restore();
 
-  const rowX = 40;
-  const rowWidth = 1000;
-  const rowHeight = 122;
-  const startY = 720;
-  const rowGap = 18;
-  const rowRadius = 14;
+  const layout = getRowsLayout(maps.length);
+
+  const rowX = s(40);
+  const rowWidth = s(1000);
+  const rowRadius = s(14);
 
   maps.forEach((item, index) => {
-    const y = startY + index * (rowHeight + rowGap);
+    const y = layout.startY + index * (layout.rowHeight + layout.rowGap);
     const style = sideStyle(item.side);
-    const centerY = y + rowHeight / 2;
+    const centerY = y + layout.rowHeight / 2;
 
     ctx.save();
-    roundedRect(ctx, rowX, y, rowWidth, rowHeight, rowRadius);
+    roundedRect(ctx, rowX, y, rowWidth, layout.rowHeight, rowRadius);
     ctx.fillStyle = style.rowFill;
     ctx.fill();
-    ctx.lineWidth = 1.7;
+    ctx.lineWidth = s(1.4);
     ctx.strokeStyle = style.rowStroke;
     ctx.stroke();
     ctx.restore();
 
-    drawText(ctx, (item.mode || "").toUpperCase(), rowX + 30, centerY + 1, {
-      font: "bold 31px Sans",
-      fillStyle: "#e4cdf4",
+    drawText(ctx, (item.mode || "").toUpperCase(), rowX + s(30), centerY, {
+      font: `bold ${layout.modeFont}px Sans`,
+      fillStyle: "#d8c2ea",
       textAlign: "left",
       textBaseline: "middle",
     });
 
     const mapText = (item.map || "").toUpperCase();
-    const mapSize = fitText(ctx, mapText, 420, 40, 26);
+    const mapSize = fitText(
+      ctx,
+      mapText,
+      s(420),
+      layout.mapFontStart,
+      layout.mapFontMin
+    );
 
-    drawText(ctx, mapText, width / 2, centerY + 1, {
+    drawText(ctx, mapText, width / 2, centerY, {
       font: `bold ${mapSize}px Sans`,
-      fillStyle: "#ffffff",
+      fillStyle: "#f1f1f1",
       textBaseline: "middle",
     });
 
     const badgeText = (item.side || "").toUpperCase();
-    ctx.font = "bold 22px Sans";
+    ctx.font = `bold ${layout.badgeFont}px Sans`;
     const badgeWidth = Math.max(
-      104,
-      Math.min(145, ctx.measureText(badgeText).width + 26)
+      s(104),
+      Math.min(s(145), ctx.measureText(badgeText).width + layout.badgePadding)
     );
-    const badgeHeight = 42;
-    const badgeX = rowX + rowWidth - badgeWidth - 20;
-    const badgeY = y + 29;
+    const badgeHeight = layout.badgeHeight;
+    const badgeX = rowX + rowWidth - badgeWidth - s(20);
+    const badgeY = y + (layout.rowHeight - badgeHeight) / 2;
 
     ctx.save();
-    roundedRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 18);
-    ctx.fillStyle = "rgba(0,0,0,0.06)";
+    roundedRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, s(18));
+    ctx.fillStyle = "rgba(0,0,0,0.04)";
     ctx.fill();
-    ctx.lineWidth = 2;
+    ctx.lineWidth = s(1.8);
     ctx.strokeStyle = style.badgeStroke;
     ctx.stroke();
     ctx.restore();
 
-    drawText(ctx, badgeText, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2 + 1, {
-      font: "bold 22px Sans",
-      fillStyle: style.badgeText,
-      textBaseline: "middle",
-    });
+    drawText(
+      ctx,
+      badgeText,
+      badgeX + badgeWidth / 2,
+      badgeY + badgeHeight / 2,
+      {
+        font: `bold ${layout.badgeFont}px Sans`,
+        fillStyle: style.badgeText,
+        textBaseline: "middle",
+      }
+    );
   });
 
-  drawText(ctx, "EVG · EVERGREEN GAMING", width / 2, 1815, {
-    font: "bold 24px Sans",
-    fillStyle: "#866fb8",
-    shadowColor: "#846fb6",
-    shadowBlur: 1,
+  drawText(ctx, "EVG · EVERGREEN GAMING", width / 2, s(1812), {
+    font: `bold ${s(24)}px Sans`,
+    fillStyle: "#78659f",
+    shadowColor: "#78659f",
+    shadowBlur: s(0.6),
   });
 
   return canvas.toBuffer("image/png");
