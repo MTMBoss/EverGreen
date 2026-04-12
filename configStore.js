@@ -1,7 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 
-const CONFIG_PATH = path.join(__dirname, "config.json");
+const { db } = require("./attendance/db");
+
+const LEGACY_CONFIG_PATH = path.join(__dirname, "config.json");
 
 const DEFAULT_CONFIG = {
   targetChannel1: process.env.TARGET_CHANNEL_1 || "",
@@ -24,59 +26,172 @@ const DEFAULT_CONFIG = {
   publicationState: {},
 };
 
-function ensureConfigFile() {
-  if (!fs.existsSync(CONFIG_PATH)) {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2), "utf8");
+const CONFIG_KEYS = Object.keys(DEFAULT_CONFIG);
+
+let initialized = false;
+
+function cloneDefaultConfig() {
+  return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+}
+
+function normalizeConfigValue(key, value) {
+  switch (key) {
+    case "targetChannel1":
+    case "targetChannel2":
+    case "pngChannel":
+    case "scheduleAnnouncementChannel":
+    case "requiredRoleId":
+    case "optionalRoleId":
+    case "attendanceChannel":
+    case "attendanceReminderChannel":
+    case "attendanceReminderUserId":
+    case "attendanceWebBaseUrl":
+      return typeof value === "string" ? value : "";
+
+    case "scheduleChannels":
+    case "attendanceRoleIds":
+      return Array.isArray(value) ? value.filter(Boolean).map(String) : [];
+
+    case "currentSchedule":
+      return value ?? null;
+
+    case "publicationState":
+      return value && typeof value === "object" && !Array.isArray(value)
+        ? value
+        : {};
+
+    default:
+      return value;
   }
 }
 
-function readConfig() {
-  ensureConfigFile();
+function normalizeConfig(input) {
+  const normalized = cloneDefaultConfig();
+
+  for (const key of CONFIG_KEYS) {
+    normalized[key] = normalizeConfigValue(key, input?.[key]);
+  }
+
+  return normalized;
+}
+
+function serializeValue(value) {
+  return JSON.stringify(value);
+}
+
+function deserializeValue(key, rawValue) {
+  try {
+    return normalizeConfigValue(key, JSON.parse(rawValue));
+  } catch (error) {
+    console.error(`❌ Errore parsing configurazione per la chiave ${key}:`, error);
+    return cloneDefaultConfig()[key];
+  }
+}
+
+function createConfigTable() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
+}
+
+function readLegacyConfig() {
+  if (!fs.existsSync(LEGACY_CONFIG_PATH)) {
+    return cloneDefaultConfig();
+  }
 
   try {
-    const raw = fs.readFileSync(CONFIG_PATH, "utf8");
-    const parsed = JSON.parse(raw);
-
-    return {
-      targetChannel1: parsed.targetChannel1 || "",
-      targetChannel2: parsed.targetChannel2 || "",
-      pngChannel: parsed.pngChannel || "",
-      scheduleChannels: Array.isArray(parsed.scheduleChannels)
-        ? parsed.scheduleChannels
-        : [],
-      scheduleAnnouncementChannel: parsed.scheduleAnnouncementChannel || "",
-      requiredRoleId: parsed.requiredRoleId || "",
-      optionalRoleId: parsed.optionalRoleId || "",
-
-      attendanceChannel: parsed.attendanceChannel || "",
-      attendanceReminderChannel: parsed.attendanceReminderChannel || "",
-      attendanceReminderUserId: parsed.attendanceReminderUserId || "",
-      attendanceRoleIds: Array.isArray(parsed.attendanceRoleIds)
-        ? parsed.attendanceRoleIds
-        : [],
-      attendanceWebBaseUrl: parsed.attendanceWebBaseUrl || "",
-
-      currentSchedule: parsed.currentSchedule || null,
-      publicationState:
-        parsed.publicationState && typeof parsed.publicationState === "object"
-          ? parsed.publicationState
-          : {},
-    };
+    const raw = fs.readFileSync(LEGACY_CONFIG_PATH, "utf8");
+    return normalizeConfig(JSON.parse(raw));
   } catch (error) {
-    console.error("❌ Errore lettura config.json:", error);
-    return { ...DEFAULT_CONFIG };
+    console.error("❌ Errore lettura config.json legacy:", error);
+    return cloneDefaultConfig();
+  }
+}
+
+function writeAllConfig(config) {
+  const normalized = normalizeConfig(config);
+
+  const replace = db.prepare(`
+    INSERT INTO app_config (key, value)
+    VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `);
+
+  const transaction = db.transaction(payload => {
+    for (const key of CONFIG_KEYS) {
+      replace.run(key, serializeValue(payload[key]));
+    }
+  });
+
+  transaction(normalized);
+  return normalized;
+}
+
+function seedMissingKeys() {
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO app_config (key, value)
+    VALUES (?, ?)
+  `);
+
+  const transaction = db.transaction(() => {
+    for (const key of CONFIG_KEYS) {
+      insert.run(key, serializeValue(DEFAULT_CONFIG[key]));
+    }
+  });
+
+  transaction();
+}
+
+function initializeConfigStore() {
+  if (initialized) {
+    return;
+  }
+
+  createConfigTable();
+
+  const row = db.prepare("SELECT COUNT(*) AS count FROM app_config").get();
+
+  if (!row || row.count === 0) {
+    writeAllConfig(readLegacyConfig());
+  } else {
+    seedMissingKeys();
+  }
+
+  initialized = true;
+}
+
+function readConfig() {
+  initializeConfigStore();
+
+  try {
+    const rows = db.prepare("SELECT key, value FROM app_config").all();
+    const config = cloneDefaultConfig();
+
+    for (const row of rows) {
+      if (CONFIG_KEYS.includes(row.key)) {
+        config[row.key] = deserializeValue(row.key, row.value);
+      }
+    }
+
+    return normalizeConfig(config);
+  } catch (error) {
+    console.error("❌ Errore lettura configurazione da SQLite:", error);
+    return cloneDefaultConfig();
   }
 }
 
 function writeConfig(config) {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), "utf8");
+  initializeConfigStore();
+  return writeAllConfig(config);
 }
 
 function updateConfig(mutator) {
   const config = readConfig();
   mutator(config);
-  writeConfig(config);
-  return config;
+  return writeConfig(config);
 }
 
 function setTargetChannel1(channelId) {
@@ -119,7 +234,9 @@ function setChannelPublicationState(channelId, state) {
 
 function setScheduleChannels(channelIds) {
   return updateConfig(config => {
-    config.scheduleChannels = channelIds;
+    config.scheduleChannels = Array.isArray(channelIds)
+      ? channelIds.filter(Boolean).map(String)
+      : [];
   });
 }
 
@@ -161,13 +278,15 @@ function setAttendanceReminderUserId(userId) {
 
 function setAttendanceRoleIds(roleIds) {
   return updateConfig(config => {
-    config.attendanceRoleIds = roleIds;
+    config.attendanceRoleIds = Array.isArray(roleIds)
+      ? roleIds.filter(Boolean).map(String)
+      : [];
   });
 }
 
 function setAttendanceWebBaseUrl(url) {
   return updateConfig(config => {
-    config.attendanceWebBaseUrl = url;
+    config.attendanceWebBaseUrl = typeof url === "string" ? url : "";
   });
 }
 

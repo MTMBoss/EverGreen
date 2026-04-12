@@ -3,3 +3,7 @@ node_modules/
 config.json
 data/*.db
 data/*.sqlite
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite-wal
+data/*.sqlite-shm
