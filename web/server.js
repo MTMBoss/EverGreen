@@ -9,7 +9,8 @@ function startAttendanceWebServer(client) {
     started = true;
 
     const app = express();
-    const port = Number(process.env.WEB_PORT || 3000);
+    const port = Number(process.env.PORT || process.env.WEB_PORT || 3000);
+    const host = "0.0.0.0";
 
     app.set("view engine", "ejs");
     app.set("views", path.join(__dirname, "views"));
@@ -18,8 +19,12 @@ function startAttendanceWebServer(client) {
     app.use(cookieParserMiddleware);
     app.use(createWebRouter(client));
 
-    app.listen(port, () => {
-        console.log(`✅ Pannello web presenze avviato su http://localhost:${port}`);
+    app.get("/health", (_req, res) => {
+        res.status(200).send("ok");
+    });
+
+    app.listen(port, host, () => {
+        console.log(`✅ Pannello web presenze avviato su http://${host}:${port}`);
     });
 }
 
