@@ -13,13 +13,13 @@ const DEFAULT_CONFIG = {
   scheduleAnnouncementChannel: process.env.SCHEDULE_ANNOUNCE_CHANNEL || "",
   requiredRoleId: process.env.REQUIRED_ROLE_ID || "",
   optionalRoleId: process.env.OPTIONAL_ROLE_ID || "",
-  attendanceChannel: process.env.ATTENDANCE_CHANNEL || "",
-  attendanceReminderChannel: process.env.ATTENDANCE_REMINDER_CHANNEL || "",
-  attendanceReminderUserId: process.env.ATTENDANCE_REMINDER_USER_ID || "",
-  attendanceRoleIds: process.env.ATTENDANCE_ROLE_IDS
-    ? process.env.ATTENDANCE_ROLE_IDS.split(",").map(id => id.trim()).filter(Boolean)
-    : [],
-  attendanceWebBaseUrl: process.env.ATTENDANCE_WEB_BASE_URL || "http://localhost:3000",
+
+  attendanceChannel: "",
+  attendanceReminderChannel: "",
+  attendanceReminderUserId: "",
+  attendanceRoleIds: [],
+  attendanceWebBaseUrl: "",
+
   currentSchedule: null,
   publicationState: {},
 };
@@ -47,16 +47,15 @@ function readConfig() {
       scheduleAnnouncementChannel: parsed.scheduleAnnouncementChannel || "",
       requiredRoleId: parsed.requiredRoleId || "",
       optionalRoleId: parsed.optionalRoleId || "",
+
       attendanceChannel: parsed.attendanceChannel || "",
       attendanceReminderChannel: parsed.attendanceReminderChannel || "",
       attendanceReminderUserId: parsed.attendanceReminderUserId || "",
       attendanceRoleIds: Array.isArray(parsed.attendanceRoleIds)
         ? parsed.attendanceRoleIds
         : [],
-      attendanceWebBaseUrl:
-        parsed.attendanceWebBaseUrl ||
-        process.env.ATTENDANCE_WEB_BASE_URL ||
-        "http://localhost:3000",
+      attendanceWebBaseUrl: parsed.attendanceWebBaseUrl || "",
+
       currentSchedule: parsed.currentSchedule || null,
       publicationState:
         parsed.publicationState && typeof parsed.publicationState === "object"

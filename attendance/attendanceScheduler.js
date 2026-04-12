@@ -4,11 +4,11 @@ const { readConfig } = require("../configStore");
 const { getTodayIsoDate } = require("./attendanceService");
 const { publishAttendanceForDate } = require("./attendancePublisher");
 
-function startAttendanceReminderScheduler(client) {
-    const cronExpression = process.env.ATTENDANCE_REMINDER_CRON || "0 18 * * *";
+const ATTENDANCE_REMINDER_CRON = "0 18 * * *";
 
+function startAttendanceReminderScheduler(client) {
     cron.schedule(
-        cronExpression,
+        ATTENDANCE_REMINDER_CRON,
         async () => {
             try {
                 const config = readConfig();
@@ -17,9 +17,14 @@ function startAttendanceReminderScheduler(client) {
                 const attendanceChannelId = config.attendanceChannel;
                 const today = getTodayIsoDate();
 
-                if (attendanceChannelId) {
+                const guild = await resolveAttendanceGuild(
+                    client,
+                    attendanceChannelId,
+                    reminderChannelId
+                );
+
+                if (attendanceChannelId && guild) {
                     try {
-                        const guild = client.guilds.cache.get(process.env.GUILD_ID) || null;
                         await publishAttendanceForDate(client, guild, today);
                     } catch (error) {
                         console.error("❌ Errore pubblicazione automatica presenze:", error);
@@ -31,7 +36,8 @@ function startAttendanceReminderScheduler(client) {
                     return;
                 }
 
-                const channel = await client.channels.fetch(reminderChannelId);
+                const channel = await client.channels.fetch(reminderChannelId).catch(() => null);
+
                 if (!channel || channel.type !== ChannelType.GuildText) {
                     console.log("⚠️ Canale promemoria presenze non trovato o non testuale");
                     return;
@@ -63,6 +69,20 @@ function startAttendanceReminderScheduler(client) {
             timezone: "Europe/Rome",
         }
     );
+}
+
+async function resolveAttendanceGuild(client, attendanceChannelId, reminderChannelId) {
+    const candidateChannelIds = [attendanceChannelId, reminderChannelId].filter(Boolean);
+
+    for (const channelId of candidateChannelIds) {
+        const channel = await client.channels.fetch(channelId).catch(() => null);
+        if (channel?.guild) {
+            return channel.guild;
+        }
+    }
+
+    const firstGuild = client.guilds.cache.first();
+    return firstGuild || null;
 }
 
 module.exports = {
