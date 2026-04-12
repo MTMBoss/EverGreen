@@ -45,7 +45,6 @@ function buildAttendanceMessages({ date, entries, summary, baseUrl }) {
 
 async function publishAttendanceForDate(client, guild, dateInput, options = {}) {
     const config = readConfig();
-    const date = dateInput;
     const targetChannelId = options.targetChannelId || config.attendanceChannel;
 
     if (!targetChannelId) {
@@ -61,7 +60,8 @@ async function publishAttendanceForDate(client, guild, dateInput, options = {}) 
         throw new Error("Il canale presenze configurato non appartiene a questa guild.");
     }
 
-    const dayView = getDayView(date);
+    const dayView = await getDayView(dateInput);
+
     const messages = buildAttendanceMessages({
         ...dayView,
         baseUrl: config.attendanceWebBaseUrl || "",

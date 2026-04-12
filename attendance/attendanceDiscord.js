@@ -111,7 +111,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
 
         case "presenze-oggi": {
             const date = normalizeDateOption(interaction.options.getString("data"));
-            const dayView = getDayView(date);
+            const dayView = await getDayView(date);
             await interaction.editReply({
                 content: formatSummaryMessage(dayView),
             });
@@ -125,7 +125,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
             const data = normalizeDateOption(interaction.options.getString("data"));
             const slot = slotKeyFromChoice(fascia);
 
-            const dayView = setSingleSlot({
+            const dayView = await setSingleSlot({
                 dateInput: data,
                 discordUserId: user.id,
                 slot,
@@ -150,7 +150,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
             const dalle23 = interaction.options.getBoolean("dalle_23", true);
             const note = interaction.options.getString("note", false) || "";
 
-            const dayView = setDaySlots({
+            const dayView = await setDaySlots({
                 dateInput: data,
                 discordUserId: user.id,
                 slot_21_22: dalle21,
@@ -172,7 +172,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
 
         case "presenze-recap": {
             const date = normalizeDateOption(interaction.options.getString("data"));
-            const dayView = getDayView(date);
+            const dayView = await getDayView(date);
             await interaction.editReply({
                 content: formatDetailedRecap(dayView),
             });

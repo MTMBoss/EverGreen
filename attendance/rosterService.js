@@ -45,7 +45,7 @@ async function syncRosterFromGuild(guild) {
         return left.localeCompare(right, "it");
     });
 
-    syncTrackedMembers(trackedMembers, new Date().toISOString());
+    await syncTrackedMembers(trackedMembers, new Date().toISOString());
 
     return {
         trackedRoleIds,

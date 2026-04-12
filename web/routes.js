@@ -2,8 +2,10 @@ const express = require("express");
 const dayjs = require("dayjs");
 const customParseFormat = require("dayjs/plugin/customParseFormat");
 require("dayjs/locale/it");
+
 dayjs.extend(customParseFormat);
 dayjs.locale("it");
+
 const {
     getTodayIsoDate,
     normalizeDateInput,
@@ -41,6 +43,7 @@ function createWebRouter(client) {
             sameSite: "lax",
             maxAge: 1000 * 60 * 60 * 24 * 30,
         });
+
         res.redirect(`/presenze?date=${getTodayIsoDate()}`);
     });
 
@@ -49,71 +52,90 @@ function createWebRouter(client) {
         res.redirect("/login");
     });
 
-    router.get("/presenze", requireAdmin, (req, res) => {
-        const date = normalizeDateInput(req.query.date || getTodayIsoDate());
-        const dayView = getDayView(date);
-        const config = readConfig();
+    router.get(
+        "/presenze",
+        requireAdmin,
+        asyncHandler(async (req, res) => {
+            const date = normalizeDateInput(req.query.date || getTodayIsoDate());
+            const dayView = await getDayView(date);
+            const config = readConfig();
 
-        res.render("attendance-day", {
-            pageTitle: `Presenze ${date}`,
-            date,
-            dayView,
-            saved: req.query.saved === "1",
-            webBaseUrl: config.attendanceWebBaseUrl || "",
-            attendanceChannel: config.attendanceChannel || "",
-        });
-    });
+            res.render("attendance-day", {
+                pageTitle: `Presenze ${date}`,
+                date,
+                dayView,
+                saved: req.query.saved === "1",
+                webBaseUrl: config.attendanceWebBaseUrl || "",
+                attendanceChannel: config.attendanceChannel || "",
+            });
+        })
+    );
 
-    router.post("/presenze/:date/:discordUserId", requireAdmin, (req, res) => {
-        const date = normalizeDateInput(req.params.date);
-        const slot21 = Boolean(req.body.slot_21_22);
-        const slot22 = Boolean(req.body.slot_22_23);
-        const slot23 = Boolean(req.body.slot_23_00);
-        const note = String(req.body.note || "").trim();
+    router.post(
+        "/presenze/:date/:discordUserId",
+        requireAdmin,
+        asyncHandler(async (req, res) => {
+            const date = normalizeDateInput(req.params.date);
+            const slot21 = Boolean(req.body.slot_21_22);
+            const slot22 = Boolean(req.body.slot_22_23);
+            const slot23 = Boolean(req.body.slot_23_00);
+            const note = String(req.body.note || "").trim();
 
-        setDaySlots({
-            dateInput: date,
-            discordUserId: req.params.discordUserId,
-            slot_21_22: slot21,
-            slot_22_23: slot22,
-            slot_23_00: slot23,
-            notes: note,
-            updatedByDiscordUserId: "WEB_PANEL",
-        });
+            await setDaySlots({
+                dateInput: date,
+                discordUserId: req.params.discordUserId,
+                slot_21_22: slot21,
+                slot_22_23: slot22,
+                slot_23_00: slot23,
+                notes: note,
+                updatedByDiscordUserId: "WEB_PANEL",
+            });
 
-        res.redirect(`/presenze?date=${date}&saved=1#member-${req.params.discordUserId}`);
-    });
+            res.redirect(`/presenze?date=${date}&saved=1#member-${req.params.discordUserId}`);
+        })
+    );
 
-    router.get("/calendario", requireAdmin, (req, res) => {
-        const month = req.query.month && dayjs(req.query.month, "YYYY-MM", true).isValid()
-            ? req.query.month
-            : dayjs(getTodayIsoDate(), "YYYY-MM-DD", true).format("YYYY-MM");
+    router.get(
+        "/calendario",
+        requireAdmin,
+        asyncHandler(async (req, res) => {
+            const month =
+                req.query.month && dayjs(req.query.month, "YYYY-MM", true).isValid()
+                    ? req.query.month
+                    : dayjs(getTodayIsoDate(), "YYYY-MM-DD", true).format("YYYY-MM");
 
-        const calendarView = getCalendarView(month);
-        const grid = buildCalendarGrid(month, calendarView.summaryByDate);
+            const calendarView = await getCalendarView(month);
+            const grid = buildCalendarGrid(month, calendarView.summaryByDate);
 
-        res.render("attendance-summary", {
-            pageTitle: `Calendario presenze ${month}`,
-            month,
-            calendarView,
-            grid,
-            prevMonth: dayjs(`${month}-01`).subtract(1, "month").format("YYYY-MM"),
-            nextMonth: dayjs(`${month}-01`).add(1, "month").format("YYYY-MM"),
-        });
-    });
+            res.render("attendance-summary", {
+                pageTitle: `Calendario presenze ${month}`,
+                month,
+                calendarView,
+                grid,
+                prevMonth: dayjs(`${month}-01`).subtract(1, "month").format("YYYY-MM"),
+                nextMonth: dayjs(`${month}-01`).add(1, "month").format("YYYY-MM"),
+            });
+        })
+    );
 
-    router.post("/sync-roster", requireAdmin, async (req, res) => {
-        try {
+    router.post(
+        "/sync-roster",
+        requireAdmin,
+        asyncHandler(async (_req, res) => {
             const guild = client.guilds.cache.get(process.env.GUILD_ID) || null;
+
             if (!guild) {
                 throw new Error("Il bot non è ancora pronto o la guild non è disponibile.");
             }
 
             const result = await syncRosterFromGuild(guild);
             res.redirect(`/presenze?date=${getTodayIsoDate()}&saved=1&sync=${result.count}`);
-        } catch (error) {
-            res.status(500).send(`Errore sincronizzazione roster: ${error.message}`);
-        }
+        })
+    );
+
+    router.use((error, _req, res, _next) => {
+        console.error("❌ Errore web presenze:", error);
+        res.status(500).send(`Errore: ${error.message}`);
     });
 
     return router;
@@ -160,6 +182,12 @@ function buildCalendarGrid(month, summaryByDate) {
     }
 
     return rows;
+}
+
+function asyncHandler(handler) {
+    return (req, res, next) => {
+        Promise.resolve(handler(req, res, next)).catch(next);
+    };
 }
 
 module.exports = {
