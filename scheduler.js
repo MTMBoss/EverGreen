@@ -76,7 +76,7 @@ async function sendScheduleAnnouncement(client, week) {
     const requiredRoleId = config.requiredRoleId;
     const optionalRoleId = config.optionalRoleId;
 
-    let mentions = [];
+    const mentions = [];
     if (requiredRoleId) {
       mentions.push(`<@&${requiredRoleId}>`);
     }

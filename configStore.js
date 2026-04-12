@@ -13,6 +13,13 @@ const DEFAULT_CONFIG = {
   scheduleAnnouncementChannel: process.env.SCHEDULE_ANNOUNCE_CHANNEL || "",
   requiredRoleId: process.env.REQUIRED_ROLE_ID || "",
   optionalRoleId: process.env.OPTIONAL_ROLE_ID || "",
+  attendanceChannel: process.env.ATTENDANCE_CHANNEL || "",
+  attendanceReminderChannel: process.env.ATTENDANCE_REMINDER_CHANNEL || "",
+  attendanceReminderUserId: process.env.ATTENDANCE_REMINDER_USER_ID || "",
+  attendanceRoleIds: process.env.ATTENDANCE_ROLE_IDS
+    ? process.env.ATTENDANCE_ROLE_IDS.split(",").map(id => id.trim()).filter(Boolean)
+    : [],
+  attendanceWebBaseUrl: process.env.ATTENDANCE_WEB_BASE_URL || "http://localhost:3000",
   currentSchedule: null,
   publicationState: {},
 };
@@ -40,6 +47,16 @@ function readConfig() {
       scheduleAnnouncementChannel: parsed.scheduleAnnouncementChannel || "",
       requiredRoleId: parsed.requiredRoleId || "",
       optionalRoleId: parsed.optionalRoleId || "",
+      attendanceChannel: parsed.attendanceChannel || "",
+      attendanceReminderChannel: parsed.attendanceReminderChannel || "",
+      attendanceReminderUserId: parsed.attendanceReminderUserId || "",
+      attendanceRoleIds: Array.isArray(parsed.attendanceRoleIds)
+        ? parsed.attendanceRoleIds
+        : [],
+      attendanceWebBaseUrl:
+        parsed.attendanceWebBaseUrl ||
+        process.env.ATTENDANCE_WEB_BASE_URL ||
+        "http://localhost:3000",
       currentSchedule: parsed.currentSchedule || null,
       publicationState:
         parsed.publicationState && typeof parsed.publicationState === "object"
@@ -56,25 +73,29 @@ function writeConfig(config) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), "utf8");
 }
 
-function setTargetChannel1(channelId) {
+function updateConfig(mutator) {
   const config = readConfig();
-  config.targetChannel1 = channelId;
+  mutator(config);
   writeConfig(config);
   return config;
+}
+
+function setTargetChannel1(channelId) {
+  return updateConfig(config => {
+    config.targetChannel1 = channelId;
+  });
 }
 
 function setTargetChannel2(channelId) {
-  const config = readConfig();
-  config.targetChannel2 = channelId;
-  writeConfig(config);
-  return config;
+  return updateConfig(config => {
+    config.targetChannel2 = channelId;
+  });
 }
 
 function setPngChannel(channelId) {
-  const config = readConfig();
-  config.pngChannel = channelId;
-  writeConfig(config);
-  return config;
+  return updateConfig(config => {
+    config.pngChannel = channelId;
+  });
 }
 
 function getChannelPublicationState(channelId) {
@@ -88,42 +109,67 @@ function getChannelPublicationState(channelId) {
 }
 
 function setChannelPublicationState(channelId, state) {
-  const config = readConfig();
-  config.publicationState = config.publicationState || {};
-  config.publicationState[channelId] = {
-    lastWeekKey: state?.lastWeekKey || "",
-    lastMonthKey: state?.lastMonthKey || "",
-  };
-  writeConfig(config);
-  return config;
+  return updateConfig(config => {
+    config.publicationState = config.publicationState || {};
+    config.publicationState[channelId] = {
+      lastWeekKey: state?.lastWeekKey || "",
+      lastMonthKey: state?.lastMonthKey || "",
+    };
+  });
 }
 
 function setScheduleChannels(channelIds) {
-  const config = readConfig();
-  config.scheduleChannels = channelIds;
-  writeConfig(config);
-  return config;
+  return updateConfig(config => {
+    config.scheduleChannels = channelIds;
+  });
 }
 
 function setScheduleAnnouncementChannel(channelId) {
-  const config = readConfig();
-  config.scheduleAnnouncementChannel = channelId;
-  writeConfig(config);
-  return config;
+  return updateConfig(config => {
+    config.scheduleAnnouncementChannel = channelId;
+  });
 }
 
 function setRequiredRoleId(roleId) {
-  const config = readConfig();
-  config.requiredRoleId = roleId;
-  writeConfig(config);
-  return config;
+  return updateConfig(config => {
+    config.requiredRoleId = roleId;
+  });
 }
 
 function setOptionalRoleId(roleId) {
-  const config = readConfig();
-  config.optionalRoleId = roleId;
-  writeConfig(config);
-  return config;
+  return updateConfig(config => {
+    config.optionalRoleId = roleId;
+  });
+}
+
+function setAttendanceChannel(channelId) {
+  return updateConfig(config => {
+    config.attendanceChannel = channelId;
+  });
+}
+
+function setAttendanceReminderChannel(channelId) {
+  return updateConfig(config => {
+    config.attendanceReminderChannel = channelId;
+  });
+}
+
+function setAttendanceReminderUserId(userId) {
+  return updateConfig(config => {
+    config.attendanceReminderUserId = userId;
+  });
+}
+
+function setAttendanceRoleIds(roleIds) {
+  return updateConfig(config => {
+    config.attendanceRoleIds = roleIds;
+  });
+}
+
+function setAttendanceWebBaseUrl(url) {
+  return updateConfig(config => {
+    config.attendanceWebBaseUrl = url;
+  });
 }
 
 module.exports = {
@@ -138,4 +184,9 @@ module.exports = {
   setScheduleAnnouncementChannel,
   setRequiredRoleId,
   setOptionalRoleId,
+  setAttendanceChannel,
+  setAttendanceReminderChannel,
+  setAttendanceReminderUserId,
+  setAttendanceRoleIds,
+  setAttendanceWebBaseUrl,
 };

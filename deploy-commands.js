@@ -114,6 +114,205 @@ const commands = [
     .toJSON(),
 
   new SlashCommandBuilder()
+    .setName("set-canale-presenze")
+    .setDescription("Imposta il canale dove pubblicare le presenze")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addChannelOption(option =>
+      option
+        .setName("canale")
+        .setDescription("Canale testuale per le presenze")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set-canale-promemoria-presenze")
+    .setDescription("Imposta il canale dove inviare il promemoria giornaliero presenze")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addChannelOption(option =>
+      option
+        .setName("canale")
+        .setDescription("Canale testuale per il promemoria presenze")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set-utente-promemoria-presenze")
+    .setDescription("Imposta l'utente da taggare ogni giorno per il promemoria presenze")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addUserOption(option =>
+      option
+        .setName("utente")
+        .setDescription("Utente da taggare")
+        .setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set-ruoli-presenze")
+    .setDescription("Imposta 1 o 2 ruoli da monitorare per il roster presenze")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addRoleOption(option =>
+      option
+        .setName("ruolo1")
+        .setDescription("Primo ruolo da monitorare")
+        .setRequired(true)
+    )
+    .addRoleOption(option =>
+      option
+        .setName("ruolo2")
+        .setDescription("Secondo ruolo da monitorare")
+        .setRequired(false)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set-url-pannello-presenze")
+    .setDescription("Imposta l'URL pubblico del pannello web presenze")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addStringOption(option =>
+      option
+        .setName("url")
+        .setDescription("URL base del pannello, ad esempio https://dominio.it")
+        .setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("presenze-sync")
+    .setDescription("Sincronizza il roster presenze dai ruoli configurati")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("pubblica-presenze-oggi")
+    .setDescription("Pubblica la scheda presenze nel canale configurato")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addStringOption(option =>
+      option
+        .setName("data")
+        .setDescription("Data nel formato YYYY-MM-DD. Se omessa usa oggi")
+        .setRequired(false)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("presenze-oggi")
+    .setDescription("Mostra il riepilogo presenze del giorno")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addStringOption(option =>
+      option
+        .setName("data")
+        .setDescription("Data nel formato YYYY-MM-DD. Se omessa usa oggi")
+        .setRequired(false)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("presenza-set")
+    .setDescription("Aggiorna una singola fascia oraria per un membro")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addUserOption(option =>
+      option
+        .setName("utente")
+        .setDescription("Membro da aggiornare")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("fascia")
+        .setDescription("Fascia oraria")
+        .setRequired(true)
+        .addChoices(
+          { name: "21-22", value: "21-22" },
+          { name: "22-23", value: "22-23" },
+          { name: "23-00", value: "23-00" }
+        )
+    )
+    .addBooleanOption(option =>
+      option
+        .setName("disponibile")
+        .setDescription("Segna presente o assente")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("data")
+        .setDescription("Data nel formato YYYY-MM-DD. Se omessa usa oggi")
+        .setRequired(false)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("presenza-set-giornata")
+    .setDescription("Aggiorna tutte e 3 le fasce orarie per un membro")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addUserOption(option =>
+      option
+        .setName("utente")
+        .setDescription("Membro da aggiornare")
+        .setRequired(true)
+    )
+    .addBooleanOption(option =>
+      option
+        .setName("dalle_21")
+        .setDescription("Disponibile 21-22")
+        .setRequired(true)
+    )
+    .addBooleanOption(option =>
+      option
+        .setName("dalle_22")
+        .setDescription("Disponibile 22-23")
+        .setRequired(true)
+    )
+    .addBooleanOption(option =>
+      option
+        .setName("dalle_23")
+        .setDescription("Disponibile 23-00")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("data")
+        .setDescription("Data nel formato YYYY-MM-DD. Se omessa usa oggi")
+        .setRequired(false)
+    )
+    .addStringOption(option =>
+      option
+        .setName("note")
+        .setDescription("Nota facoltativa")
+        .setRequired(false)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("presenze-recap")
+    .setDescription("Mostra il recap completo delle presenze del giorno")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addStringOption(option =>
+      option
+        .setName("data")
+        .setDescription("Data nel formato YYYY-MM-DD. Se omessa usa oggi")
+        .setRequired(false)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("link-presenze")
+    .setDescription("Mostra il link diretto al pannello web presenze")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addStringOption(option =>
+      option
+        .setName("data")
+        .setDescription("Data nel formato YYYY-MM-DD. Se omessa usa oggi")
+        .setRequired(false)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
     .setName("mostra-config")
     .setDescription("Mostra la configurazione attuale del bot")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)

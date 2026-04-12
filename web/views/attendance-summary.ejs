@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+        <%= pageTitle %>
+    </title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+            margin: 0;
+            padding: 24px;
+        }
+
+        a {
+            color: #93c5fd;
+            text-decoration: none;
+        }
+
+        .topbar,
+        .card {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .weekday,
+        .day {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+            padding: 12px;
+            min-height: 120px;
+        }
+
+        .weekday {
+            min-height: auto;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .day.empty {
+            background: transparent;
+            border-style: dashed;
+        }
+
+        .date {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #d1d5db;
+        }
+
+        .link {
+            display: inline-block;
+            margin-top: 10px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="topbar nav">
+        <div>
+            <h1 style="margin: 0 0 8px">Calendario presenze <%= month %>
+            </h1>
+            <a href="/presenze">Vai al giorno corrente</a> | <a href="/logout">Logout</a>
+        </div>
+        <div>
+            <a href="/calendario?month=<%= prevMonth %>">← Mese precedente</a>
+            &nbsp; | &nbsp;
+            <a href="/calendario?month=<%= nextMonth %>">Mese successivo →</a>
+        </div>
+    </div>
+
+    <div class="calendar">
+        <div class="weekday">Lun</div>
+        <div class="weekday">Mar</div>
+        <div class="weekday">Mer</div>
+        <div class="weekday">Gio</div>
+        <div class="weekday">Ven</div>
+        <div class="weekday">Sab</div>
+        <div class="weekday">Dom</div>
+
+        <% for (const row of grid) { %>
+            <% for (const cell of row) { %>
+                <% if (!cell) { %>
+                    <div class="day empty"></div>
+                    <% } else { %>
+                        <div class="day">
+                            <div class="date">
+                                <%= cell.day %>
+                            </div>
+                            <% if (cell.summary) { %>
+                                <div class="stats">
+                                    Roster: <strong>
+                                        <%= cell.summary.totalMembers %>
+                                    </strong><br />
+                                    Presenti: <strong>
+                                        <%= cell.summary.anyPresenceCount %>
+                                    </strong><br />
+                                    Full: <strong>
+                                        <%= cell.summary.fullPresenceCount %>
+                                    </strong><br />
+                                    Assenti: <strong>
+                                        <%= cell.summary.absentCount %>
+                                    </strong>
+                                </div>
+                                <% } else { %>
+                                    <div class="stats">Nessun dato salvato</div>
+                                    <% } %>
+                                        <a class="link" href="/presenze?date=<%= cell.date %>">Apri giorno</a>
+                        </div>
+                        <% } %>
+                            <% } %>
+                                <% } %>
+    </div>
+</body>
+
+</html>

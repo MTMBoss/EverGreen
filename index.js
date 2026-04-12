@@ -28,16 +28,29 @@ const {
 } = require("./publicationTracker");
 
 const { renderMatchImage } = require("./matchImageRenderer");
-
 const {
   handleMessageCreate,
   handleMessageUpdate,
   handleMessageDelete,
 } = require("./channelLogger");
+const {
+  initializeAttendance,
+} = require("./attendance/attendanceService");
+const {
+  handleAttendanceSlashCommand,
+  isAttendanceCommand,
+} = require("./attendance/attendanceDiscord");
+const {
+  startAttendanceReminderScheduler,
+} = require("./attendance/attendanceScheduler");
+const { startAttendanceWebServer } = require("./web/server");
+
+initializeAttendance();
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
@@ -200,6 +213,8 @@ async function ensureDateSeparators(channel, dateLine) {
 client.once(Events.ClientReady, async () => {
   console.log(`✅ Loggato come ${client.user.tag}`);
   startScheduler(client);
+  startAttendanceReminderScheduler(client);
+  startAttendanceWebServer(client);
 });
 
 client.on(Events.MessageCreate, async message => {
@@ -356,6 +371,11 @@ client.on(Events.InteractionCreate, async interaction => {
       await interaction.deferReply({ flags: 64 });
       deferred = true;
 
+      if (isAttendanceCommand(interaction.commandName)) {
+        await handleAttendanceSlashCommand(interaction, client);
+        return;
+      }
+
       if (interaction.commandName === "set-canale-parte1") {
         const channel = interaction.options.getChannel("canale", true);
         setTargetChannel1(channel.id);
@@ -430,8 +450,7 @@ client.on(Events.InteractionCreate, async interaction => {
           content:
             `✅ Ruoli schedule aggiornati:\n` +
             `Obbligatorio: <@&${requiredRole.id}>\n` +
-            `Opzionale: ${
-              optionalRole ? `<@&${optionalRole.id}>` : "nessuno"
+            `Opzionale: ${optionalRole ? `<@&${optionalRole.id}>` : "nessuno"
             }`,
         });
         return;
@@ -443,41 +462,51 @@ client.on(Events.InteractionCreate, async interaction => {
         await interaction.editReply({
           content:
             `**Configurazione attuale**\n` +
-            `Parte 1: ${
-              config.targetChannel1
-                ? `<#${config.targetChannel1}>`
-                : "non impostato"
+            `Parte 1: ${config.targetChannel1
+              ? `<#${config.targetChannel1}>`
+              : "non impostato"
             }\n` +
-            `Parte 2: ${
-              config.targetChannel2
-                ? `<#${config.targetChannel2}>`
-                : "non impostato"
+            `Parte 2: ${config.targetChannel2
+              ? `<#${config.targetChannel2}>`
+              : "non impostato"
             }\n` +
-            `PNG: ${
-              config.pngChannel
-                ? `<#${config.pngChannel}>`
-                : "non impostato"
+            `PNG: ${config.pngChannel
+              ? `<#${config.pngChannel}>`
+              : "non impostato"
             }\n` +
-            `Schedule: ${
-              config.scheduleChannels.length > 0
-                ? config.scheduleChannels.map(id => `<#${id}>`).join(", ")
-                : "non impostato"
+            `Schedule: ${config.scheduleChannels.length > 0
+              ? config.scheduleChannels.map(id => `<#${id}>`).join(", ")
+              : "non impostato"
             }\n` +
-            `Annuncio schedule: ${
-              config.scheduleAnnouncementChannel
-                ? `<#${config.scheduleAnnouncementChannel}>`
-                : "non impostato"
+            `Annuncio schedule: ${config.scheduleAnnouncementChannel
+              ? `<#${config.scheduleAnnouncementChannel}>`
+              : "non impostato"
             }\n` +
-            `Ruolo obbligatorio: ${
-              config.requiredRoleId
-                ? `<@&${config.requiredRoleId}>`
-                : "non impostato"
+            `Ruolo obbligatorio schedule: ${config.requiredRoleId
+              ? `<@&${config.requiredRoleId}>`
+              : "non impostato"
             }\n` +
-            `Ruolo opzionale: ${
-              config.optionalRoleId
-                ? `<@&${config.optionalRoleId}>`
-                : "non impostato"
+            `Ruolo opzionale schedule: ${config.optionalRoleId
+              ? `<@&${config.optionalRoleId}>`
+              : "non impostato"
             }\n` +
+            `Canale presenze: ${config.attendanceChannel
+              ? `<#${config.attendanceChannel}>`
+              : "non impostato"
+            }\n` +
+            `Canale promemoria presenze: ${config.attendanceReminderChannel
+              ? `<#${config.attendanceReminderChannel}>`
+              : "non impostato"
+            }\n` +
+            `Utente promemoria presenze: ${config.attendanceReminderUserId
+              ? `<@${config.attendanceReminderUserId}>`
+              : "non impostato"
+            }\n` +
+            `Ruoli presenze: ${config.attendanceRoleIds.length > 0
+              ? config.attendanceRoleIds.map(id => `<@&${id}>`).join(", ")
+              : "non impostato"
+            }\n` +
+            `URL pannello presenze: ${config.attendanceWebBaseUrl || "non impostato"}\n` +
             `Logger canali: attivo`,
         });
         return;
@@ -490,9 +519,9 @@ client.on(Events.InteractionCreate, async interaction => {
 
     try {
       await interaction.editReply({
-        content: "❌ Errore durante il comando.",
+        content: `❌ Errore durante il comando. ${err.message || ""}`.trim(),
       });
-    } catch {}
+    } catch { }
   }
 });
 

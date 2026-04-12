@@ -1,9 +1,19 @@
 {
   "targetChannel1": "",
   "targetChannel2": "",
+  "pngChannel": "",
   "scheduleChannels": [],
   "scheduleAnnouncementChannel": "",
   "requiredRoleId": "",
   "optionalRoleId": "",
-  "currentSchedule": null
+  "attendanceChannel": "",
+  "attendanceReminderChannel": "",
+  "attendanceReminderUserId": "759363658638819368",
+  "attendanceRoleIds": [
+    "1484618223461863516",
+    "1483903817589194778"
+  ],
+  "attendanceWebBaseUrl": "http://localhost:3000",
+  "currentSchedule": null,
+  "publicationState": {}
 }
