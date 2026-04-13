@@ -11,6 +11,7 @@ const {
 
 const { startScheduler } = require("./scheduler");
 const {
+  initializeConfigStore,
   readConfig,
   setTargetChannel1,
   setTargetChannel2,
@@ -525,4 +526,9 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
-client.login(process.env.TOKEN);
+initializeConfigStore()
+  .then(() => client.login(process.env.TOKEN))
+  .catch(error => {
+    console.error("❌ Errore inizializzazione config store:", error);
+    process.exit(1);
+  });
