@@ -7,8 +7,10 @@ async function syncTrackedMembers(members, syncedAt) {
   try {
     await client.query("BEGIN");
 
+    const activeIds = [];
+
     for (const member of members) {
-      await client.query(
+      const upsertResult = await client.query(
         `
         INSERT INTO members (
           discord_user_id,
@@ -25,6 +27,7 @@ async function syncTrackedMembers(members, syncedAt) {
           tracked_roles_json = EXCLUDED.tracked_roles_json,
           active = TRUE,
           last_synced_at = EXCLUDED.last_synced_at
+        RETURNING id
         `,
         [
           member.discord_user_id,
@@ -34,9 +37,36 @@ async function syncTrackedMembers(members, syncedAt) {
           syncedAt,
         ]
       );
+
+      const memberId = upsertResult.rows[0].id;
+      activeIds.push(member.discord_user_id);
+
+      await client.query(
+        `
+        INSERT INTO member_roster_periods (member_id, joined_at, left_at)
+        SELECT $1, $2, NULL
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM member_roster_periods
+          WHERE member_id = $1
+            AND left_at IS NULL
+        )
+        `,
+        [memberId, syncedAt]
+      );
     }
 
-    const activeIds = members.map(member => member.discord_user_id);
+    await client.query(
+      `
+      UPDATE member_roster_periods p
+      SET left_at = $1
+      FROM members m
+      WHERE p.member_id = m.id
+        AND p.left_at IS NULL
+        AND NOT (m.discord_user_id = ANY($2::text[]))
+      `,
+      [syncedAt, activeIds]
+    );
 
     await client.query(
       `
@@ -140,10 +170,16 @@ async function ensureAttendanceDay(date, nowIso) {
       '',
       $2
     FROM members m
-    WHERE m.active = TRUE
+    WHERE EXISTS (
+      SELECT 1
+      FROM member_roster_periods p
+      WHERE p.member_id = m.id
+        AND DATE(p.joined_at) <= $3::date
+        AND (p.left_at IS NULL OR DATE(p.left_at) >= $3::date)
+    )
     ON CONFLICT (day_id, member_id) DO NOTHING
     `,
-    [day.id, nowIso]
+    [day.id, nowIso, date]
   );
 
   return day;
@@ -257,7 +293,13 @@ async function getAttendanceForDate(date) {
     JOIN attendance_days ad ON ad.id = ae.day_id
     JOIN members m ON m.id = ae.member_id
     WHERE ad.day_date = $1
-      AND m.active = TRUE
+      AND EXISTS (
+        SELECT 1
+        FROM member_roster_periods p
+        WHERE p.member_id = m.id
+          AND DATE(p.joined_at) <= ad.day_date
+          AND (p.left_at IS NULL OR DATE(p.left_at) >= ad.day_date)
+      )
     ORDER BY LOWER(COALESCE(NULLIF(m.nickname, ''), m.display_name)) ASC
     `,
     [date]
@@ -286,7 +328,13 @@ async function getAttendanceSummaryForDate(date) {
     JOIN attendance_days ad ON ad.id = ae.day_id
     JOIN members m ON m.id = ae.member_id
     WHERE ad.day_date = $1
-      AND m.active = TRUE
+      AND EXISTS (
+        SELECT 1
+        FROM member_roster_periods p
+        WHERE p.member_id = m.id
+          AND DATE(p.joined_at) <= ad.day_date
+          AND (p.left_at IS NULL OR DATE(p.left_at) >= ad.day_date)
+      )
     `,
     [date]
   );
@@ -322,7 +370,13 @@ async function getMonthSummary(startDate, endDate) {
     JOIN attendance_entries ae ON ae.day_id = ad.id
     JOIN members m ON m.id = ae.member_id
     WHERE ad.day_date BETWEEN $1 AND $2
-      AND m.active = TRUE
+      AND EXISTS (
+        SELECT 1
+        FROM member_roster_periods p
+        WHERE p.member_id = m.id
+          AND DATE(p.joined_at) <= ad.day_date
+          AND (p.left_at IS NULL OR DATE(p.left_at) >= ad.day_date)
+      )
     GROUP BY ad.day_date
     ORDER BY ad.day_date ASC
     `,

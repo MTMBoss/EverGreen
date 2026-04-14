@@ -56,6 +56,34 @@ async function ensureDbReady() {
         UNIQUE(day_id, member_id)
       )
     `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS member_roster_periods (
+        id SERIAL PRIMARY KEY,
+        member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        joined_at TIMESTAMPTZ NOT NULL,
+        left_at TIMESTAMPTZ NULL
+      )
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_member_roster_periods_member_dates
+      ON member_roster_periods (member_id, joined_at, left_at)
+    `);
+
+    await pool.query(`
+      INSERT INTO member_roster_periods (member_id, joined_at, left_at)
+      SELECT
+        m.id,
+        COALESCE(m.last_synced_at, NOW()),
+        CASE WHEN m.active THEN NULL ELSE COALESCE(m.last_synced_at, NOW()) END
+      FROM members m
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM member_roster_periods p
+        WHERE p.member_id = m.id
+      )
+    `);
   })().catch(error => {
     initPromise = null;
     throw error;
