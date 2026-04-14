@@ -93,9 +93,9 @@
         }
 
         .logo-wrap {
-            width: 96px;
-            height: 96px;
-            border-radius: 24px;
+            width: 118px;
+            height: 118px;
+            border-radius: 28px;
             background: linear-gradient(180deg, rgba(139, 77, 255, 0.20), rgba(95, 35, 203, 0.12));
             border: 1px solid rgba(167, 115, 255, 0.28);
             display: flex;
@@ -105,8 +105,8 @@
         }
 
         .logo-wrap img {
-            max-width: 84px;
-            max-height: 84px;
+            max-width: 104px;
+            max-height: 104px;
             object-fit: contain;
             display: block;
         }
@@ -138,6 +138,12 @@
             flex-wrap: wrap;
             justify-content: flex-end;
             gap: 10px;
+            align-items: center;
+        }
+
+        .hero-actions .button {
+            min-width: 170px;
+            text-align: center;
         }
 
         .panel,
@@ -158,7 +164,7 @@
 
         .toolbar {
             display: grid;
-            grid-template-columns: 1fr auto auto;
+            grid-template-columns: 1fr auto;
             gap: 14px;
             align-items: end;
         }
@@ -167,6 +173,12 @@
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
+            align-items: end;
+        }
+
+        .toolbar-right {
+            display: flex;
+            justify-content: flex-end;
             align-items: end;
         }
 
@@ -501,8 +513,61 @@
                 padding: 14px;
             }
 
+            .hero {
+                padding: 20px;
+            }
+
+            .hero-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .logo-wrap {
+                width: 104px;
+                height: 104px;
+                border-radius: 24px;
+            }
+
+            .logo-wrap img {
+                max-width: 92px;
+                max-height: 92px;
+            }
+
             .hero h1 {
                 font-size: 28px;
+                line-height: 1.08;
+            }
+
+            .hero p {
+                font-size: 15px;
+                line-height: 1.55;
+            }
+
+            .hero-actions {
+                justify-content: stretch;
+                width: 100%;
+            }
+
+            .hero-actions .button {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .toolbar-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .toolbar-group .field,
+            .toolbar-group button,
+            .toolbar-right,
+            .toolbar-right form,
+            .toolbar-right button {
+                width: 100%;
             }
 
             .savebar {
@@ -564,26 +629,28 @@
 
                         <div class="panel">
                             <div class="toolbar">
-                                <form method="get" action="/presenze" class="toolbar-group">
-                                    <div class="field">
-                                        <label for="date">Giorno</label>
-                                        <input id="date" type="date" name="date" value="<%= date %>" />
+                                <div>
+                                    <form method="get" action="/presenze" class="toolbar-group">
+                                        <div class="field">
+                                            <label for="date">Giorno</label>
+                                            <input id="date" type="date" name="date" value="<%= date %>" />
+                                        </div>
+                                        <button type="submit">Apri giorno</button>
+                                    </form>
+
+                                    <div class="tiny" style="margin-top: 14px;">
+                                        <% if (attendanceChannel) { %>
+                                            Canale Discord configurato
+                                            <% } else { %>
+                                                Nessun canale Discord configurato per la pubblicazione.
+                                                <% } %>
                                     </div>
-                                    <button type="submit">Apri giorno</button>
-                                </form>
+                                </div>
 
-                                <form method="post" action="/sync-roster" class="toolbar-group">
-                                    <button class="button-dark" type="submit">Sincronizza roster</button>
-                                </form>
-
-                                <div class="tiny">
-                                    <% if (attendanceChannel) { %>
-                                        Canale Discord configurato: <strong>
-                                            <%= attendanceChannel %>
-                                        </strong>
-                                        <% } else { %>
-                                            Nessun canale Discord configurato per la pubblicazione.
-                                            <% } %>
+                                <div class="toolbar-right">
+                                    <form method="post" action="/sync-roster">
+                                        <button class="button-dark" type="submit">Sincronizza roster</button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
