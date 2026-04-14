@@ -42,13 +42,14 @@ function createWebRouter(client) {
             httpOnly: true,
             sameSite: "lax",
             maxAge: 1000 * 60 * 60 * 24 * 30,
+            path: "/",
         });
 
         res.redirect(`/presenze?date=${getTodayIsoDate()}`);
     });
 
     router.get("/logout", (req, res) => {
-        res.clearCookie("attendance_admin_token");
+        res.clearCookie("attendance_admin_token", { path: "/" });
         res.redirect("/login");
     });
 
@@ -65,6 +66,7 @@ function createWebRouter(client) {
                 date,
                 dayView,
                 saved: req.query.saved === "1",
+                syncCount: Number(req.query.sync || 0),
                 webBaseUrl: config.attendanceWebBaseUrl || "",
                 attendanceChannel: config.attendanceChannel || "",
             });
@@ -72,26 +74,28 @@ function createWebRouter(client) {
     );
 
     router.post(
-        "/presenze/:date/:discordUserId",
+        "/presenze/:date/save-all",
         requireAdmin,
         asyncHandler(async (req, res) => {
             const date = normalizeDateInput(req.params.date);
-            const slot21 = Boolean(req.body.slot_21_22);
-            const slot22 = Boolean(req.body.slot_22_23);
-            const slot23 = Boolean(req.body.slot_23_00);
-            const note = String(req.body.note || "").trim();
+            const membersPayload = req.body.members || {};
+            const memberIds = Object.keys(membersPayload);
 
-            await setDaySlots({
-                dateInput: date,
-                discordUserId: req.params.discordUserId,
-                slot_21_22: slot21,
-                slot_22_23: slot22,
-                slot_23_00: slot23,
-                notes: note,
-                updatedByDiscordUserId: "WEB_PANEL",
-            });
+            for (const discordUserId of memberIds) {
+                const row = membersPayload[discordUserId] || {};
 
-            res.redirect(`/presenze?date=${date}&saved=1#member-${req.params.discordUserId}`);
+                await setDaySlots({
+                    dateInput: date,
+                    discordUserId,
+                    slot_21_22: Boolean(row.slot_21_22),
+                    slot_22_23: Boolean(row.slot_22_23),
+                    slot_23_00: Boolean(row.slot_23_00),
+                    notes: String(row.note || "").trim(),
+                    updatedByDiscordUserId: "WEB_PANEL",
+                });
+            }
+
+            res.redirect(`/presenze?date=${date}&saved=1`);
         })
     );
 
@@ -122,7 +126,7 @@ function createWebRouter(client) {
         "/sync-roster",
         requireAdmin,
         asyncHandler(async (_req, res) => {
-            const guild = client.guilds.cache.get(process.env.GUILD_ID) || null;
+            const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first() || null;
 
             if (!guild) {
                 throw new Error("Il bot non è ancora pronto o la guild non è disponibile.");

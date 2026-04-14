@@ -16,6 +16,7 @@ function startAttendanceWebServer(client) {
     app.set("views", path.join(__dirname, "views"));
 
     app.use(express.urlencoded({ extended: true }));
+    app.use("/assets", express.static(path.join(__dirname, "public")));
     app.use(cookieParserMiddleware);
     app.use(createWebRouter(client));
 
@@ -28,7 +29,7 @@ function startAttendanceWebServer(client) {
     });
 }
 
-function cookieParserMiddleware(req, _res, next) {
+function cookieParserMiddleware(req, res, next) {
     const raw = req.headers.cookie || "";
     const cookies = {};
 
@@ -39,6 +40,28 @@ function cookieParserMiddleware(req, _res, next) {
     }
 
     req.cookies = cookies;
+
+    res.cookie = (name, value, options = {}) => {
+        const parts = [`${name}=${encodeURIComponent(value)}`];
+
+        if (options.httpOnly) parts.push("HttpOnly");
+        if (options.sameSite) parts.push(`SameSite=${options.sameSite}`);
+        if (typeof options.maxAge === "number") parts.push(`Max-Age=${Math.floor(options.maxAge / 1000)}`);
+        if (options.path) parts.push(`Path=${options.path}`);
+        else parts.push("Path=/");
+
+        res.append("Set-Cookie", parts.join("; "));
+    };
+
+    res.clearCookie = (name, options = {}) => {
+        const parts = [
+            `${name}=`,
+            "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+            `Path=${options.path || "/"}`,
+        ];
+        res.append("Set-Cookie", parts.join("; "));
+    };
+
     next();
 }
 
