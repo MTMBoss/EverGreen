@@ -175,7 +175,7 @@ async function ensureAttendanceDay(date, nowIso) {
       FROM member_roster_periods p
       WHERE p.member_id = m.id
         AND DATE(p.joined_at) <= $3::date
-        AND (p.left_at IS NULL OR DATE(p.left_at) >= $3::date)
+        AND (p.left_at IS NULL OR DATE(p.left_at) > $3::date)
     )
     ON CONFLICT (day_id, member_id) DO NOTHING
     `,
@@ -298,7 +298,7 @@ async function getAttendanceForDate(date) {
         FROM member_roster_periods p
         WHERE p.member_id = m.id
           AND DATE(p.joined_at) <= ad.day_date
-          AND (p.left_at IS NULL OR DATE(p.left_at) >= ad.day_date)
+          AND (p.left_at IS NULL OR DATE(p.left_at) > ad.day_date)
       )
     ORDER BY LOWER(COALESCE(NULLIF(m.nickname, ''), m.display_name)) ASC
     `,
@@ -333,7 +333,7 @@ async function getAttendanceSummaryForDate(date) {
         FROM member_roster_periods p
         WHERE p.member_id = m.id
           AND DATE(p.joined_at) <= ad.day_date
-          AND (p.left_at IS NULL OR DATE(p.left_at) >= ad.day_date)
+          AND (p.left_at IS NULL OR DATE(p.left_at) > ad.day_date)
       )
     `,
     [date]
@@ -375,7 +375,7 @@ async function getMonthSummary(startDate, endDate) {
         FROM member_roster_periods p
         WHERE p.member_id = m.id
           AND DATE(p.joined_at) <= ad.day_date
-          AND (p.left_at IS NULL OR DATE(p.left_at) >= ad.day_date)
+          AND (p.left_at IS NULL OR DATE(p.left_at) > ad.day_date)
       )
     GROUP BY ad.day_date
     ORDER BY ad.day_date ASC

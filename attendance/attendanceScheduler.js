@@ -3,8 +3,10 @@ const { ChannelType } = require("discord.js");
 const { readConfig } = require("../configStore");
 const { getTodayIsoDate } = require("./attendanceService");
 const { publishAttendanceForDate } = require("./attendancePublisher");
+const { syncRosterFromGuild } = require("./rosterService");
 
 const ATTENDANCE_REMINDER_CRON = "0 18 * * *";
+const ATTENDANCE_ROSTER_SYNC_CRON = "*/10 * * * *";
 
 function startAttendanceReminderScheduler(client) {
     cron.schedule(
@@ -71,6 +73,36 @@ function startAttendanceReminderScheduler(client) {
     );
 }
 
+function startAttendanceRosterSyncScheduler(client) {
+    cron.schedule(
+        ATTENDANCE_ROSTER_SYNC_CRON,
+        async () => {
+            try {
+                const config = readConfig();
+
+                const guild = await resolveAttendanceGuild(
+                    client,
+                    config.attendanceChannel,
+                    config.attendanceReminderChannel
+                );
+
+                if (!guild) {
+                    console.log("⚠️ Nessuna guild disponibile per sync roster automatico");
+                    return;
+                }
+
+                await syncRosterFromGuild(guild);
+                console.log("✅ Sync roster automatico schedulato completato");
+            } catch (error) {
+                console.error("❌ Errore scheduler sync roster:", error);
+            }
+        },
+        {
+            timezone: "Europe/Rome",
+        }
+    );
+}
+
 async function resolveAttendanceGuild(client, attendanceChannelId, reminderChannelId) {
     const candidateChannelIds = [attendanceChannelId, reminderChannelId].filter(Boolean);
 
@@ -87,4 +119,5 @@ async function resolveAttendanceGuild(client, attendanceChannelId, reminderChann
 
 module.exports = {
     startAttendanceReminderScheduler,
+    startAttendanceRosterSyncScheduler,
 };

@@ -43,7 +43,9 @@ const {
 } = require("./attendance/attendanceDiscord");
 const {
   startAttendanceReminderScheduler,
+  startAttendanceRosterSyncScheduler,
 } = require("./attendance/attendanceScheduler");
+const { scheduleRosterSync } = require("./attendance/rosterAutoSync");
 const { startAttendanceWebServer } = require("./web/server");
 
 initializeAttendance();
@@ -215,7 +217,44 @@ client.once(Events.ClientReady, async () => {
   console.log(`✅ Loggato come ${client.user.tag}`);
   startScheduler(client);
   startAttendanceReminderScheduler(client);
+  startAttendanceRosterSyncScheduler(client);
   startAttendanceWebServer(client);
+
+  for (const guild of client.guilds.cache.values()) {
+    scheduleRosterSync(guild, "startup_initial_sync", 3000);
+  }
+});
+
+client.on(Events.GuildMemberAdd, member => {
+  scheduleRosterSync(member.guild, "member_add");
+});
+
+client.on(Events.GuildMemberRemove, member => {
+  scheduleRosterSync(member.guild, "member_remove");
+});
+
+client.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
+  try {
+    const config = readConfig();
+    const trackedRoleIds = config.attendanceRoleIds || [];
+
+    if (trackedRoleIds.length === 0) return;
+
+    const oldTracked = trackedRoleIds.some(roleId => oldMember.roles.cache.has(roleId));
+    const newTracked = trackedRoleIds.some(roleId => newMember.roles.cache.has(roleId));
+
+    const nicknameChanged =
+      (oldMember.nickname || "") !== (newMember.nickname || "");
+
+    const displayNameChanged =
+      (oldMember.displayName || "") !== (newMember.displayName || "");
+
+    if (oldTracked !== newTracked || nicknameChanged || displayNameChanged) {
+      scheduleRosterSync(newMember.guild, "member_update");
+    }
+  } catch (error) {
+    console.error("❌ Errore GuildMemberUpdate roster sync:", error);
+  }
 });
 
 client.on(Events.MessageCreate, async message => {
