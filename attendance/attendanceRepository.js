@@ -296,15 +296,18 @@ async function getAttendanceForDate(date) {
     JOIN attendance_days ad ON ad.id = ae.day_id
     JOIN members m ON m.id = ae.member_id
     WHERE ad.day_date = $1
-      AND EXISTS (
-        SELECT 1
-        FROM member_roster_periods p
-        WHERE p.member_id = m.id
-          AND DATE(p.joined_at AT TIME ZONE 'Europe/Rome') <= ad.day_date
-          AND (
-            p.left_at IS NULL
-            OR DATE(p.left_at AT TIME ZONE 'Europe/Rome') > ad.day_date
-          )
+      AND (
+        EXISTS (
+          SELECT 1
+          FROM member_roster_periods p
+          WHERE p.member_id = m.id
+            AND DATE(p.joined_at AT TIME ZONE 'Europe/Rome') <= ad.day_date
+            AND (
+              p.left_at IS NULL
+              OR DATE(p.left_at AT TIME ZONE 'Europe/Rome') > ad.day_date
+            )
+        )
+        OR COALESCE(ae.updated_by_discord_user_id, '') <> ''
       )
     ORDER BY LOWER(COALESCE(NULLIF(m.nickname, ''), m.display_name)) ASC
     `,
@@ -334,15 +337,18 @@ async function getAttendanceSummaryForDate(date) {
     JOIN attendance_days ad ON ad.id = ae.day_id
     JOIN members m ON m.id = ae.member_id
     WHERE ad.day_date = $1
-      AND EXISTS (
-        SELECT 1
-        FROM member_roster_periods p
-        WHERE p.member_id = m.id
-          AND DATE(p.joined_at AT TIME ZONE 'Europe/Rome') <= ad.day_date
-          AND (
-            p.left_at IS NULL
-            OR DATE(p.left_at AT TIME ZONE 'Europe/Rome') > ad.day_date
-          )
+      AND (
+        EXISTS (
+          SELECT 1
+          FROM member_roster_periods p
+          WHERE p.member_id = m.id
+            AND DATE(p.joined_at AT TIME ZONE 'Europe/Rome') <= ad.day_date
+            AND (
+              p.left_at IS NULL
+              OR DATE(p.left_at AT TIME ZONE 'Europe/Rome') > ad.day_date
+            )
+        )
+        OR COALESCE(ae.updated_by_discord_user_id, '') <> ''
       )
     `,
     [date]
@@ -379,15 +385,18 @@ async function getMonthSummary(startDate, endDate) {
     JOIN attendance_entries ae ON ae.day_id = ad.id
     JOIN members m ON m.id = ae.member_id
     WHERE ad.day_date BETWEEN $1 AND $2
-      AND EXISTS (
-        SELECT 1
-        FROM member_roster_periods p
-        WHERE p.member_id = m.id
-          AND DATE(p.joined_at AT TIME ZONE 'Europe/Rome') <= ad.day_date
-          AND (
-            p.left_at IS NULL
-            OR DATE(p.left_at AT TIME ZONE 'Europe/Rome') > ad.day_date
-          )
+      AND (
+        EXISTS (
+          SELECT 1
+          FROM member_roster_periods p
+          WHERE p.member_id = m.id
+            AND DATE(p.joined_at AT TIME ZONE 'Europe/Rome') <= ad.day_date
+            AND (
+              p.left_at IS NULL
+              OR DATE(p.left_at AT TIME ZONE 'Europe/Rome') > ad.day_date
+            )
+        )
+        OR COALESCE(ae.updated_by_discord_user_id, '') <> ''
       )
     GROUP BY ad.day_date
     ORDER BY ad.day_date ASC
