@@ -35,6 +35,12 @@ const {
   handleMessageDelete,
 } = require("./channelLogger");
 const {
+  handleRoleCreate,
+  handleRoleDelete,
+  handleRoleUpdate,
+  handleMemberRoleChanges,
+} = require("./roleLogger");
+const {
   initializeAttendance,
 } = require("./attendance/attendanceService");
 const {
@@ -233,10 +239,12 @@ client.on(Events.GuildMemberRemove, member => {
   scheduleRosterSync(member.guild, "member_remove");
 });
 
-client.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
   try {
     const config = readConfig();
     const trackedRoleIds = config.attendanceRoleIds || [];
+
+    await handleMemberRoleChanges(oldMember, newMember);
 
     if (trackedRoleIds.length === 0) return;
 
@@ -254,6 +262,30 @@ client.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
     }
   } catch (error) {
     console.error("❌ Errore GuildMemberUpdate roster sync:", error);
+  }
+});
+
+client.on(Events.GuildRoleCreate, async role => {
+  try {
+    await handleRoleCreate(role);
+  } catch (error) {
+    console.error("❌ Errore logger roleCreate:", error);
+  }
+});
+
+client.on(Events.GuildRoleDelete, async role => {
+  try {
+    await handleRoleDelete(role);
+  } catch (error) {
+    console.error("❌ Errore logger roleDelete:", error);
+  }
+});
+
+client.on(Events.GuildRoleUpdate, async (oldRole, newRole) => {
+  try {
+    await handleRoleUpdate(oldRole, newRole);
+  } catch (error) {
+    console.error("❌ Errore logger roleUpdate:", error);
   }
 });
 
@@ -490,8 +522,7 @@ client.on(Events.InteractionCreate, async interaction => {
           content:
             `✅ Ruoli schedule aggiornati:\n` +
             `Obbligatorio: <@&${requiredRole.id}>\n` +
-            `Opzionale: ${optionalRole ? `<@&${optionalRole.id}>` : "nessuno"
-            }`,
+            `Opzionale: ${optionalRole ? `<@&${optionalRole.id}>` : "nessuno"}`,
         });
         return;
       }

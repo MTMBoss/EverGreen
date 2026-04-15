@@ -15,13 +15,23 @@ const {
 const LOG_CATEGORY_ID = "1490082824605401219";
 const LOG_CHANNEL_PREFIX = "log-";
 
-function sanitizeChannelName(name) {
-  return String(name || "canale")
+function sanitizeChannelName(name, fallback = "canale") {
+  const normalized = String(name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9-_]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 90);
+    .slice(0, 80);
+
+  return normalized || fallback;
+}
+
+function buildDesiredLogChannelName(sourceChannel) {
+  const base = sanitizeChannelName(sourceChannel?.name, "canale");
+  const shortId = String(sourceChannel?.id || "").slice(-4) || "0000";
+  return `${LOG_CHANNEL_PREFIX}${base}-${shortId}`.slice(0, 95);
 }
 
 function isSupportedSourceChannel(channel) {
@@ -117,7 +127,7 @@ async function ensureLogChannel(sourceChannel) {
   }
 
   const category = await getFixedLogsCategory(guild);
-  const desiredName = `${LOG_CHANNEL_PREFIX}${sanitizeChannelName(sourceChannel.name)}`;
+  const desiredName = buildDesiredLogChannelName(sourceChannel);
 
   let logChannel = guild.channels.cache.find(
     c =>
@@ -131,7 +141,7 @@ async function ensureLogChannel(sourceChannel) {
       name: desiredName,
       type: ChannelType.GuildText,
       parent: category.id,
-      topic: `Log automatico del canale sorgente #${sourceChannel.name}`,
+      topic: `Log automatico del canale sorgente #${sourceChannel.name} (${sourceChannel.id})`,
       permissionOverwrites: [
         {
           id: guild.roles.everyone.id,
@@ -390,4 +400,6 @@ module.exports = {
   handleMessageUpdate,
   handleMessageDelete,
   syncAllGuildTextChannels,
+  ensureLogChannel,
+  getFixedLogsCategory,
 };
