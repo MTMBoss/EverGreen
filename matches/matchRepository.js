@@ -1,7 +1,7 @@
 const { pool } = require("../attendance/db");
 
 async function createMatchTables() {
-    await pool.query(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS matches (
       id SERIAL PRIMARY KEY,
       slug TEXT UNIQUE NOT NULL,
@@ -26,7 +26,7 @@ async function createMatchTables() {
     )
   `);
 
-    await pool.query(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS match_maps (
       id SERIAL PRIMARY KEY,
       match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
@@ -40,7 +40,7 @@ async function createMatchTables() {
     )
   `);
 
-    await pool.query(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS match_players (
       id SERIAL PRIMARY KEY,
       match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
@@ -56,7 +56,7 @@ async function createMatchTables() {
     )
   `);
 
-    await pool.query(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS match_assets (
       id SERIAL PRIMARY KEY,
       match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
@@ -68,40 +68,40 @@ async function createMatchTables() {
     )
   `);
 
-    await pool.query(`
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_matches_match_date
     ON matches (match_date DESC, id DESC)
   `);
 
-    await pool.query(`
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_matches_status
     ON matches (status)
   `);
 
-    await pool.query(`
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_match_maps_match_id
     ON match_maps (match_id, order_index)
   `);
 
-    await pool.query(`
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_match_players_match_id
     ON match_players (match_id)
   `);
 
-    await pool.query(`
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_match_assets_match_id
     ON match_assets (match_id, sort_order)
   `);
 }
 
 async function createDraftMatch(input) {
-    const client = await pool.connect();
+  const client = await pool.connect();
 
-    try {
-        await client.query("BEGIN");
+  try {
+    await client.query("BEGIN");
 
-        const insertMatch = await client.query(
-            `
+    const insertMatch = await client.query(
+      `
       INSERT INTO matches (
         slug,
         team1,
@@ -132,6 +132,7 @@ async function createDraftMatch(input) {
         winner_team = EXCLUDED.winner_team,
         team1_series_score = EXCLUDED.team1_series_score,
         team2_series_score = EXCLUDED.team2_series_score,
+        status = 'draft',
         source_guild_id = EXCLUDED.source_guild_id,
         source_channel_id_part1 = EXCLUDED.source_channel_id_part1,
         source_message_id_part1 = EXCLUDED.source_message_id_part1,
@@ -139,60 +140,62 @@ async function createDraftMatch(input) {
         updated_at = NOW()
       RETURNING *
       `,
-            [
-                input.slug,
-                input.team1,
-                input.team2,
-                input.matchDate,
-                input.matchTime,
-                input.resultLabel || "",
-                input.winnerTeam || "",
-                input.team1SeriesScore,
-                input.team2SeriesScore,
-                input.sourceGuildId || "",
-                input.sourceChannelIdPart1 || "",
-                input.sourceMessageIdPart1 || "",
-                input.notes || "",
-            ]
-        );
+      [
+        input.slug,
+        input.team1,
+        input.team2,
+        input.matchDate,
+        input.matchTime,
+        input.resultLabel || "",
+        input.winnerTeam || "",
+        input.team1SeriesScore,
+        input.team2SeriesScore,
+        input.sourceGuildId || "",
+        input.sourceChannelIdPart1 || "",
+        input.sourceMessageIdPart1 || "",
+        input.notes || "",
+      ]
+    );
 
-        const match = insertMatch.rows[0];
+    const match = insertMatch.rows[0];
 
-        await client.query(`DELETE FROM match_maps WHERE match_id = $1`, [match.id]);
+    await client.query(`DELETE FROM match_maps WHERE match_id = $1`, [match.id]);
 
-        for (const map of input.maps || []) {
-            await client.query(
-                `
+    for (const map of input.maps || []) {
+      await client.query(
+        `
         INSERT INTO match_maps (
           match_id, order_index, mode, map_name, side_name, team1_score, team2_score
         )
         VALUES ($1,$2,$3,$4,$5,$6,$7)
         `,
-                [
-                    match.id,
-                    map.orderIndex,
-                    map.mode || "",
-                    map.map || "",
-                    map.side || "",
-                    map.team1Score ?? null,
-                    map.team2Score ?? null,
-                ]
-            );
-        }
-
-        await client.query("COMMIT");
-        return match;
-    } catch (error) {
-        await client.query("ROLLBACK");
-        throw error;
-    } finally {
-        client.release();
+        [
+          match.id,
+          map.orderIndex,
+          map.mode || "",
+          map.map || "",
+          map.side || "",
+          map.team1Score ?? null,
+          map.team2Score ?? null,
+        ]
+      );
     }
+
+    await client.query("COMMIT");
+    return match;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
-async function findDraftMatchForPart2({ team1, team2, matchDate }) {
-    const result = await pool.query(
-        `
+async function findMatchForPart2({ team1, team2, matchDate }) {
+  const params = [team1, team2, matchDate || null];
+
+  let result = await pool.query(
+    `
     SELECT *
     FROM matches
     WHERE status = 'draft'
@@ -208,18 +211,65 @@ async function findDraftMatchForPart2({ team1, team2, matchDate }) {
       )
     ORDER BY
       CASE WHEN match_date = $3::date THEN 0 ELSE 1 END,
+      updated_at DESC,
       created_at DESC
     LIMIT 1
     `,
-        [team1, team2, matchDate || null]
-    );
+    params
+  );
 
-    return result.rows[0] || null;
+  if (result.rows[0]) return result.rows[0];
+
+  result = await pool.query(
+    `
+    SELECT *
+    FROM matches
+    WHERE (
+        (team1 = $1 AND team2 = $2)
+        OR
+        (team1 = $2 AND team2 = $1)
+      )
+      AND (
+        $3::date IS NULL
+        OR match_date = $3::date
+        OR match_date IS NULL
+      )
+    ORDER BY
+      CASE WHEN status = 'draft' THEN 0 ELSE 1 END,
+      CASE WHEN match_date = $3::date THEN 0 ELSE 1 END,
+      updated_at DESC,
+      created_at DESC
+    LIMIT 1
+    `,
+    params
+  );
+
+  if (result.rows[0]) return result.rows[0];
+
+  result = await pool.query(
+    `
+    SELECT *
+    FROM matches
+    WHERE (
+        (team1 = $1 AND team2 = $2)
+        OR
+        (team1 = $2 AND team2 = $1)
+      )
+    ORDER BY
+      CASE WHEN status = 'draft' THEN 0 ELSE 1 END,
+      updated_at DESC,
+      created_at DESC
+    LIMIT 1
+    `,
+    [team1, team2]
+  );
+
+  return result.rows[0] || null;
 }
 
 async function attachPart2ToMatch(matchId, payload) {
-    await pool.query(
-        `
+  await pool.query(
+    `
     UPDATE matches
     SET
       source_channel_id_part2 = $2,
@@ -232,42 +282,42 @@ async function attachPart2ToMatch(matchId, payload) {
       updated_at = NOW()
     WHERE id = $1
     `,
-        [
-            matchId,
-            payload.sourceChannelIdPart2 || "",
-            payload.sourceMessageIdPart2 || "",
-            payload.resultLabel || "",
-            payload.winnerTeam || "",
-            payload.team1SeriesScore ?? null,
-            payload.team2SeriesScore ?? null,
-            Boolean(payload.needsReview),
-        ]
-    );
+    [
+      matchId,
+      payload.sourceChannelIdPart2 || "",
+      payload.sourceMessageIdPart2 || "",
+      payload.resultLabel || "",
+      payload.winnerTeam || "",
+      payload.team1SeriesScore ?? null,
+      payload.team2SeriesScore ?? null,
+      Boolean(payload.needsReview),
+    ]
+  );
 }
 
 async function replaceMatchAssets(matchId, assets) {
-    await pool.query(
-        `DELETE FROM match_assets WHERE match_id = $1 AND asset_type = 'screenshot'`,
-        [matchId]
-    );
+  await pool.query(
+    `DELETE FROM match_assets WHERE match_id = $1 AND asset_type = 'screenshot'`,
+    [matchId]
+  );
 
-    for (const asset of assets || []) {
-        await pool.query(
-            `
+  for (const asset of assets || []) {
+    await pool.query(
+      `
       INSERT INTO match_assets (match_id, asset_type, asset_url, sort_order, source_message_id)
       VALUES ($1, 'screenshot', $2, $3, $4)
       `,
-            [matchId, asset.url, asset.sortOrder || 0, asset.sourceMessageId || ""]
-        );
-    }
+      [matchId, asset.url, asset.sortOrder || 0, asset.sourceMessageId || ""]
+    );
+  }
 }
 
 async function replaceMatchMapScores(matchId, maps) {
-    if (!Array.isArray(maps) || maps.length === 0) return;
+  if (!Array.isArray(maps) || maps.length === 0) return;
 
-    for (const map of maps) {
-        await pool.query(
-            `
+  for (const map of maps) {
+    await pool.query(
+      `
       UPDATE match_maps
       SET
         team1_score = COALESCE($3, team1_score),
@@ -278,25 +328,25 @@ async function replaceMatchMapScores(matchId, maps) {
       WHERE match_id = $1
         AND order_index = $2
       `,
-            [
-                matchId,
-                map.orderIndex,
-                map.team1Score ?? null,
-                map.team2Score ?? null,
-                map.mode || "",
-                map.map || "",
-                map.side || "",
-            ]
-        );
-    }
+      [
+        matchId,
+        map.orderIndex,
+        map.team1Score ?? null,
+        map.team2Score ?? null,
+        map.mode || "",
+        map.map || "",
+        map.side || "",
+      ]
+    );
+  }
 }
 
 async function replaceMatchPlayers(matchId, players) {
-    await pool.query(`DELETE FROM match_players WHERE match_id = $1`, [matchId]);
+  await pool.query(`DELETE FROM match_players WHERE match_id = $1`, [matchId]);
 
-    for (const player of players || []) {
-        await pool.query(
-            `
+  for (const player of players || []) {
+    await pool.query(
+      `
       INSERT INTO match_players (
         match_id,
         match_map_id,
@@ -321,25 +371,25 @@ async function replaceMatchPlayers(matchId, players) {
         $3,$4,$5,$6,$7,$8,$9,$10
       )
       `,
-            [
-                matchId,
-                player.orderIndex || null,
-                player.teamName || "",
-                player.playerName || "",
-                player.kills ?? null,
-                player.deaths ?? null,
-                player.assists ?? null,
-                player.points ?? null,
-                player.impact ?? null,
-                Boolean(player.isMvp),
-            ]
-        );
-    }
+      [
+        matchId,
+        player.orderIndex || null,
+        player.teamName || "",
+        player.playerName || "",
+        player.kills ?? null,
+        player.deaths ?? null,
+        player.assists ?? null,
+        player.points ?? null,
+        player.impact ?? null,
+        Boolean(player.isMvp),
+      ]
+    );
+  }
 }
 
 async function markMatchPublished(matchId, needsReview = false) {
-    await pool.query(
-        `
+  await pool.query(
+    `
     UPDATE matches
     SET
       status = 'published',
@@ -347,31 +397,31 @@ async function markMatchPublished(matchId, needsReview = false) {
       updated_at = NOW()
     WHERE id = $1
     `,
-        [matchId, Boolean(needsReview)]
-    );
+    [matchId, Boolean(needsReview)]
+  );
 }
 
 async function getMatchBySlug(slug) {
-    const matchResult = await pool.query(
-        `SELECT * FROM matches WHERE slug = $1 LIMIT 1`,
-        [slug]
-    );
+  const matchResult = await pool.query(
+    `SELECT * FROM matches WHERE slug = $1 LIMIT 1`,
+    [slug]
+  );
 
-    const match = matchResult.rows[0];
-    if (!match) return null;
+  const match = matchResult.rows[0];
+  if (!match) return null;
 
-    const mapsResult = await pool.query(
-        `
+  const mapsResult = await pool.query(
+    `
     SELECT *
     FROM match_maps
     WHERE match_id = $1
     ORDER BY order_index ASC
     `,
-        [match.id]
-    );
+    [match.id]
+  );
 
-    const playersResult = await pool.query(
-        `
+  const playersResult = await pool.query(
+    `
     SELECT
       p.*,
       m.order_index
@@ -380,30 +430,30 @@ async function getMatchBySlug(slug) {
     WHERE p.match_id = $1
     ORDER BY m.order_index ASC NULLS LAST, p.team_name ASC, p.points DESC NULLS LAST, p.player_name ASC
     `,
-        [match.id]
-    );
+    [match.id]
+  );
 
-    const assetsResult = await pool.query(
-        `
+  const assetsResult = await pool.query(
+    `
     SELECT *
     FROM match_assets
     WHERE match_id = $1
     ORDER BY sort_order ASC, id ASC
     `,
-        [match.id]
-    );
+    [match.id]
+  );
 
-    return {
-        ...match,
-        maps: mapsResult.rows,
-        players: playersResult.rows,
-        assets: assetsResult.rows,
-    };
+  return {
+    ...match,
+    maps: mapsResult.rows,
+    players: playersResult.rows,
+    assets: assetsResult.rows,
+  };
 }
 
 async function listMatches() {
-    const result = await pool.query(
-        `
+  const result = await pool.query(
+    `
     SELECT
       id,
       slug,
@@ -422,20 +472,20 @@ async function listMatches() {
     FROM matches
     ORDER BY match_date DESC NULLS LAST, created_at DESC
     `
-    );
+  );
 
-    return result.rows;
+  return result.rows;
 }
 
 module.exports = {
-    createMatchTables,
-    createDraftMatch,
-    findDraftMatchForPart2,
-    attachPart2ToMatch,
-    replaceMatchAssets,
-    replaceMatchMapScores,
-    replaceMatchPlayers,
-    markMatchPublished,
-    getMatchBySlug,
-    listMatches,
+  createMatchTables,
+  createDraftMatch,
+  findMatchForPart2,
+  attachPart2ToMatch,
+  replaceMatchAssets,
+  replaceMatchMapScores,
+  replaceMatchPlayers,
+  markMatchPublished,
+  getMatchBySlug,
+  listMatches,
 };
