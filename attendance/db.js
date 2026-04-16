@@ -7,14 +7,22 @@ if (!connectionString) {
 }
 
 const isLocalConnection =
-  connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
+  connectionString.includes("localhost") ||
+  connectionString.includes("127.0.0.1");
 
 const pool = new Pool({
   connectionString,
   ssl: isLocalConnection ? false : { rejectUnauthorized: false },
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  max: Number(process.env.PG_POOL_MAX || 10),
+  idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 60000),
+  connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 20000),
+  query_timeout: Number(process.env.PG_QUERY_TIMEOUT_MS || 30000),
+  statement_timeout: Number(process.env.PG_STATEMENT_TIMEOUT_MS || 30000),
+  keepAlive: true,
+});
+
+pool.on("error", error => {
+  console.error("❌ Errore pool PostgreSQL:", error);
 });
 
 let initPromise = null;

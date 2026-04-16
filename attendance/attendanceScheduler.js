@@ -6,7 +6,11 @@ const { publishAttendanceForDate } = require("./attendancePublisher");
 const { syncRosterFromGuild } = require("./rosterService");
 
 const ATTENDANCE_REMINDER_CRON = "0 18 * * *";
-const ATTENDANCE_ROSTER_SYNC_CRON = "*/10 * * * *";
+const ATTENDANCE_ROSTER_SYNC_CRON =
+    process.env.ATTENDANCE_ROSTER_SYNC_CRON || "*/30 * * * *";
+
+let rosterSyncRunning = false;
+let lastRosterSyncStartedAt = 0;
 
 function startAttendanceReminderScheduler(client) {
     cron.schedule(
@@ -77,6 +81,14 @@ function startAttendanceRosterSyncScheduler(client) {
     cron.schedule(
         ATTENDANCE_ROSTER_SYNC_CRON,
         async () => {
+            if (rosterSyncRunning) {
+                console.log("⚠️ Sync roster schedulato saltato: job precedente ancora in esecuzione");
+                return;
+            }
+
+            rosterSyncRunning = true;
+            lastRosterSyncStartedAt = Date.now();
+
             try {
                 const config = readConfig();
 
@@ -95,6 +107,10 @@ function startAttendanceRosterSyncScheduler(client) {
                 console.log("✅ Sync roster automatico schedulato completato");
             } catch (error) {
                 console.error("❌ Errore scheduler sync roster:", error);
+            } finally {
+                const elapsedMs = Date.now() - lastRosterSyncStartedAt;
+                console.log(`ℹ️ Sync roster schedulato terminato in ${elapsedMs} ms`);
+                rosterSyncRunning = false;
             }
         },
         {
