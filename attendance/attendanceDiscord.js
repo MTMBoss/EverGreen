@@ -10,6 +10,7 @@ const {
 const {
     normalizeDateInput,
     getTodayIsoDate,
+    ensureDate,
     setSingleSlot,
     setDaySlots,
     getDayView,
@@ -129,6 +130,9 @@ async function handleAttendanceSlashCommand(interaction, client) {
 
         case "presenze-sync": {
             const result = await syncRosterFromGuild(interaction.guild);
+
+            const today = getTodayIsoDate();
+            await ensureDate(today);
             await runAttendanceLeaderboardUpdate(client, "roster_sync");
 
             await interaction.editReply({
@@ -136,6 +140,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
                     `✅ Roster presenze sincronizzato.\n` +
                     `Ruoli monitorati: ${result.trackedRoleIds.map(id => `<@&${id}>`).join(", ")}\n` +
                     `Membri trovati: **${result.count}**\n` +
+                    `Giornata **${today}** aggiornata.\n` +
                     `Leaderboard aggiornata automaticamente.`,
             });
             return true;
@@ -173,7 +178,10 @@ async function handleAttendanceSlashCommand(interaction, client) {
                 value: disponibile,
                 updatedByDiscordUserId: interaction.user.id,
             });
+
+            await ensureDate(getTodayIsoDate());
             await runAttendanceLeaderboardUpdate(client, "attendance_change");
+
             await interaction.editReply({
                 content:
                     `✅ Presenza aggiornata per <@${user.id}> il **${data}**.\n` +
@@ -200,7 +208,10 @@ async function handleAttendanceSlashCommand(interaction, client) {
                 notes: note,
                 updatedByDiscordUserId: interaction.user.id,
             });
+
+            await ensureDate(getTodayIsoDate());
             await runAttendanceLeaderboardUpdate(client, "attendance_change");
+
             await interaction.editReply({
                 content:
                     `✅ Giornata aggiornata per <@${user.id}> il **${data}**.\n` +
