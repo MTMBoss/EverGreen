@@ -86,10 +86,10 @@ async function completeMatchFromPart2({ parsed, message }) {
         await replaceMatchMapScores(match.id, extracted.maps);
     }
 
-    if (Array.isArray(extracted.players) && extracted.players.length > 0) {
-        await replaceMatchPlayers(match.id, extracted.players);
-    }
-
+    // player parsing ancora sperimentale: per ora non salvo nel DB
+    // if (Array.isArray(extracted.players) && extracted.players.length > 0) {
+    //   await replaceMatchPlayers(match.id, extracted.players);
+    // }
     await markMatchPublished(match.id, Boolean(extracted.needsReview));
 
     return {
