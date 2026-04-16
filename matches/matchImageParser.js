@@ -1,7 +1,7 @@
 const sharp = require("sharp");
 const { createWorker } = require("tesseract.js");
 
-async function extractMatchDataFromImages(attachments) {
+async function extractMatchDataFromImages(attachments, expectedMaps = []) {
     if (!Array.isArray(attachments) || attachments.length === 0) {
         return {
             maps: [],
@@ -19,6 +19,8 @@ async function extractMatchDataFromImages(attachments) {
     try {
         for (let index = 0; index < attachments.length; index += 1) {
             const attachment = attachments[index];
+            const expectedMap = expectedMaps[index] || null;
+            const expectedMode = normalizeMode(expectedMap?.mode || "");
             const sourceBuffer = await downloadImageBuffer(attachment.url);
 
             const metadata = await sharp(sourceBuffer).metadata();
@@ -31,34 +33,6 @@ async function extractMatchDataFromImages(attachments) {
             let bestScoreWeight = -1;
             let bestSource = "none";
 
-            const fullImageVariants = await buildGlobalVariants(sourceBuffer);
-
-            for (const variant of fullImageVariants) {
-                const result = await worker.recognize(variant.buffer);
-                const text = normalizeOcrText(result.data?.text || "");
-                const confidence = Number(result.data?.confidence || 0);
-
-                const score = extractBestScoreFromText(text);
-
-                debug.push({
-                    image: index + 1,
-                    kind: "full",
-                    variant: variant.name,
-                    confidence,
-                    textPreview: text.slice(0, 250),
-                    score,
-                });
-
-                if (score) {
-                    const weight = confidence + score.weight + 5;
-                    if (weight > bestScoreWeight) {
-                        bestScoreWeight = weight;
-                        bestScore = score;
-                        bestSource = `full:${variant.name}`;
-                    }
-                }
-            }
-
             for (const zone of scoreZones) {
                 const zoneVariants = await buildZoneVariants(sourceBuffer, zone);
 
@@ -67,11 +41,11 @@ async function extractMatchDataFromImages(attachments) {
                     const text = normalizeOcrText(result.data?.text || "");
                     const confidence = Number(result.data?.confidence || 0);
 
-                    const score = extractBestScoreFromText(text);
+                    const score = extractBestScoreFromText(text, expectedMode);
 
                     debug.push({
                         image: index + 1,
-                        kind: "zone",
+                        expectedMode,
                         zone: zone.name,
                         variant: variant.name,
                         confidence,
@@ -80,7 +54,7 @@ async function extractMatchDataFromImages(attachments) {
                     });
 
                     if (score) {
-                        const weight = confidence + score.weight + 20;
+                        const weight = confidence + score.weight + zone.baseWeight;
                         if (weight > bestScoreWeight) {
                             bestScoreWeight = weight;
                             bestScore = score;
@@ -103,9 +77,9 @@ async function extractMatchDataFromImages(attachments) {
 
             debug.push({
                 image: index + 1,
+                expectedMode,
                 selectedScoreSource: bestSource,
                 selectedScore: bestScore,
-                extractedPlayers: 0,
             });
         }
     } finally {
@@ -116,7 +90,7 @@ async function extractMatchDataFromImages(attachments) {
         maps: dedupeMapsByOrder(maps),
         players,
         needsReview: true,
-        extractionSummary: buildSummary(maps, players, attachments.length),
+        extractionSummary: buildSummary(maps, attachments.length),
         debug,
     };
 }
@@ -133,66 +107,33 @@ async function downloadImageBuffer(url) {
 }
 
 function buildScoreZones(width, height) {
-    if (!width || !height) {
-        return [];
-    }
+    if (!width || !height) return [];
 
     return [
         {
-            name: "top_center",
-            left: Math.floor(width * 0.28),
-            top: Math.floor(height * 0.0),
-            width: Math.floor(width * 0.44),
-            height: Math.floor(height * 0.2),
+            name: "score_header_left",
+            left: Math.floor(width * 0.00),
+            top: Math.floor(height * 0.00),
+            width: Math.floor(width * 0.34),
+            height: Math.floor(height * 0.16),
+            baseWeight: 45,
         },
         {
-            name: "top_left",
-            left: Math.floor(width * 0.0),
-            top: Math.floor(height * 0.0),
-            width: Math.floor(width * 0.4),
-            height: Math.floor(height * 0.22),
-        },
-        {
-            name: "top_full",
+            name: "score_header_full",
             left: 0,
             top: 0,
             width,
-            height: Math.floor(height * 0.24),
+            height: Math.floor(height * 0.18),
+            baseWeight: 30,
         },
-    ];
-}
-
-async function buildGlobalVariants(buffer) {
-    const image = sharp(buffer).rotate();
-    const metadata = await image.metadata();
-    const width = metadata.width || 0;
-
-    const resized =
-        width > 1600
-            ? image.resize({ width: 1600, withoutEnlargement: true })
-            : image.clone();
-
-    const grayscale = await resized
-        .clone()
-        .grayscale()
-        .normalize()
-        .sharpen()
-        .png()
-        .toBuffer();
-
-    const thresholdA = await resized
-        .clone()
-        .grayscale()
-        .normalize()
-        .linear(1.18, -10)
-        .threshold(185)
-        .sharpen()
-        .png()
-        .toBuffer();
-
-    return [
-        { name: "grayscale", buffer: grayscale },
-        { name: "thresholdA", buffer: thresholdA },
+        {
+            name: "top_left_large",
+            left: Math.floor(width * 0.00),
+            top: Math.floor(height * 0.00),
+            width: Math.floor(width * 0.42),
+            height: Math.floor(height * 0.24),
+            baseWeight: 20,
+        },
     ];
 }
 
@@ -205,7 +146,7 @@ async function buildZoneVariants(buffer, zone) {
             width: Math.max(1, zone.width),
             height: Math.max(1, zone.height),
         })
-        .resize({ width: 1400, withoutEnlargement: false });
+        .resize({ width: 1500, withoutEnlargement: false });
 
     const grayscale = await cropped
         .clone()
@@ -225,9 +166,20 @@ async function buildZoneVariants(buffer, zone) {
         .png()
         .toBuffer();
 
+    const thresholdB = await cropped
+        .clone()
+        .grayscale()
+        .normalize()
+        .linear(1.30, -18)
+        .threshold(200)
+        .sharpen()
+        .png()
+        .toBuffer();
+
     return [
         { name: "grayscale", buffer: grayscale },
         { name: "thresholdA", buffer: thresholdA },
+        { name: "thresholdB", buffer: thresholdB },
     ];
 }
 
@@ -241,7 +193,7 @@ function normalizeOcrText(text) {
         .trim();
 }
 
-function extractBestScoreFromText(text) {
+function extractBestScoreFromText(text, expectedMode) {
     const lines = text
         .split("\n")
         .map(line => line.trim())
@@ -250,11 +202,11 @@ function extractBestScoreFromText(text) {
     const candidates = [];
 
     for (const line of lines) {
-        for (const score of extractScoresFromLine(line)) {
+        for (const score of extractScoresFromLine(line, expectedMode)) {
             candidates.push({
                 ...score,
                 line,
-                weight: scoreWeight(score.team1Score, score.team2Score, line),
+                weight: scoreWeight(score.team1Score, score.team2Score, line, expectedMode),
             });
         }
     }
@@ -265,7 +217,7 @@ function extractBestScoreFromText(text) {
     return candidates[0];
 }
 
-function extractScoresFromLine(line) {
+function extractScoresFromLine(line, expectedMode) {
     const results = [];
     const patterns = [
         /(\d{1,3})\s*[:\-]\s*(\d{1,3})/g,
@@ -278,7 +230,7 @@ function extractScoresFromLine(line) {
             const right = Number(match[2]);
 
             if (!Number.isFinite(left) || !Number.isFinite(right)) continue;
-            if (!isPlausibleScore(left, right)) continue;
+            if (!isPlausibleScore(left, right, expectedMode)) continue;
 
             results.push({
                 team1Score: left,
@@ -290,9 +242,26 @@ function extractScoresFromLine(line) {
     return results;
 }
 
-function isPlausibleScore(a, b) {
+function isPlausibleScore(a, b, expectedMode) {
     if (a < 0 || b < 0) return false;
     if (a > 300 || b > 300) return false;
+
+    if (expectedMode === "hp") {
+        if (a > 250 || b > 250) return false;
+        return a === 250 || b === 250 || (a >= 100 && b >= 100);
+    }
+
+    if (expectedMode === "ced") {
+        if (a > 13 || b > 13) return false;
+        if (a === 0 && b === 0) return false;
+        return true;
+    }
+
+    if (expectedMode === "ctl") {
+        if (a > 5 || b > 5) return false;
+        if (a === 0 && b === 0) return false;
+        return true;
+    }
 
     const hpLike = a <= 250 && b <= 250;
     const sndLike = a <= 13 && b <= 13;
@@ -301,19 +270,45 @@ function isPlausibleScore(a, b) {
     return hpLike || sndLike || ctlLike;
 }
 
-function scoreWeight(a, b, line) {
+function scoreWeight(a, b, line, expectedMode) {
     let score = 0;
 
-    if (/[:\-]/.test(line)) score += 22;
-    if (a === 250 || b === 250 || (a >= 80 && b >= 80)) score += 20;
-    if ((a <= 13 && b <= 13) || (a <= 5 && b <= 5)) score += 12;
+    if (/[:\-]/.test(line)) score += 24;
+    if (/sconfitta|vittoria|defeat|victory/i.test(line)) score += 50;
     if (line.length <= 24) score += 8;
     if (line.length > 50) score -= 10;
 
     const digits = (line.match(/\d/g) || []).length;
-    if (digits > 8) score -= 12;
+    if (digits > 8) score -= 14;
+
+    if (expectedMode === "hp") {
+        if (a === 250 || b === 250) score += 45;
+        if (a >= 100 && b >= 100) score += 20;
+    }
+
+    if (expectedMode === "ced") {
+        if (a <= 13 && b <= 13) score += 22;
+        if (Math.max(a, b) >= 4) score += 12;
+        if ((a === 1 && b === 0) || (a === 0 && b === 1)) score -= 20;
+    }
+
+    if (expectedMode === "ctl") {
+        if (a <= 5 && b <= 5) score += 24;
+        if (Math.max(a, b) >= 2) score += 12;
+        if (a === 0 && b === 0) score -= 40;
+    }
 
     return score;
+}
+
+function normalizeMode(mode) {
+    const clean = String(mode || "").trim().toLowerCase();
+
+    if (clean === "hp" || clean.includes("post")) return "hp";
+    if (clean === "ced" || clean.includes("search")) return "ced";
+    if (clean === "ctl" || clean.includes("control")) return "ctl";
+
+    return "";
 }
 
 function dedupeMapsByOrder(maps) {
@@ -329,11 +324,10 @@ function dedupeMapsByOrder(maps) {
     return out;
 }
 
-function buildSummary(maps, players, totalImages) {
+function buildSummary(maps, totalImages) {
     return (
         `OCR eseguito su ${totalImages} screenshot. ` +
         `Score mappa riconosciuti: ${maps.length}. ` +
-        `Righe player candidate: ${players.length}. ` +
         `Review manuale consigliata.`
     );
 }

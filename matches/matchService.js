@@ -58,6 +58,8 @@ async function completeMatchFromPart2({ parsed, message }) {
         throw new Error("Nessun match draft trovato per questa Parte 2.");
     }
 
+    const matchDetail = await getMatchBySlug(match.slug);
+
     const imageAttachments = [...message.attachments.values()]
         .filter(att => att.contentType?.startsWith("image/"))
         .map((att, index) => ({
@@ -80,7 +82,10 @@ async function completeMatchFromPart2({ parsed, message }) {
 
     await replaceMatchAssets(match.id, imageAttachments);
 
-    const extracted = await extractMatchDataFromImages(imageAttachments);
+    const extracted = await extractMatchDataFromImages(
+        imageAttachments,
+        matchDetail?.maps || []
+    );
 
     if (Array.isArray(extracted.maps) && extracted.maps.length > 0) {
         await replaceMatchMapScores(match.id, extracted.maps);
@@ -90,6 +95,7 @@ async function completeMatchFromPart2({ parsed, message }) {
     // if (Array.isArray(extracted.players) && extracted.players.length > 0) {
     //   await replaceMatchPlayers(match.id, extracted.players);
     // }
+
     await markMatchPublished(match.id, Boolean(extracted.needsReview));
 
     return {
