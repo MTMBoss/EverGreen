@@ -322,16 +322,12 @@ client.on(Events.MessageDelete, async message => {
 client.on(Events.InteractionCreate, async interaction => {
   let deferred = false;
 
-  if (interaction.isButton() || interaction.isStringSelectMenu()) {
-    const handled = await handleAttendanceComponent(interaction);
-    if (handled) return;
-  }
-
   try {
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
       const handled = await handleAttendanceComponent(interaction);
       if (handled) return;
     }
+
     if (interaction.isMessageContextMenuCommand()) {
       if (
         interaction.commandName !== "Prepara Parte 2" &&
