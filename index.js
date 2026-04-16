@@ -355,7 +355,6 @@ client.on(Events.InteractionCreate, async interaction => {
 
       const msg = interaction.targetMessage;
       const parsed = parseMatchMessage(msg.content || "");
-      console.log("DEBUG MATCH PARSED:", parsed);
 
       if (interaction.commandName === "Prepara Parte 2") {
         await interaction.editReply({
