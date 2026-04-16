@@ -350,8 +350,13 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      await interaction.deferReply({ flags: 64 });
-      deferred = true;
+      try {
+        await interaction.deferReply({ flags: 64 });
+        deferred = true;
+      } catch (error) {
+        console.error("❌ Errore deferReply:", error);
+        return;
+      }
 
       const msg = interaction.targetMessage;
       const parsed = parseMatchMessage(msg.content || "");
@@ -506,7 +511,13 @@ client.on(Events.InteractionCreate, async interaction => {
       if (isPublicLeaderboard) {
         await interaction.deferReply();
       } else {
-        await interaction.deferReply({ flags: 64 });
+        try {
+          await interaction.deferReply({ flags: 64 });
+          deferred = true;
+        } catch (error) {
+          console.error("❌ Errore deferReply:", error);
+          return;
+        }
       }
 
       deferred = true;

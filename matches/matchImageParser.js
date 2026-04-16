@@ -101,14 +101,11 @@ async function extractMatchDataFromImages(attachments) {
                 });
             }
 
-            const playerRows = await extractPlayerRows(worker, sourceBuffer, width, height, index + 1);
-            players.push(...playerRows);
-
             debug.push({
                 image: index + 1,
                 selectedScoreSource: bestSource,
                 selectedScore: bestScore,
-                extractedPlayers: playerRows.length,
+                extractedPlayers: 0,
             });
         }
     } finally {
@@ -144,22 +141,22 @@ function buildScoreZones(width, height) {
         {
             name: "top_center",
             left: Math.floor(width * 0.28),
-            top: Math.floor(height * 0.00),
+            top: Math.floor(height * 0.0),
             width: Math.floor(width * 0.44),
-            height: Math.floor(height * 0.20),
+            height: Math.floor(height * 0.2),
         },
         {
             name: "top_left",
-            left: Math.floor(width * 0.00),
-            top: Math.floor(height * 0.00),
-            width: Math.floor(width * 0.40),
+            left: Math.floor(width * 0.0),
+            top: Math.floor(height * 0.0),
+            width: Math.floor(width * 0.4),
             height: Math.floor(height * 0.22),
         },
         {
             name: "top_full",
             left: 0,
             top: 0,
-            width: width,
+            width,
             height: Math.floor(height * 0.24),
         },
     ];
@@ -171,37 +168,31 @@ async function buildGlobalVariants(buffer) {
     const width = metadata.width || 0;
 
     const resized =
-        width > 1800
-            ? image.resize({ width: 1800, withoutEnlargement: true })
+        width > 1600
+            ? image.resize({ width: 1600, withoutEnlargement: true })
             : image.clone();
 
-    const original = await resized.clone().png().toBuffer();
-    const grayscale = await resized.clone().grayscale().normalize().sharpen().png().toBuffer();
-    const thresholdA = await resized
+    const grayscale = await resized
         .clone()
         .grayscale()
         .normalize()
-        .linear(1.15, -10)
-        .threshold(180)
         .sharpen()
         .png()
         .toBuffer();
 
-    const thresholdB = await resized
+    const thresholdA = await resized
         .clone()
         .grayscale()
         .normalize()
-        .linear(1.3, -18)
-        .threshold(200)
+        .linear(1.18, -10)
+        .threshold(185)
         .sharpen()
         .png()
         .toBuffer();
 
     return [
-        { name: "original", buffer: original },
         { name: "grayscale", buffer: grayscale },
         { name: "thresholdA", buffer: thresholdA },
-        { name: "thresholdB", buffer: thresholdB },
     ];
 }
 
@@ -214,150 +205,30 @@ async function buildZoneVariants(buffer, zone) {
             width: Math.max(1, zone.width),
             height: Math.max(1, zone.height),
         })
-        .resize({ width: 1600, withoutEnlargement: false });
+        .resize({ width: 1400, withoutEnlargement: false });
 
-    const original = await cropped.clone().png().toBuffer();
-    const grayscale = await cropped.clone().grayscale().normalize().sharpen().png().toBuffer();
+    const grayscale = await cropped
+        .clone()
+        .grayscale()
+        .normalize()
+        .sharpen()
+        .png()
+        .toBuffer();
+
     const thresholdA = await cropped
         .clone()
         .grayscale()
         .normalize()
-        .linear(1.2, -12)
-        .threshold(175)
-        .sharpen()
-        .png()
-        .toBuffer();
-
-    const thresholdB = await cropped
-        .clone()
-        .grayscale()
-        .normalize()
-        .linear(1.35, -20)
-        .threshold(195)
-        .sharpen()
-        .png()
-        .toBuffer();
-
-    const inverted = await cropped
-        .clone()
-        .grayscale()
-        .normalize()
-        .negate()
-        .threshold(180)
+        .linear(1.22, -12)
+        .threshold(185)
         .sharpen()
         .png()
         .toBuffer();
 
     return [
-        { name: "original", buffer: original },
         { name: "grayscale", buffer: grayscale },
         { name: "thresholdA", buffer: thresholdA },
-        { name: "thresholdB", buffer: thresholdB },
-        { name: "inverted", buffer: inverted },
     ];
-}
-
-async function extractPlayerRows(worker, buffer, width, height, orderIndex) {
-    if (!width || !height) return [];
-
-    const zone = {
-        left: Math.floor(width * 0.05),
-        top: Math.floor(height * 0.20),
-        width: Math.floor(width * 0.90),
-        height: Math.floor(height * 0.70),
-    };
-
-    const prepared = await sharp(buffer)
-        .rotate()
-        .extract(zone)
-        .resize({ width: 1800, withoutEnlargement: false })
-        .grayscale()
-        .normalize()
-        .linear(1.2, -12)
-        .sharpen()
-        .png()
-        .toBuffer();
-
-    const result = await worker.recognize(prepared);
-    const text = normalizeOcrText(result.data?.text || "");
-
-    const rows = parsePlayerRowsFromText(text, orderIndex);
-    return rows;
-}
-
-function parsePlayerRowsFromText(text, orderIndex) {
-    const lines = text
-        .split("\n")
-        .map(line => line.trim())
-        .filter(Boolean);
-
-    const players = [];
-
-    for (const line of lines) {
-        const candidate = extractPlayerLine(line);
-        if (!candidate) continue;
-
-        players.push({
-            orderIndex,
-            teamName: "",
-            playerName: candidate.playerName,
-            kills: candidate.kills,
-            deaths: candidate.deaths,
-            assists: candidate.assists,
-            points: candidate.points,
-            impact: candidate.impact,
-            isMvp: candidate.isMvp,
-        });
-    }
-
-    return players;
-}
-
-function extractPlayerLine(line) {
-    const clean = line.replace(/\s+/g, " ").trim();
-
-    if (clean.length < 4) return null;
-    if (/giocatore|punteggio|impatto|u\/m\/a|precisione/i.test(clean)) return null;
-
-    const kdaMatch = clean.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})/);
-    if (!kdaMatch) return null;
-
-    const kills = Number(kdaMatch[1]);
-    const deaths = Number(kdaMatch[2]);
-    const assists = Number(kdaMatch[3]);
-
-    if ([kills, deaths, assists].some(n => !Number.isFinite(n))) return null;
-
-    const before = clean.slice(0, kdaMatch.index).trim();
-    const after = clean.slice(kdaMatch.index + kdaMatch[0].length).trim();
-
-    const pointsMatch = before.match(/(\d{3,5})\s*$/);
-    const impactMatch = after.match(/(\d{2,4})/);
-
-    let playerName = before;
-    let points = null;
-
-    if (pointsMatch) {
-        points = Number(pointsMatch[1]);
-        playerName = before.slice(0, pointsMatch.index).trim();
-    }
-
-    playerName = playerName
-        .replace(/^[\d.\-–—\s]+/, "")
-        .replace(/\bMVP\b/i, "")
-        .trim();
-
-    if (!playerName || playerName.length < 2) return null;
-
-    return {
-        playerName,
-        kills,
-        deaths,
-        assists,
-        points,
-        impact: impactMatch ? Number(impactMatch[1]) : null,
-        isMvp: /\bMVP\b/i.test(clean),
-    };
 }
 
 function normalizeOcrText(text) {
@@ -434,7 +305,7 @@ function scoreWeight(a, b, line) {
     let score = 0;
 
     if (/[:\-]/.test(line)) score += 22;
-    if ((a === 250 || b === 250) || (a >= 80 && b >= 80)) score += 20;
+    if (a === 250 || b === 250 || (a >= 80 && b >= 80)) score += 20;
     if ((a <= 13 && b <= 13) || (a <= 5 && b <= 5)) score += 12;
     if (line.length <= 24) score += 8;
     if (line.length > 50) score -= 10;
