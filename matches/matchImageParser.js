@@ -13,7 +13,6 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
 
   const worker = await createWorker("eng");
   const maps = [];
-  const players = [];
   const debug = [];
 
   try {
@@ -30,7 +29,7 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
       const scoreZones = buildScoreZones(width, height);
 
       let bestScore = null;
-      let bestScoreWeight = -1;
+      let bestWeight = -1;
       let bestSource = "none";
 
       for (const zone of scoreZones) {
@@ -41,10 +40,10 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
           const text = normalizeOcrText(result.data?.text || "");
           const confidence = Number(result.data?.confidence || 0);
 
-          let score = extractBestScoreFromText(text, expectedMode, true);
+          let score = extractScoreNearOutcome(text, expectedMode);
 
           if (!score) {
-            score = extractBestScoreFromText(text, expectedMode, false);
+            score = extractBestScoreFromText(text, expectedMode);
           }
 
           debug.push({
@@ -53,16 +52,16 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
             zone: zone.name,
             variant: variant.name,
             confidence,
-            textPreview: text.slice(0, 250),
+            textPreview: text.slice(0, 300),
             score,
           });
 
           if (score) {
-            const weight = confidence + score.weight + zone.baseWeight;
-            if (weight > bestScoreWeight) {
-              bestScoreWeight = weight;
+            const weight = zone.baseWeight + confidence + score.weight;
+            if (weight > bestWeight) {
+              bestWeight = weight;
               bestScore = score;
-              bestSource = `zone:${zone.name}:${variant.name}`;
+              bestSource = `${zone.name}:${variant.name}`;
             }
           }
         }
@@ -82,7 +81,7 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
       debug.push({
         image: index + 1,
         expectedMode,
-        selectedScoreSource: bestSource,
+        selectedSource: bestSource,
         selectedScore: bestScore,
       });
     }
@@ -92,7 +91,7 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
 
   return {
     maps: dedupeMapsByOrder(maps),
-    players,
+    players: [],
     needsReview: true,
     extractionSummary: buildSummary(maps, attachments.length),
     debug,
@@ -115,28 +114,28 @@ function buildScoreZones(width, height) {
 
   return [
     {
-      name: "score_header_left",
-      left: Math.floor(width * 0.0),
-      top: Math.floor(height * 0.0),
-      width: Math.floor(width * 0.36),
-      height: Math.floor(height * 0.18),
-      baseWeight: 45,
+      name: "header_left_tight",
+      left: Math.floor(width * 0.00),
+      top: Math.floor(height * 0.00),
+      width: Math.floor(width * 0.38),
+      height: Math.floor(height * 0.14),
+      baseWeight: 80,
     },
     {
-      name: "score_header_full",
+      name: "header_left_medium",
+      left: Math.floor(width * 0.00),
+      top: Math.floor(height * 0.00),
+      width: Math.floor(width * 0.45),
+      height: Math.floor(height * 0.18),
+      baseWeight: 60,
+    },
+    {
+      name: "header_top_full",
       left: 0,
       top: 0,
       width,
       height: Math.floor(height * 0.20),
-      baseWeight: 30,
-    },
-    {
-      name: "top_left_large",
-      left: Math.floor(width * 0.0),
-      top: Math.floor(height * 0.0),
-      width: Math.floor(width * 0.45),
-      height: Math.floor(height * 0.26),
-      baseWeight: 18,
+      baseWeight: 35,
     },
   ];
 }
@@ -150,7 +149,7 @@ async function buildZoneVariants(buffer, zone) {
       width: Math.max(1, zone.width),
       height: Math.max(1, zone.height),
     })
-    .resize({ width: 1500, withoutEnlargement: false });
+    .resize({ width: 1700, withoutEnlargement: false });
 
   const grayscale = await cropped
     .clone()
@@ -164,8 +163,8 @@ async function buildZoneVariants(buffer, zone) {
     .clone()
     .grayscale()
     .normalize()
-    .linear(1.22, -12)
-    .threshold(185)
+    .linear(1.18, -8)
+    .threshold(180)
     .sharpen()
     .png()
     .toBuffer();
@@ -180,24 +179,70 @@ async function buildZoneVariants(buffer, zone) {
     .png()
     .toBuffer();
 
+  const inverted = await cropped
+    .clone()
+    .grayscale()
+    .normalize()
+    .negate()
+    .threshold(175)
+    .sharpen()
+    .png()
+    .toBuffer();
+
   return [
     { name: "grayscale", buffer: grayscale },
     { name: "thresholdA", buffer: thresholdA },
     { name: "thresholdB", buffer: thresholdB },
+    { name: "inverted", buffer: inverted },
   ];
 }
 
 function normalizeOcrText(text) {
   return String(text || "")
+    .replace(/\r/g, "")
     .replace(/[|]/g, "1")
     .replace(/[Oo](?=\d)|(?<=\d)[Oo]/g, "0")
     .replace(/[Ss](?=\d)|(?<=\d)[Ss]/g, "5")
     .replace(/[^\S\r\n]+/g, " ")
-    .replace(/\r/g, "")
     .trim();
 }
 
-function extractBestScoreFromText(text, expectedMode, strictMode) {
+function extractScoreNearOutcome(text, expectedMode) {
+  const compact = text
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/O/g, "0");
+
+  const outcomePatterns = [
+    /SCONFITTA(\d{1,3})[:\-](\d{1,3})/,
+    /VITTORIA(\d{1,3})[:\-](\d{1,3})/,
+    /DEFEAT(\d{1,3})[:\-](\d{1,3})/,
+    /VICTORY(\d{1,3})[:\-](\d{1,3})/,
+    /SCONFITTA(\d{1,3})(\d{1,3})/,
+    /VITTORIA(\d{1,3})(\d{1,3})/,
+  ];
+
+  for (const pattern of outcomePatterns) {
+    const match = compact.match(pattern);
+    if (!match) continue;
+
+    const left = Number(match[1]);
+    const right = Number(match[2]);
+
+    if (!Number.isFinite(left) || !Number.isFinite(right)) continue;
+    if (!isPlausibleScore(left, right, expectedMode)) continue;
+
+    return {
+      team1Score: left,
+      team2Score: right,
+      weight: 120 + modeBonus(left, right, expectedMode),
+    };
+  }
+
+  return null;
+}
+
+function extractBestScoreFromText(text, expectedMode) {
   const lines = text
     .split("\n")
     .map(line => line.trim())
@@ -206,17 +251,11 @@ function extractBestScoreFromText(text, expectedMode, strictMode) {
   const candidates = [];
 
   for (const line of lines) {
-    for (const score of extractScoresFromLine(line, expectedMode, strictMode)) {
+    for (const score of extractScoresFromLine(line, expectedMode)) {
       candidates.push({
         ...score,
         line,
-        weight: scoreWeight(
-          score.team1Score,
-          score.team2Score,
-          line,
-          expectedMode,
-          strictMode
-        ),
+        weight: scoreWeight(score.team1Score, score.team2Score, line, expectedMode),
       });
     }
   }
@@ -227,7 +266,7 @@ function extractBestScoreFromText(text, expectedMode, strictMode) {
   return candidates[0];
 }
 
-function extractScoresFromLine(line, expectedMode, strictMode) {
+function extractScoresFromLine(line, expectedMode) {
   const results = [];
   const patterns = [
     /(\d{1,3})\s*[:\-]\s*(\d{1,3})/g,
@@ -240,7 +279,7 @@ function extractScoresFromLine(line, expectedMode, strictMode) {
       const right = Number(match[2]);
 
       if (!Number.isFinite(left) || !Number.isFinite(right)) continue;
-      if (!isPlausibleScore(left, right, expectedMode, strictMode)) continue;
+      if (!isPlausibleScore(left, right, expectedMode)) continue;
 
       results.push({
         team1Score: left,
@@ -252,69 +291,64 @@ function extractScoresFromLine(line, expectedMode, strictMode) {
   return results;
 }
 
-function isPlausibleScore(a, b, expectedMode, strictMode) {
+function isPlausibleScore(a, b, expectedMode) {
   if (a < 0 || b < 0) return false;
   if (a > 300 || b > 300) return false;
 
   if (expectedMode === "hp") {
     if (a > 250 || b > 250) return false;
-    if (strictMode) {
-      return a === 250 || b === 250 || (a >= 100 && b >= 100);
-    }
     return true;
   }
 
   if (expectedMode === "ced") {
     if (a > 13 || b > 13) return false;
-    if (strictMode && a === 0 && b === 0) return false;
-    return true;
+    return !(a === 0 && b === 0);
   }
 
   if (expectedMode === "ctl") {
     if (a > 5 || b > 5) return false;
-    if (strictMode && a === 0 && b === 0) return false;
-    return true;
+    return !(a === 0 && b === 0);
   }
 
-  const hpLike = a <= 250 && b <= 250;
-  const sndLike = a <= 13 && b <= 13;
-  const ctlLike = a <= 5 && b <= 5;
-
-  return hpLike || sndLike || ctlLike;
+  return true;
 }
 
-function scoreWeight(a, b, line, expectedMode, strictMode) {
+function scoreWeight(a, b, line, expectedMode) {
   let score = 0;
 
-  if (/[:\-]/.test(line)) score += 24;
-  if (/sconfitta|vittoria|defeat|victory/i.test(line)) score += 50;
+  if (/[:\-]/.test(line)) score += 20;
+  if (/sconfitta|vittoria|defeat|victory/i.test(line)) score += 30;
   if (line.length <= 24) score += 8;
-  if (line.length > 50) score -= 10;
+  if (line.length > 50) score -= 8;
 
   const digits = (line.match(/\d/g) || []).length;
-  if (digits > 8) score -= 14;
+  if (digits > 8) score -= 10;
 
+  score += modeBonus(a, b, expectedMode);
+
+  return score;
+}
+
+function modeBonus(a, b, expectedMode) {
   if (expectedMode === "hp") {
-    if (a === 250 || b === 250) score += 45;
-    if (a >= 100 && b >= 100) score += 20;
-    if (!strictMode) score += 8;
+    if (a === 250 || b === 250) return 45;
+    if (a >= 40 && b >= 100) return 20;
+    return 6;
   }
 
   if (expectedMode === "ced") {
-    if (a <= 13 && b <= 13) score += 22;
-    if (Math.max(a, b) >= 4) score += 12;
-    if ((a === 1 && b === 0) || (a === 0 && b === 1)) score -= 12;
-    if (!strictMode) score += 6;
+    if (Math.max(a, b) >= 5) return 25;
+    if ((a === 1 && b === 0) || (a === 0 && b === 1)) return -8;
+    return 8;
   }
 
   if (expectedMode === "ctl") {
-    if (a <= 5 && b <= 5) score += 24;
-    if (Math.max(a, b) >= 2) score += 12;
-    if (a === 0 && b === 0) score -= 20;
-    if (!strictMode) score += 6;
+    if (Math.max(a, b) >= 2) return 24;
+    if (a === 0 && b === 0) return -20;
+    return 8;
   }
 
-  return score;
+  return 0;
 }
 
 function normalizeMode(mode) {
