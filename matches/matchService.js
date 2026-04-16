@@ -25,6 +25,7 @@ function buildMatchWebUrl(baseUrl, slug) {
 
 async function createMatchDraftFromPart1({ parsed, message }) {
     const draft = parseMatchDraftFromParsedMessage(parsed);
+    console.log("DEBUG MATCH DRAFT:", draft);
 
     if (!draft.team1 || !draft.team2) {
         throw new Error("Parte 1 non valida: titolo match mancante.");
