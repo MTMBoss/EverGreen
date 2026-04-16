@@ -6,6 +6,7 @@ const {
     setAttendanceRoleIds,
     setAttendanceWebBaseUrl,
 } = require("../configStore");
+
 const {
     normalizeDateInput,
     getTodayIsoDate,
@@ -13,9 +14,13 @@ const {
     setDaySlots,
     getDayView,
 } = require("./attendanceService");
+
 const { syncRosterFromGuild } = require("./rosterService");
 const { publishAttendanceForDate } = require("./attendancePublisher");
-const { publishAttendanceLeaderboard } = require("./attendanceLeaderboardPublisher");
+const {
+    publishAttendanceLeaderboard,
+    handleAttendanceLeaderboardComponent,
+} = require("./attendanceLeaderboardPublisher");
 
 const ATTENDANCE_COMMANDS = new Set([
     "set-canale-presenze",
@@ -184,6 +189,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
         case "link-presenze": {
             const date = normalizeDateOption(interaction.options.getString("data"));
             const config = readConfig();
+
             if (!config.attendanceWebBaseUrl) {
                 await interaction.editReply({
                     content: "❌ URL pannello presenze non configurato. Usa /set-url-pannello-presenze.",
@@ -197,15 +203,19 @@ async function handleAttendanceSlashCommand(interaction, client) {
             return true;
         }
 
-        default:
-            return false;
         case "leaderboard-presenze": {
             const tipo = interaction.options.getString("tipo", false) || "settimana";
-
             await publishAttendanceLeaderboard(interaction, tipo);
             return true;
         }
+
+        default:
+            return false;
     }
+}
+
+async function handleAttendanceComponent(interaction) {
+    return handleAttendanceLeaderboardComponent(interaction);
 }
 
 function normalizeDateOption(value) {
@@ -238,10 +248,13 @@ function formatDetailedRecap(dayView) {
     });
 
     const message = `${formatSummaryMessage(dayView)}\n\n${lines.join("\n")}`;
-    return message.length <= 1900 ? message : `${formatSummaryMessage(dayView)}\n\nLista troppo lunga per Discord.`;
+    return message.length <= 1900
+        ? message
+        : `${formatSummaryMessage(dayView)}\n\nLista troppo lunga per Discord.`;
 }
 
 module.exports = {
     isAttendanceCommand,
     handleAttendanceSlashCommand,
+    handleAttendanceComponent,
 };

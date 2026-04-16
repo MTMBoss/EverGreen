@@ -45,6 +45,7 @@ const {
 } = require("./attendance/attendanceService");
 const {
   handleAttendanceSlashCommand,
+  handleAttendanceComponent,
   isAttendanceCommand,
 } = require("./attendance/attendanceDiscord");
 const {
@@ -317,6 +318,10 @@ client.on(Events.InteractionCreate, async interaction => {
   let deferred = false;
 
   try {
+    if (interaction.isButton() || interaction.isStringSelectMenu()) {
+      const handled = await handleAttendanceComponent(interaction);
+      if (handled) return;
+    }
     if (interaction.isMessageContextMenuCommand()) {
       if (
         interaction.commandName !== "Prepara Parte 2" &&
@@ -440,7 +445,14 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 
     if (interaction.isChatInputCommand()) {
-      await interaction.deferReply({ flags: 64 });
+      const isPublicLeaderboard = interaction.commandName === "leaderboard-presenze";
+
+      if (isPublicLeaderboard) {
+        await interaction.deferReply();
+      } else {
+        await interaction.deferReply({ flags: 64 });
+      }
+
       deferred = true;
 
       if (isAttendanceCommand(interaction.commandName)) {
