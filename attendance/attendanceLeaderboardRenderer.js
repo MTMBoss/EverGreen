@@ -1,8 +1,8 @@
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const path = require("path");
 
-const WIDTH = 1100;
-const HEIGHT = 1400;
+const WIDTH = 1700;
+const HEIGHT = 1180;
 
 const LOGO_PATH = path.join(__dirname, "..", "web", "public", "evergreen-logo.png");
 
@@ -33,6 +33,21 @@ function drawRoundedBox(ctx, x, y, width, height, radius, fillStyle, strokeStyle
     ctx.restore();
 }
 
+function fitText(ctx, text, maxWidth) {
+    let output = String(text || "");
+    if (!maxWidth) return output;
+
+    while (output.length > 0 && ctx.measureText(output).width > maxWidth) {
+        output = output.slice(0, -1);
+    }
+
+    if (output !== text && output.length > 3) {
+        output = `${output.slice(0, -3)}...`;
+    }
+
+    return output;
+}
+
 function drawText(ctx, text, x, y, options = {}) {
     const {
         font = "28px Sans",
@@ -48,18 +63,8 @@ function drawText(ctx, text, x, y, options = {}) {
     ctx.textAlign = align;
     ctx.textBaseline = baseline;
 
-    if (maxWidth) {
-        let output = String(text || "");
-        while (ctx.measureText(output).width > maxWidth && output.length > 0) {
-            output = output.slice(0, -1);
-        }
-        if (output !== text && output.length > 3) {
-            output = `${output.slice(0, -3)}...`;
-        }
-        ctx.fillText(output, x, y);
-    } else {
-        ctx.fillText(String(text || ""), x, y);
-    }
+    const output = maxWidth ? fitText(ctx, text, maxWidth) : String(text || "");
+    ctx.fillText(output, x, y);
 
     ctx.restore();
 }
@@ -74,22 +79,82 @@ function getRankColor(index) {
 function drawBackground(ctx) {
     const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
     gradient.addColorStop(0, "#0b0d12");
-    gradient.addColorStop(0.5, "#141922");
-    gradient.addColorStop(1, "#0d1016");
+    gradient.addColorStop(0.35, "#121824");
+    gradient.addColorStop(0.7, "#0f1622");
+    gradient.addColorStop(1, "#0b0f16");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     ctx.save();
-    ctx.globalAlpha = 0.08;
-    for (let i = 0; i < 40; i += 1) {
-        const x = (i * 137) % WIDTH;
-        const y = (i * 211) % HEIGHT;
-        ctx.fillStyle = i % 2 === 0 ? "#6fa86f" : "#ffffff";
+    ctx.globalAlpha = 0.06;
+    for (let i = 0; i < 70; i += 1) {
+        const x = (i * 197) % WIDTH;
+        const y = (i * 149) % HEIGHT;
+        ctx.fillStyle = i % 2 === 0 ? "#7fbf7f" : "#ffffff";
         ctx.beginPath();
-        ctx.arc(x, y, 2 + (i % 4), 0, Math.PI * 2);
+        ctx.arc(x, y, 2 + (i % 5), 0, Math.PI * 2);
         ctx.fill();
     }
     ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = "#ffffff";
+    for (let y = 120; y < HEIGHT; y += 120) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(WIDTH, y);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawColumnHeaders(ctx, x, y, width) {
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    drawText(ctx, "Player", x + 135, y, {
+        font: "bold 24px Sans",
+        color: "#7eb8ff",
+    });
+
+    drawText(ctx, "Slot coperti", x + width - 540, y, {
+        font: "bold 24px Sans",
+        color: "#7eb8ff",
+        align: "right",
+    });
+
+    drawText(ctx, "Giorni", x + width - 360, y, {
+        font: "bold 24px Sans",
+        color: "#7eb8ff",
+        align: "right",
+    });
+
+    drawText(ctx, "Full", x + width - 220, y, {
+        font: "bold 24px Sans",
+        color: "#7eb8ff",
+        align: "right",
+    });
+
+    drawText(ctx, "Rate", x + width - 70, y, {
+        font: "bold 24px Sans",
+        color: "#7eb8ff",
+        align: "right",
+    });
+    ctx.restore();
+}
+
+function drawSummaryCard(ctx, x, y, width, height, title, value, valueColor = "#f1f3f7") {
+    drawRoundedBox(ctx, x, y, width, height, 20, "rgba(255,255,255,0.04)", "rgba(255,255,255,0.08)", 1);
+
+    drawText(ctx, title, x + 28, y + 42, {
+        font: "bold 24px Sans",
+        color: "#9eb2ca",
+    });
+
+    drawText(ctx, value, x + 28, y + 95, {
+        font: "bold 40px Sans",
+        color: valueColor,
+    });
 }
 
 async function renderAttendanceLeaderboardImage(data) {
@@ -98,8 +163,19 @@ async function renderAttendanceLeaderboardImage(data) {
 
     drawBackground(ctx);
 
-    drawRoundedBox(ctx, 40, 40, WIDTH - 80, HEIGHT - 80, 30, "rgba(19, 24, 34, 0.92)", "rgba(255,255,255,0.08)", 2);
-    drawRoundedBox(ctx, 50, 50, 14, HEIGHT - 100, 10, "#d9b11f");
+    drawRoundedBox(
+        ctx,
+        24,
+        24,
+        WIDTH - 48,
+        HEIGHT - 48,
+        32,
+        "rgba(18, 24, 36, 0.94)",
+        "rgba(255,255,255,0.08)",
+        2
+    );
+
+    drawRoundedBox(ctx, 36, 36, 16, HEIGHT - 72, 10, "#d9b11f");
 
     let logo = null;
     try {
@@ -111,105 +187,167 @@ async function renderAttendanceLeaderboardImage(data) {
     if (logo) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(120, 120, 45, 0, Math.PI * 2);
+        ctx.arc(110, 110, 46, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(logo, 75, 75, 90, 90);
+        ctx.drawImage(logo, 64, 64, 92, 92);
         ctx.restore();
     }
 
-    drawText(ctx, "Leaderboard Presenze", 190, 105, {
-        font: "bold 56px Sans",
+    drawText(ctx, "Leaderboard Presenze", 182, 98, {
+        font: "bold 70px Sans",
         color: "#f0e4a0",
     });
 
-    drawText(ctx, data.subtitle || "Classifica", 190, 160, {
-        font: "bold 38px Sans",
+    drawText(ctx, data.subtitle || "Classifica", 182, 155, {
+        font: "bold 44px Sans",
         color: "#67b3ff",
     });
 
-    drawText(ctx, data.periodLabel || "", 190, 205, {
-        font: "30px Sans",
+    drawText(ctx, data.periodLabel || "", 182, 205, {
+        font: "34px Sans",
         color: "#d4d7de",
     });
 
-    drawRoundedBox(ctx, 90, 260, WIDTH - 180, 900, 28, "rgba(255,255,255,0.04)", "rgba(255,255,255,0.10)", 2);
+    drawRoundedBox(
+        ctx,
+        66,
+        250,
+        WIDTH - 132,
+        660,
+        30,
+        "rgba(255,255,255,0.035)",
+        "rgba(255,255,255,0.10)",
+        2
+    );
 
-    const startY = 310;
-    const rowHeight = 72;
-    const left = 115;
-    const width = WIDTH - 230;
+    const tableLeft = 90;
+    const tableWidth = WIDTH - 180;
+    const rowHeight = 56;
+    const rowBoxHeight = 48;
+    const startY = 338;
+
+    drawColumnHeaders(ctx, tableLeft, 312, tableWidth);
 
     for (let i = 0; i < Math.min(data.rows.length, 10); i += 1) {
         const row = data.rows[i];
         const y = startY + i * rowHeight;
         const colors = getRankColor(i);
 
-        drawRoundedBox(ctx, left, y, width, 58, 14, "rgba(16, 20, 28, 0.88)", "rgba(255,255,255,0.06)", 1);
-        drawRoundedBox(ctx, left, y, 14, 58, 14, colors.bar);
+        drawRoundedBox(
+            ctx,
+            tableLeft,
+            y,
+            tableWidth,
+            rowBoxHeight,
+            14,
+            "rgba(14, 18, 28, 0.92)",
+            "rgba(255,255,255,0.06)",
+            1
+        );
 
-        drawText(ctx, `${i + 1}.`, left + 44, y + 38, {
-            font: "bold 28px Sans",
+        drawRoundedBox(ctx, tableLeft, y, 12, rowBoxHeight, 10, colors.bar);
+
+        drawText(ctx, `${i + 1}.`, tableLeft + 34, y + 30, {
+            font: "bold 26px Sans",
             color: "#ffffff",
         });
 
-        drawText(ctx, row.label, left + 105, y + 38, {
-            font: "bold 26px Sans",
+        drawText(ctx, row.label, tableLeft + 100, y + 30, {
+            font: "bold 28px Sans",
             color: "#f1f3f7",
-            maxWidth: 360,
+            maxWidth: 620,
         });
 
-        drawText(ctx, `${row.slotsCovered} slot`, left + 560, y + 38, {
-            font: "bold 24px Sans",
+        drawText(ctx, `${row.slotsCovered} slot`, tableLeft + tableWidth - 540, y + 30, {
+            font: "bold 26px Sans",
             color: colors.text,
             align: "right",
         });
 
-        drawText(ctx, `${row.daysPresent} gg`, left + 700, y + 38, {
-            font: "24px Sans",
+        drawText(ctx, `${row.daysPresent} gg`, tableLeft + tableWidth - 360, y + 30, {
+            font: "26px Sans",
             color: "#d4d7de",
             align: "right",
         });
 
-        drawText(ctx, `${row.fullDays} full`, left + 840, y + 38, {
-            font: "24px Sans",
+        drawText(ctx, `${row.fullDays} full`, tableLeft + tableWidth - 220, y + 30, {
+            font: "26px Sans",
             color: "#d4d7de",
             align: "right",
         });
 
-        drawText(ctx, `${row.presenceRate}%`, left + 955, y + 38, {
+        drawText(ctx, `${row.presenceRate}%`, tableLeft + tableWidth - 70, y + 30, {
             font: "bold 28px Sans",
             color: "#b8f2a5",
             align: "right",
         });
     }
 
-    const summaryY = 1210;
+    const summaryY = 950;
+    const gap = 28;
+    const cardWidth = 245;
+    const cardHeight = 130;
+    const cardX1 = 90;
+    const cardX2 = cardX1 + cardWidth + gap;
+    const cardX3 = cardX2 + cardWidth + gap;
+    const cardX4 = cardX3 + cardWidth + gap;
+    const cardX5 = cardX4 + cardWidth + gap;
 
-    drawText(ctx, `Roster attivo: ${data.summary.totalMembers}`, 110, summaryY, {
-        font: "bold 30px Sans",
-        color: "#f1f3f7",
-    });
+    drawSummaryCard(
+        ctx,
+        cardX1,
+        summaryY,
+        cardWidth,
+        cardHeight,
+        "Roster attivo",
+        String(data.summary.totalMembers || 0),
+        "#f1f3f7"
+    );
 
-    drawText(ctx, `Media slot coperti: ${data.summary.avgSlotsCovered}`, 110, summaryY + 48, {
-        font: "28px Sans",
-        color: "#d4d7de",
-    });
+    drawSummaryCard(
+        ctx,
+        cardX2,
+        summaryY,
+        cardWidth,
+        cardHeight,
+        "Media slot coperti",
+        String(data.summary.avgSlotsCovered || 0),
+        "#d4d7de"
+    );
 
-    drawText(ctx, `Top fascia 21-22: ${data.summary.slot21Top}`, 650, summaryY, {
-        font: "bold 30px Sans",
-        color: "#9de26f",
-    });
+    drawSummaryCard(
+        ctx,
+        cardX3,
+        summaryY,
+        cardWidth,
+        cardHeight,
+        "Top fascia 21-22",
+        String(data.summary.slot21Top || 0),
+        "#9de26f"
+    );
 
-    drawText(ctx, `Top fascia 22-23: ${data.summary.slot22Top}`, 650, summaryY + 48, {
-        font: "30px Sans",
-        color: "#c7ccd6",
-    });
+    drawSummaryCard(
+        ctx,
+        cardX4,
+        summaryY,
+        cardWidth,
+        cardHeight,
+        "Top fascia 22-23",
+        String(data.summary.slot22Top || 0),
+        "#d7dde8"
+    );
 
-    drawText(ctx, `Top fascia 23-00: ${data.summary.slot23Top}`, 650, summaryY + 96, {
-        font: "30px Sans",
-        color: "#ff9d6d",
-    });
+    drawSummaryCard(
+        ctx,
+        cardX5,
+        summaryY,
+        cardWidth,
+        cardHeight,
+        "Top fascia 23-00",
+        String(data.summary.slot23Top || 0),
+        "#ff9d6d"
+    );
 
     return canvas.toBuffer("image/png");
 }
