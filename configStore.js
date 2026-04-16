@@ -6,6 +6,9 @@ const { pool, ensureDbReady } = require("./attendance/db");
 const LEGACY_CONFIG_PATH = path.join(__dirname, "config.json");
 
 const DEFAULT_CONFIG = {
+  attendanceLeaderboardChannel: process.env.ATTENDANCE_LEADERBOARD_CHANNEL || "",
+  attendanceLeaderboardMessageId: "",
+  attendanceLeaderboardDefaultType: process.env.ATTENDANCE_LEADERBOARD_DEFAULT_TYPE || "settimana",
   targetChannel1: process.env.TARGET_CHANNEL_1 || "",
   targetChannel2: process.env.TARGET_CHANNEL_2 || "",
   pngChannel: process.env.PNG_CHANNEL || "",
@@ -40,6 +43,9 @@ function cloneConfig(value) {
 
 function normalizeConfigValue(key, value) {
   switch (key) {
+    case "attendanceLeaderboardChannel":
+    case "attendanceLeaderboardMessageId":
+    case "attendanceLeaderboardDefaultType":
     case "targetChannel1":
     case "targetChannel2":
     case "pngChannel":

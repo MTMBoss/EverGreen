@@ -20,6 +20,8 @@ const { publishAttendanceForDate } = require("./attendancePublisher");
 const {
     publishAttendanceLeaderboard,
     handleAttendanceLeaderboardComponent,
+    setAttendanceLeaderboardChannel,
+    publishPersistentAttendanceLeaderboard,
 } = require("./attendanceLeaderboardPublisher");
 
 const ATTENDANCE_COMMANDS = new Set([
@@ -36,6 +38,8 @@ const ATTENDANCE_COMMANDS = new Set([
     "presenze-recap",
     "link-presenze",
     "leaderboard-presenze",
+    "set-canale-leaderboard-presenze",
+    "pubblica-leaderboard-presenze",
 ]);
 
 function isAttendanceCommand(name) {
@@ -92,6 +96,31 @@ async function handleAttendanceSlashCommand(interaction, client) {
             setAttendanceWebBaseUrl(url);
             await interaction.editReply({
                 content: `✅ URL pannello presenze impostato su ${url}`,
+            });
+            return true;
+        }
+
+        case "set-canale-leaderboard-presenze": {
+            const channel = interaction.options.getChannel("canale", true);
+            const tipo = interaction.options.getString("tipo", false) || "settimana";
+
+            await setAttendanceLeaderboardChannel(channel.id, tipo);
+
+            await interaction.editReply({
+                content: `✅ Canale leaderboard presenze impostato su ${channel} con vista predefinita **${tipo}**.`,
+            });
+            return true;
+        }
+
+        case "pubblica-leaderboard-presenze": {
+            const tipo = interaction.options.getString("tipo", false) || null;
+            const result = await publishPersistentAttendanceLeaderboard(client, interaction.guild, tipo);
+
+            await interaction.editReply({
+                content:
+                    result.updated
+                        ? `✅ Leaderboard presenze aggiornata in ${result.channel} con vista **${result.type}**.`
+                        : `✅ Leaderboard presenze pubblicata in ${result.channel} con vista **${result.type}**.`,
             });
             return true;
         }

@@ -317,6 +317,11 @@ client.on(Events.MessageDelete, async message => {
 client.on(Events.InteractionCreate, async interaction => {
   let deferred = false;
 
+  if (interaction.isButton() || interaction.isStringSelectMenu()) {
+    const handled = await handleAttendanceComponent(interaction);
+    if (handled) return;
+  }
+
   try {
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
       const handled = await handleAttendanceComponent(interaction);
@@ -445,7 +450,8 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 
     if (interaction.isChatInputCommand()) {
-      const isPublicLeaderboard = interaction.commandName === "leaderboard-presenze";
+      const isPublicLeaderboard =
+        interaction.commandName === "leaderboard-presenze";
 
       if (isPublicLeaderboard) {
         await interaction.deferReply();

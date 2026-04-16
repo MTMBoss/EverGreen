@@ -33,6 +33,48 @@ const commands = [
         .setDescription("Periodo della classifica")
         .setRequired(false)
         .addChoices(
+          { name: "Oggi", value: "oggi" },
+          { name: "Settimana", value: "settimana" },
+          { name: "Mese", value: "mese" }
+        )
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set-canale-leaderboard-presenze")
+    .setDescription("Imposta il canale della leaderboard presenze persistente")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addChannelOption(option =>
+      option
+        .setName("canale")
+        .setDescription("Canale testuale leaderboard")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option
+        .setName("tipo")
+        .setDescription("Vista predefinita")
+        .setRequired(false)
+        .addChoices(
+          { name: "Oggi", value: "oggi" },
+          { name: "Settimana", value: "settimana" },
+          { name: "Mese", value: "mese" }
+        )
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("pubblica-leaderboard-presenze")
+    .setDescription("Pubblica o aggiorna il messaggio fisso della leaderboard presenze")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addStringOption(option =>
+      option
+        .setName("tipo")
+        .setDescription("Vista da usare per l'aggiornamento")
+        .setRequired(false)
+        .addChoices(
+          { name: "Oggi", value: "oggi" },
           { name: "Settimana", value: "settimana" },
           { name: "Mese", value: "mese" }
         )

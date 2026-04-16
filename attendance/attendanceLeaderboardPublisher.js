@@ -5,15 +5,42 @@ const {
     StringSelectMenuBuilder,
     ButtonBuilder,
     ButtonStyle,
+    ChannelType,
 } = require("discord.js");
 
-const { readConfig } = require("../configStore");
+const {
+    readConfig,
+    writeConfig,
+} = require("../configStore");
+
 const { getTodayIsoDate } = require("./attendanceService");
 const { getAttendanceLeaderboard } = require("./attendanceLeaderboardService");
 const { renderAttendanceLeaderboardImage } = require("./attendanceLeaderboardRenderer");
 
 const SELECT_ID = "attendance_lb_select";
 const BUTTON_PREFIX = "attendance_lb_btn";
+
+function getStoredLeaderboardConfig() {
+    const config = readConfig();
+    return {
+        channelId: config.attendanceLeaderboardChannel || "",
+        messageId: config.attendanceLeaderboardMessageId || "",
+        defaultType: config.attendanceLeaderboardDefaultType || "settimana",
+    };
+}
+
+function setStoredLeaderboardConfig(patch) {
+    const config = readConfig();
+
+    config.attendanceLeaderboardChannel =
+        patch.channelId !== undefined ? patch.channelId : (config.attendanceLeaderboardChannel || "");
+    config.attendanceLeaderboardMessageId =
+        patch.messageId !== undefined ? patch.messageId : (config.attendanceLeaderboardMessageId || "");
+    config.attendanceLeaderboardDefaultType =
+        patch.defaultType !== undefined ? patch.defaultType : (config.attendanceLeaderboardDefaultType || "settimana");
+
+    writeConfig(config);
+}
 
 async function buildLeaderboardMessage(type = "settimana") {
     const leaderboard = await getAttendanceLeaderboard(type);
@@ -76,6 +103,12 @@ async function buildLeaderboardMessage(type = "settimana") {
             .setPlaceholder("Scegli visualizzazione")
             .addOptions([
                 {
+                    label: "Oggi",
+                    value: "oggi",
+                    description: "Classifica del giorno",
+                    default: type === "oggi",
+                },
+                {
                     label: "Settimana",
                     value: "settimana",
                     description: "Classifica settimanale",
@@ -92,6 +125,10 @@ async function buildLeaderboardMessage(type = "settimana") {
 
     const buttons = [
         new ButtonBuilder()
+            .setCustomId(`${BUTTON_PREFIX}:oggi`)
+            .setLabel("Oggi")
+            .setStyle(type === "oggi" ? ButtonStyle.Primary : ButtonStyle.Secondary),
+        new ButtonBuilder()
             .setCustomId(`${BUTTON_PREFIX}:settimana`)
             .setLabel("Settimana")
             .setStyle(type === "settimana" ? ButtonStyle.Primary : ButtonStyle.Secondary),
@@ -105,8 +142,12 @@ async function buildLeaderboardMessage(type = "settimana") {
             .setStyle(ButtonStyle.Success),
     ];
 
+    const firstRow = new ActionRowBuilder().addComponents(buttons);
+
+    const secondRow = new ActionRowBuilder();
+
     if (panelUrl) {
-        buttons.push(
+        secondRow.addComponents(
             new ButtonBuilder()
                 .setLabel("Apri pannello")
                 .setStyle(ButtonStyle.Link)
@@ -114,12 +155,12 @@ async function buildLeaderboardMessage(type = "settimana") {
         );
     }
 
-    const buttonRow = new ActionRowBuilder().addComponents(buttons);
-
     return {
         embeds: [embed],
         files: [attachment],
-        components: [selectRow, buttonRow],
+        components: secondRow.components.length > 0
+            ? [selectRow, firstRow, secondRow]
+            : [selectRow, firstRow],
     };
 }
 
@@ -141,7 +182,8 @@ async function handleAttendanceLeaderboardComponent(interaction) {
 
         let type = "settimana";
 
-        if (action === "settimana") type = "settimana";
+        if (action === "oggi") type = "oggi";
+        else if (action === "settimana") type = "settimana";
         else if (action === "mese") type = "mese";
         else if (action === "refresh") type = value || "settimana";
 
@@ -153,7 +195,71 @@ async function handleAttendanceLeaderboardComponent(interaction) {
     return false;
 }
 
+async function setAttendanceLeaderboardChannel(channelId, defaultType = "settimana") {
+    setStoredLeaderboardConfig({
+        channelId,
+        defaultType,
+    });
+}
+
+async function publishPersistentAttendanceLeaderboard(client, guild, forcedType = null) {
+    const stored = getStoredLeaderboardConfig();
+
+    if (!stored.channelId) {
+        throw new Error("Canale leaderboard presenze non configurato.");
+    }
+
+    const channel = await client.channels.fetch(stored.channelId);
+    if (!channel || channel.type !== ChannelType.GuildText) {
+        throw new Error("Canale leaderboard non trovato o non testuale.");
+    }
+
+    if (guild && channel.guildId !== guild.id) {
+        throw new Error("Il canale leaderboard configurato non appartiene a questa guild.");
+    }
+
+    const type = forcedType || stored.defaultType || "settimana";
+    const payload = await buildLeaderboardMessage(type);
+
+    if (stored.messageId) {
+        const existingMessage = await channel.messages.fetch(stored.messageId).catch(() => null);
+
+        if (existingMessage) {
+            await existingMessage.edit(payload);
+            setStoredLeaderboardConfig({
+                channelId: channel.id,
+                messageId: existingMessage.id,
+                defaultType: type,
+            });
+
+            return {
+                channel,
+                messageId: existingMessage.id,
+                updated: true,
+                type,
+            };
+        }
+    }
+
+    const sent = await channel.send(payload);
+
+    setStoredLeaderboardConfig({
+        channelId: channel.id,
+        messageId: sent.id,
+        defaultType: type,
+    });
+
+    return {
+        channel,
+        messageId: sent.id,
+        updated: false,
+        type,
+    };
+}
+
 module.exports = {
     publishAttendanceLeaderboard,
     handleAttendanceLeaderboardComponent,
+    setAttendanceLeaderboardChannel,
+    publishPersistentAttendanceLeaderboard,
 };

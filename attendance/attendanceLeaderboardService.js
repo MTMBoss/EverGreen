@@ -4,31 +4,48 @@ const {
     getAttendanceSummaryRange,
 } = require("./attendanceRepository");
 
-function getRangeFromType(type) {
-    const today = dayjs();
-
-    if (type === "mese") {
-        return {
-            startDate: today.startOf("month").format("YYYY-MM-DD"),
-            endDate: today.endOf("month").format("YYYY-MM-DD"),
-            subtitle: "Classifica Mensile",
-            periodLabel: today.format("MM/YYYY"),
-        };
-    }
-
-    const weekStart = today.startOf("week").add(1, "day");
-    const normalizedStart = today.day() === 0
-        ? today.startOf("week").subtract(6, "day")
-        : weekStart;
-
-    const normalizedEnd = normalizedStart.add(6, "day");
+function getTodayRange() {
+    const today = dayjs().format("YYYY-MM-DD");
 
     return {
-        startDate: normalizedStart.format("YYYY-MM-DD"),
-        endDate: normalizedEnd.format("YYYY-MM-DD"),
-        subtitle: "Classifica Settimanale",
-        periodLabel: `${normalizedStart.format("DD/MM/YYYY")} - ${normalizedEnd.format("DD/MM/YYYY")}`,
+        startDate: today,
+        endDate: today,
+        subtitle: "Classifica Giornaliera",
+        periodLabel: dayjs(today).format("DD/MM/YYYY"),
     };
+}
+
+function getWeekRange() {
+    const now = dayjs();
+    const jsDay = now.day();
+    const diffToMonday = jsDay === 0 ? -6 : 1 - jsDay;
+
+    const start = now.add(diffToMonday, "day");
+    const end = start.add(6, "day");
+
+    return {
+        startDate: start.format("YYYY-MM-DD"),
+        endDate: end.format("YYYY-MM-DD"),
+        subtitle: "Classifica Settimanale",
+        periodLabel: `${start.format("DD/MM/YYYY")} - ${end.format("DD/MM/YYYY")}`,
+    };
+}
+
+function getMonthRange() {
+    const now = dayjs();
+
+    return {
+        startDate: now.startOf("month").format("YYYY-MM-DD"),
+        endDate: now.endOf("month").format("YYYY-MM-DD"),
+        subtitle: "Classifica Mensile",
+        periodLabel: now.format("MM/YYYY"),
+    };
+}
+
+function getRangeFromType(type) {
+    if (type === "oggi") return getTodayRange();
+    if (type === "mese") return getMonthRange();
+    return getWeekRange();
 }
 
 async function getAttendanceLeaderboard(type = "settimana") {
