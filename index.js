@@ -89,8 +89,14 @@ function normalizeLine(text) {
 }
 
 function isDateLine(line) {
-  return /(lun|mar|mer|gio|ven|sab|dom|lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica)/i.test(
-    normalizeLine(line)
+  const clean = normalizeLine(line);
+
+  return (
+    /(lun|mar|mer|gio|ven|sab|dom|lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica)/i.test(clean) ||
+    /^\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?$/.test(clean) ||
+    /^\d{1,2}\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)$/i.test(clean) ||
+    /^(lun|mar|mer|gio|ven|sab|dom)\s+\d{1,2}\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)$/i.test(clean) ||
+    /^(lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica)\s+\d{1,2}\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)$/i.test(clean)
   );
 }
 
@@ -349,6 +355,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
       const msg = interaction.targetMessage;
       const parsed = parseMatchMessage(msg.content || "");
+      console.log("DEBUG MATCH PARSED:", parsed);
 
       if (interaction.commandName === "Prepara Parte 2") {
         await interaction.editReply({

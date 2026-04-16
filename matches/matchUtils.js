@@ -45,6 +45,8 @@ function parseItalianDate(dateLine) {
         "D MMMM YYYY",
         "DD/MM/YYYY",
         "D/M/YYYY",
+        "DD/MM/YY",
+        "D/M/YY",
         "YYYY-MM-DD",
     ];
 
@@ -72,6 +74,7 @@ function parseItalianDate(dateLine) {
 
     return null;
 }
+
 function parseTime(timeLine) {
     const clean = normalizeLine(timeLine).replace(/[🕒]/g, "").trim();
     const match = clean.match(/^(\d{1,2}):(\d{2})$/);
