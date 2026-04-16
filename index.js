@@ -402,8 +402,13 @@ client.on(Events.InteractionCreate, async interaction => {
 
       const config = readConfig();
       const images = getImageAttachments(msg);
-      const hasPart1 = Boolean(parsed.timeLine) || parsed.mapLines.length > 0;
-      const hasPart2 = Boolean(parsed.resultLine);
+
+      const isPart2 = Boolean(parsed.resultLine);
+      const isPart1 =
+        !isPart2 &&
+        Boolean(parsed.title) &&
+        Boolean(parsed.dateLine) &&
+        (Boolean(parsed.timeLine) || parsed.mapLines.length > 0);
 
       const ch1 = config.targetChannel1
         ? await client.channels.fetch(config.targetChannel1)
@@ -413,7 +418,7 @@ client.on(Events.InteractionCreate, async interaction => {
         ? await client.channels.fetch(config.targetChannel2)
         : null;
 
-      if (!hasPart1 && !hasPart2) {
+      if (!isPart1 && !isPart2) {
         await interaction.editReply({
           content: "❌ Non ho trovato una parte valida nel messaggio selezionato.",
         });
@@ -422,7 +427,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
       let webMessage = "";
 
-      if (hasPart1) {
+      if (isPart1) {
         if (!ch1 || ch1.type !== ChannelType.GuildText) {
           await interaction.editReply({
             content: "❌ Canale parte 1 non configurato correttamente.",
@@ -441,11 +446,15 @@ client.on(Events.InteractionCreate, async interaction => {
           message: msg,
         });
 
-        const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, draftMatch.slug);
+        const webUrl = buildMatchWebUrl(
+          config.attendanceWebBaseUrl,
+          draftMatch.slug
+        );
+
         webMessage = `\n🌐 Match web creato: ${webUrl}`;
       }
 
-      if (hasPart2) {
+      if (isPart2) {
         if (!ch2 || ch2.type !== ChannelType.GuildText) {
           await interaction.editReply({
             content: "❌ Canale parte 2 non configurato correttamente.",
@@ -465,11 +474,17 @@ client.on(Events.InteractionCreate, async interaction => {
           message: msg,
         });
 
-        const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, completed.slug);
+        const webUrl = buildMatchWebUrl(
+          config.attendanceWebBaseUrl,
+          completed.slug
+        );
+
         webMessage =
           `\n🌐 Match web aggiornato: ${webUrl}` +
           (completed.needsReview ? `\n🛠 Stato: da rivedere manualmente` : "") +
-          (completed.extractionSummary ? `\nℹ️ ${completed.extractionSummary}` : "");
+          (completed.extractionSummary
+            ? `\nℹ️ ${completed.extractionSummary}`
+            : "");
       }
 
       await interaction.editReply({

@@ -52,14 +52,10 @@ function createWebRouter(client) {
     res.redirect(`/presenze?date=${getTodayIsoDate()}`);
   });
 
-  router.get(
-    "/logout",
-    requireAdmin,
-    (req, res) => {
-      res.clearCookie("attendance_admin_token", { path: "/" });
-      res.redirect("/login");
-    }
-  );
+  router.get("/logout", (req, res) => {
+    res.clearCookie("attendance_admin_token", { path: "/" });
+    res.redirect("/login");
+  });
 
   router.get(
     "/presenze",
@@ -160,10 +156,14 @@ function createWebRouter(client) {
       const mapsWithPlayers = match.maps.map(map => ({
         ...map,
         team1Players: match.players.filter(
-          player => player.order_index === map.order_index && player.team_name === match.team1
+          player =>
+            player.order_index === map.order_index &&
+            player.team_name === match.team1
         ),
         team2Players: match.players.filter(
-          player => player.order_index === map.order_index && player.team_name === match.team2
+          player =>
+            player.order_index === map.order_index &&
+            player.team_name === match.team2
         ),
       }));
 
@@ -182,7 +182,10 @@ function createWebRouter(client) {
     "/sync-roster",
     requireAdmin,
     asyncHandler(async (_req, res) => {
-      const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first() || null;
+      const guild =
+        client.guilds.cache.get(process.env.GUILD_ID) ||
+        client.guilds.cache.first() ||
+        null;
 
       if (!guild) {
         throw new Error("Il bot non è ancora pronto o la guild non è disponibile.");

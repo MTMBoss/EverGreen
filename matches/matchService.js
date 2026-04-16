@@ -26,6 +26,10 @@ function buildMatchWebUrl(baseUrl, slug) {
 async function createMatchDraftFromPart1({ parsed, message }) {
     const draft = parseMatchDraftFromParsedMessage(parsed);
 
+    if (!draft.team1 || !draft.team2) {
+        throw new Error("Parte 1 non valida: titolo match mancante.");
+    }
+
     const match = await createDraftMatch({
         ...draft,
         sourceGuildId: message.guildId || "",
@@ -39,6 +43,10 @@ async function createMatchDraftFromPart1({ parsed, message }) {
 
 async function completeMatchFromPart2({ parsed, message }) {
     const draft = parseMatchDraftFromParsedMessage(parsed);
+
+    if (!draft.team1 || !draft.team2) {
+        throw new Error("Parte 2 non valida: titolo match mancante.");
+    }
 
     const match = await findDraftMatchForPart2({
         team1: draft.team1,

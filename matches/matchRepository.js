@@ -196,13 +196,19 @@ async function findDraftMatchForPart2({ team1, team2, matchDate }) {
     SELECT *
     FROM matches
     WHERE status = 'draft'
-      AND team1 = $1
-      AND team2 = $2
       AND (
-        (match_date IS NOT NULL AND match_date = $3::date)
-        OR $3::date IS NULL
+        (team1 = $1 AND team2 = $2)
+        OR
+        (team1 = $2 AND team2 = $1)
       )
-    ORDER BY match_date DESC NULLS LAST, created_at DESC
+      AND (
+        $3::date IS NULL
+        OR match_date = $3::date
+        OR match_date IS NULL
+      )
+    ORDER BY
+      CASE WHEN match_date = $3::date THEN 0 ELSE 1 END,
+      created_at DESC
     LIMIT 1
     `,
         [team1, team2, matchDate || null]
