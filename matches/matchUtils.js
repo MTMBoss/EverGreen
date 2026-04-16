@@ -33,56 +33,99 @@ function splitTitle(title) {
 }
 
 function parseItalianDate(dateLine) {
-    const cleanOriginal = normalizeLine(dateLine)
+    const clean = normalizeLine(dateLine)
         .replace(/[📅]/g, "")
         .replace(/\./g, "")
         .trim();
 
-    if (!cleanOriginal) return null;
+    if (!clean) return null;
 
-    const clean = cleanOriginal.toLowerCase();
+    const normalized = clean
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
     const currentYear = dayjs().year();
 
-    const formatsWithYear = [
-        "dddd D MMMM YYYY",
-        "ddd D MMMM YYYY",
-        "D MMMM YYYY",
-        "DD/MM/YYYY",
-        "D/M/YYYY",
-        "DD/MM/YY",
-        "D/M/YY",
-        "YYYY-MM-DD",
+    const weekdays = [
+        "lunedi",
+        "martedi",
+        "mercoledi",
+        "giovedi",
+        "venerdi",
+        "sabato",
+        "domenica",
+        "lun",
+        "mar",
+        "mer",
+        "gio",
+        "ven",
+        "sab",
+        "dom",
     ];
 
-    for (const fmt of formatsWithYear) {
-        const parsed = dayjs(clean, fmt, "it", true);
-        if (parsed.isValid()) {
-            return parsed.format("YYYY-MM-DD");
+    let value = normalized;
+
+    for (const weekday of weekdays) {
+        if (value.startsWith(`${weekday} `)) {
+            value = value.slice(weekday.length).trim();
+            break;
         }
     }
 
-    const formatsWithoutYear = [
-        "dddd D MMMM",
-        "ddd D MMMM",
-        "D MMMM",
-        "DD/MM",
-        "D/M",
-    ];
+    const months = {
+        gennaio: "01",
+        febbraio: "02",
+        marzo: "03",
+        aprile: "04",
+        maggio: "05",
+        giugno: "06",
+        luglio: "07",
+        agosto: "08",
+        settembre: "09",
+        ottobre: "10",
+        novembre: "11",
+        dicembre: "12",
+    };
 
-    for (const fmt of formatsWithoutYear) {
-        const parsed = dayjs(
-            `${clean} ${currentYear}`,
-            `${fmt} YYYY`,
-            "it",
-            true
-        );
-        if (parsed.isValid()) {
-            return parsed.format("YYYY-MM-DD");
+    const textMatch = value.match(
+        /^(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)(?:\s+(\d{2,4}))?$/
+    );
+
+    if (textMatch) {
+        const day = textMatch[1].padStart(2, "0");
+        const month = months[textMatch[2]];
+        let year = textMatch[3] || String(currentYear);
+
+        if (year.length === 2) {
+            year = `20${year}`;
         }
+
+        return `${year}-${month}-${day}`;
+    }
+
+    const slashMatch = value.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/);
+
+    if (slashMatch) {
+        const day = slashMatch[1].padStart(2, "0");
+        const month = slashMatch[2].padStart(2, "0");
+        let year = slashMatch[3] || String(currentYear);
+
+        if (year.length === 2) {
+            year = `20${year}`;
+        }
+
+        return `${year}-${month}-${day}`;
+    }
+
+    const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+        return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
     }
 
     return null;
 }
+
 function parseTime(timeLine) {
     const clean = normalizeLine(timeLine).replace(/[🕒]/g, "").trim();
     const match = clean.match(/^(\d{1,2}):(\d{2})$/);
