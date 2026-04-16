@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+        <%= pageTitle %>
+    </title>
+    <style>
+        :root {
+            --bg: #090012;
+            --panel: #120020;
+            --panel2: #18002e;
+            --line: #7a2fd0;
+            --green: #00ff73;
+            --purple: #bb79ff;
+            --text: #f2e9ff;
+            --muted: #9d88b8;
+            --loss: #ff4d70;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 24px;
+        }
+
+        .wrap {
+            max-width: 1120px;
+            margin: 0 auto
+        }
+
+        .top {
+            border: 1px solid rgba(187, 121, 255, .35);
+            background: linear-gradient(180deg, var(--panel), var(--panel2));
+            border-radius: 22px;
+            padding: 26px;
+        }
+
+        .brand {
+            font-size: 20px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: 800;
+        }
+
+        .title {
+            margin-top: 8px;
+            font-size: 40px;
+            font-weight: 900;
+            color: var(--green);
+        }
+
+        .scorebox {
+            margin-top: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .team {
+            font-size: 24px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .score {
+            font-size: 52px;
+            font-weight: 900;
+            padding: 12px 22px;
+            border-radius: 16px;
+            border: 1px solid rgba(187, 121, 255, .24);
+            background: rgba(0, 0, 0, .22);
+        }
+
+        .meta {
+            margin-top: 14px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            color: var(--muted);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 12px;
+        }
+
+        .review {
+            background: rgba(255, 77, 112, .12);
+            color: #ff8ca1;
+            border: 1px solid rgba(255, 140, 161, .35);
+        }
+
+        .section {
+            margin-top: 26px;
+        }
+
+        .section h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--muted);
+            margin: 0 0 14px;
+        }
+
+        .assets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+        }
+
+        .assets img {
+            width: 100%;
+            border-radius: 14px;
+            border: 1px solid rgba(187, 121, 255, .18);
+            display: block;
+            background: #12001e;
+        }
+
+        .match {
+            background: linear-gradient(180deg, var(--panel), #0f001d);
+            border: 1px solid rgba(187, 121, 255, .22);
+            border-radius: 18px;
+            overflow: hidden;
+            margin-bottom: 18px;
+        }
+
+        .matchhead {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(187, 121, 255, .15);
+            background: linear-gradient(90deg, rgba(187, 121, 255, .12), rgba(0, 255, 115, .04));
+        }
+
+        .matchtitle {
+            font-weight: 800;
+            color: var(--purple);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+
+        .map {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .mscore {
+            font-weight: 900;
+            font-size: 28px;
+        }
+
+        .cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .col {
+            padding: 16px
+        }
+
+        .col+.col {
+            border-left: 1px solid rgba(187, 121, 255, .12)
+        }
+
+        .side {
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, .05);
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 10px 0 4px;
+        }
+
+        @media (max-width:860px) {
+            .cols {
+                grid-template-columns: 1fr
+            }
+
+            .col+.col {
+                border-left: none;
+                border-top: 1px solid rgba(187, 121, 255, .12)
+            }
+
+            .score {
+                font-size: 38px
+            }
+
+            .title {
+                font-size: 28px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <%- include("partials/nav", { currentSection }) %>
+
+            <div class="top">
+                <div class="brand">EverGreen · Match Report</div>
+                <div class="title">
+                    <%= match.team1 %> vs <%= match.team2 %>
+                </div>
+
+                <div class="scorebox">
+                    <div class="team">
+                        <%= match.team1 %>
+                    </div>
+                    <div class="score">
+                        <%= match.team1_series_score ?? "-" %> : <%= match.team2_series_score ?? "-" %>
+                    </div>
+                    <div class="team">
+                        <%= match.team2 %>
+                    </div>
+                </div>
+
+                <div class="meta">
+                    <span>📅 <%= match.match_date ? new Date(match.match_date).toLocaleDateString("it-IT")
+                            : "Data non definita" %></span>
+                    <span>🕒 <%= match.match_time || "--:--" %></span>
+                    <span>
+                        <%= match.result_label || "Risultato non definito" %>
+                    </span>
+                    <span>Stato: <%= match.status %></span>
+                    <% if (match.needs_review) { %>
+                        <span class="badge review">Da rivedere manualmente</span>
+                        <% } %>
+                </div>
+            </div>
+
+            <% if (match.assets && match.assets.length> 0) { %>
+                <div class="section">
+                    <h2>Screenshot</h2>
+                    <div class="assets">
+                        <% match.assets.forEach(asset=> { %>
+                            <a href="<%= asset.asset_url %>" target="_blank" rel="noreferrer">
+                                <img src="<%= asset.asset_url %>" alt="Screenshot match" />
+                            </a>
+                            <% }) %>
+                    </div>
+                </div>
+                <% } %>
+
+                    <div class="section">
+                        <h2>Dettaglio mappe</h2>
+
+                        <% if (!match.mapsWithPlayers || match.mapsWithPlayers.length===0) { %>
+                            <div class="empty">Nessuna mappa disponibile.</div>
+                            <% } %>
+
+                                <% (match.mapsWithPlayers || []).forEach(item=> { %>
+                                    <div class="match">
+                                        <div class="matchhead">
+                                            <div>
+                                                <div class="matchtitle">Match <%=
+                                                        String(item.order_index).padStart(2, "0" ) %>
+                                                </div>
+                                                <div class="map">
+                                                    <%= item.map_name || "Mappa" %> · <%= item.mode || "Modalità" %> ·
+                                                            <%= item.side_name || "Lato non definito" %>
+                                                </div>
+                                            </div>
+                                            <div class="mscore">
+                                                <%= item.team1_score ?? "-" %> : <%= item.team2_score ?? "-" %>
+                                            </div>
+                                        </div>
+
+                                        <div class="cols">
+                                            <div class="col">
+                                                <div class="side">
+                                                    <%= match.team1 %>
+                                                </div>
+
+                                                <% if (!item.team1Players || item.team1Players.length===0) { %>
+                                                    <div class="empty">Nessun player disponibile per questa mappa.</div>
+                                                    <% } else { %>
+                                                        <table>
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Player</th>
+                                                                    <th>K/D/A</th>
+                                                                    <th>Punti</th>
+                                                                    <th>Impatto</th>
+                                                                    <th>MVP</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <% item.team1Players.forEach(player=> { %>
+                                                                    <tr>
+                                                                        <td>
+                                                                            <%= player.player_name %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= player.kills ?? "-" %>/<%= player.deaths
+                                                                                    ?? "-" %>/<%= player.assists ?? "-"
+                                                                                        %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= player.points ?? "-" %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= player.impact ?? "-" %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= player.is_mvp ? "MVP" : "" %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <% }) %>
+                                                            </tbody>
+                                                        </table>
+                                                        <% } %>
+                                            </div>
+
+                                            <div class="col">
+                                                <div class="side">
+                                                    <%= match.team2 %>
+                                                </div>
+
+                                                <% if (!item.team2Players || item.team2Players.length===0) { %>
+                                                    <div class="empty">Nessun player disponibile per questa mappa.</div>
+                                                    <% } else { %>
+                                                        <table>
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Player</th>
+                                                                    <th>K/D/A</th>
+                                                                    <th>Punti</th>
+                                                                    <th>Impatto</th>
+                                                                    <th>MVP</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <% item.team2Players.forEach(player=> { %>
+                                                                    <tr>
+                                                                        <td>
+                                                                            <%= player.player_name %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= player.kills ?? "-" %>/<%= player.deaths
+                                                                                    ?? "-" %>/<%= player.assists ?? "-"
+                                                                                        %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= player.points ?? "-" %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= player.impact ?? "-" %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= player.is_mvp ? "MVP" : "" %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <% }) %>
+                                                            </tbody>
+                                                        </table>
+                                                        <% } %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <% }) %>
+                    </div>
+    </div>
+</body>
+
+</html>

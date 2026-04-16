@@ -1,0 +1,35 @@
+<nav class="eg-nav">
+    <a href="/presenze?date=<%= typeof date !== 'undefined' ? date : '' %>"
+        class="<%= currentSection === 'presenze' ? 'active' : '' %>">Presenze</a>
+    <a href="/calendario" class="<%= currentSection === 'calendario' ? 'active' : '' %>">Calendario</a>
+    <a href="/matches" class="<%= currentSection === 'matches' ? 'active' : '' %>">Match</a>
+    <a href="/logout" class="logout">Logout</a>
+</nav>
+
+<style>
+    .eg-nav {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 0 0 20px;
+    }
+
+    .eg-nav a {
+        text-decoration: none;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: #170227;
+        color: #eadbff;
+        border: 1px solid rgba(187, 121, 255, .2);
+        font-weight: 700;
+    }
+
+    .eg-nav a.active {
+        background: #2b0a4a;
+        border-color: #8f4fff;
+    }
+
+    .eg-nav a.logout {
+        margin-left: auto;
+    }
+</style>

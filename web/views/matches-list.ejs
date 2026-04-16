@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+        <%= pageTitle %>
+    </title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #0a0012;
+            color: #f2e9ff;
+            padding: 24px;
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: 900;
+            margin: 0 0 16px;
+            color: #00ff73;
+        }
+
+        .list {
+            display: grid;
+            gap: 14px;
+        }
+
+        .item {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid rgba(187, 121, 255, .24);
+            background: #140021;
+            border-radius: 16px;
+            padding: 18px;
+        }
+
+        .item:hover {
+            border-color: #9b61ff;
+        }
+
+        .row1 {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .teams {
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .score {
+            font-size: 28px;
+            font-weight: 900;
+        }
+
+        .meta {
+            margin-top: 10px;
+            color: #b9a6cf;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, .12);
+        }
+
+        .badge.draft {
+            color: #ffcf66;
+            border-color: #ffcf66;
+            background: rgba(255, 207, 102, .1);
+        }
+
+        .badge.published {
+            color: #66ffb0;
+            border-color: #66ffb0;
+            background: rgba(102, 255, 176, .1);
+        }
+
+        .badge.review {
+            color: #ff8ca1;
+            border-color: #ff8ca1;
+            background: rgba(255, 140, 161, .1);
+        }
+
+        .empty {
+            padding: 18px;
+            border: 1px dashed rgba(255, 255, 255, .18);
+            border-radius: 14px;
+            color: #b9a6cf;
+            background: #12001d;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <%- include("partials/nav", { currentSection }) %>
+
+            <h1 class="title">Match</h1>
+
+            <% if (!matches || matches.length===0) { %>
+                <div class="empty">Nessun match pubblicato al momento.</div>
+                <% } else { %>
+                    <div class="list">
+                        <% matches.forEach(match=> { %>
+                            <a class="item" href="/matches/<%= match.slug %>">
+                                <div class="row1">
+                                    <div class="teams">
+                                        <%= match.team1 %> vs <%= match.team2 %>
+                                    </div>
+                                    <div class="score">
+                                        <%= match.team1_series_score ?? "-" %> : <%= match.team2_series_score ?? "-" %>
+                                    </div>
+                                </div>
+                                <div class="meta">
+                                    <span>📅 <%= match.match_date ? new
+                                            Date(match.match_date).toLocaleDateString("it-IT") : "Data non definita" %>
+                                            </span>
+                                    <span>🕒 <%= match.match_time || "--:--" %></span>
+                                    <span>
+                                        <%= match.result_label || "In attesa risultato" %>
+                                    </span>
+
+                                    <% if (match.status==="draft" ) { %>
+                                        <span class="badge draft">Bozza</span>
+                                        <% } else { %>
+                                            <span class="badge published">Pubblicato</span>
+                                            <% } %>
+
+                                                <% if (match.needs_review) { %>
+                                                    <span class="badge review">Da rivedere</span>
+                                                    <% } %>
+                                </div>
+                            </a>
+                            <% }) %>
+                    </div>
+                    <% } %>
+    </div>
+</body>
+
+</html>

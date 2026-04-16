@@ -196,69 +196,70 @@
 
 <body>
     <div class="container">
-        <div class="hero">
-            <div class="brand">
-                <img src="/assets/evergreen-logo.png" alt="EverGreen logo" onerror="this.style.display='none'">
-                <div>
-                    <div class="eyebrow">EverGreen Competitive Calendar</div>
-                    <h1>Calendario presenze <%= month %>
-                    </h1>
-                    <p>Panoramica giornaliera del roster competitivo.</p>
+        <%- include("partials/nav", { currentSection }) %>
+            <div class="hero">
+                <div class="brand">
+                    <img src="/assets/evergreen-logo.png" alt="EverGreen logo" onerror="this.style.display='none'">
+                    <div>
+                        <div class="eyebrow">EverGreen Competitive Calendar</div>
+                        <h1>Calendario presenze <%= month %>
+                        </h1>
+                        <p>Panoramica giornaliera del roster competitivo.</p>
+                    </div>
+                </div>
+
+                <div class="nav-actions">
+                    <a class="button button-dark" href="/presenze">Vai a oggi</a>
+                    <a class="button button-dark" href="/calendario?month=<%= prevMonth %>">← Mese precedente</a>
+                    <a class="button button-dark" href="/calendario?month=<%= nextMonth %>">Mese successivo →</a>
+                    <a class="button button-dark" href="/logout">Logout</a>
                 </div>
             </div>
 
-            <div class="nav-actions">
-                <a class="button button-dark" href="/presenze">Vai a oggi</a>
-                <a class="button button-dark" href="/calendario?month=<%= prevMonth %>">← Mese precedente</a>
-                <a class="button button-dark" href="/calendario?month=<%= nextMonth %>">Mese successivo →</a>
-                <a class="button button-dark" href="/logout">Logout</a>
-            </div>
-        </div>
+            <div class="calendar">
+                <div class="weekday">Lun</div>
+                <div class="weekday">Mar</div>
+                <div class="weekday">Mer</div>
+                <div class="weekday">Gio</div>
+                <div class="weekday">Ven</div>
+                <div class="weekday">Sab</div>
+                <div class="weekday">Dom</div>
 
-        <div class="calendar">
-            <div class="weekday">Lun</div>
-            <div class="weekday">Mar</div>
-            <div class="weekday">Mer</div>
-            <div class="weekday">Gio</div>
-            <div class="weekday">Ven</div>
-            <div class="weekday">Sab</div>
-            <div class="weekday">Dom</div>
-
-            <% for (const row of grid) { %>
-                <% for (const cell of row) { %>
-                    <% if (!cell) { %>
-                        <div class="day empty"></div>
-                        <% } else { %>
-                            <div class="day">
-                                <div class="date">
-                                    <%= cell.day %>
-                                </div>
-
-                                <% if (cell.summary) { %>
-                                    <div class="stats">
-                                        Roster: <strong>
-                                            <%= cell.summary.totalMembers %>
-                                        </strong><br />
-                                        Presenti: <strong>
-                                            <%= cell.summary.anyPresenceCount %>
-                                        </strong><br />
-                                        Full: <strong>
-                                            <%= cell.summary.fullPresenceCount %>
-                                        </strong><br />
-                                        Assenti: <strong>
-                                            <%= cell.summary.absentCount %>
-                                        </strong>
+                <% for (const row of grid) { %>
+                    <% for (const cell of row) { %>
+                        <% if (!cell) { %>
+                            <div class="day empty"></div>
+                            <% } else { %>
+                                <div class="day">
+                                    <div class="date">
+                                        <%= cell.day %>
                                     </div>
-                                    <% } else { %>
-                                        <div class="stats">Nessun dato salvato</div>
-                                        <% } %>
 
-                                            <a class="link" href="/presenze?date=<%= cell.date %>">Apri giorno</a>
-                            </div>
-                            <% } %>
+                                    <% if (cell.summary) { %>
+                                        <div class="stats">
+                                            Roster: <strong>
+                                                <%= cell.summary.totalMembers %>
+                                            </strong><br />
+                                            Presenti: <strong>
+                                                <%= cell.summary.anyPresenceCount %>
+                                            </strong><br />
+                                            Full: <strong>
+                                                <%= cell.summary.fullPresenceCount %>
+                                            </strong><br />
+                                            Assenti: <strong>
+                                                <%= cell.summary.absentCount %>
+                                            </strong>
+                                        </div>
+                                        <% } else { %>
+                                            <div class="stats">Nessun dato salvato</div>
+                                            <% } %>
+
+                                                <a class="link" href="/presenze?date=<%= cell.date %>">Apri giorno</a>
+                                </div>
                                 <% } %>
                                     <% } %>
-        </div>
+                                        <% } %>
+            </div>
     </div>
 </body>
 

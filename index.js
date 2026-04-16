@@ -58,6 +58,12 @@ const {
 } = require("./attendance/attendanceScheduler");
 const { scheduleRosterSync } = require("./attendance/rosterAutoSync");
 const { startAttendanceWebServer } = require("./web/server");
+const {
+  createMatchDraftFromPart1,
+  completeMatchFromPart2,
+  buildMatchWebUrl,
+} = require("./matches/matchService");
+const { createMatchTables } = require("./matches/matchRepository");
 
 initializeAttendance();
 
@@ -230,6 +236,7 @@ client.once(Events.ClientReady, async () => {
   startAttendanceReminderScheduler(client);
   startAttendanceRosterSyncScheduler(client);
   startAttendanceWebServer(client);
+  await createMatchTables();
   startAttendanceLeaderboardScheduler(client);
 
   for (const guild of client.guilds.cache.values()) {
@@ -413,6 +420,8 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      let webMessage = "";
+
       if (hasPart1) {
         if (!ch1 || ch1.type !== ChannelType.GuildText) {
           await interaction.editReply({
@@ -426,6 +435,14 @@ client.on(Events.InteractionCreate, async interaction => {
         });
 
         await sendDefaultSeparator(ch1);
+
+        const draftMatch = await createMatchDraftFromPart1({
+          parsed,
+          message: msg,
+        });
+
+        const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, draftMatch.slug);
+        webMessage = `\n🌐 Match web creato: ${webUrl}`;
       }
 
       if (hasPart2) {
@@ -442,10 +459,21 @@ client.on(Events.InteractionCreate, async interaction => {
         });
 
         await sendDefaultSeparator(ch2);
+
+        const completed = await completeMatchFromPart2({
+          parsed,
+          message: msg,
+        });
+
+        const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, completed.slug);
+        webMessage =
+          `\n🌐 Match web aggiornato: ${webUrl}` +
+          (completed.needsReview ? `\n🛠 Stato: da rivedere manualmente` : "") +
+          (completed.extractionSummary ? `\nℹ️ ${completed.extractionSummary}` : "");
       }
 
       await interaction.editReply({
-        content: "✅ Pubblicato",
+        content: `✅ Pubblicato${webMessage}`,
       });
       return;
     }

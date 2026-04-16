@@ -593,233 +593,235 @@
 
 <body>
     <div class="container">
-        <div class="hero">
-            <div class="hero-grid">
-                <div class="logo-wrap">
-                    <img src="/assets/evergreen-logo.png" alt="EverGreen logo" onerror="this.style.display='none'">
-                </div>
+        <%- include("partials/nav", { currentSection, date }) %>
+            <div class="hero">
+                <div class="hero-grid">
+                    <div class="logo-wrap">
+                        <img src="/assets/evergreen-logo.png" alt="EverGreen logo" onerror="this.style.display='none'">
+                    </div>
 
-                <div>
-                    <div class="eyebrow">EverGreen Competitive Control Panel</div>
-                    <h1>Presenze roster — <%= date %>
-                    </h1>
-                    <p>
-                        Pannello rapido per il team competitivo EverGreen.
-                        Seleziona le fasce su più player e salva tutto con un solo click.
-                    </p>
-                </div>
+                    <div>
+                        <div class="eyebrow">EverGreen Competitive Control Panel</div>
+                        <h1>Presenze roster — <%= date %>
+                        </h1>
+                        <p>
+                            Pannello rapido per il team competitivo EverGreen.
+                            Seleziona le fasce su più player e salva tutto con un solo click.
+                        </p>
+                    </div>
 
-                <div class="hero-actions">
-                    <a class="button button-dark" href="/calendario">Calendario</a>
-                    <% if (webBaseUrl) { %>
-                        <a class="button button-dark" href="<%= webBaseUrl %>/presenze?date=<%= date %>"
-                            target="_blank">Apri URL pubblico</a>
-                        <% } %>
-                            <a class="button button-dark" href="/logout">Logout</a>
+                    <div class="hero-actions">
+                        <a class="button button-dark" href="/calendario">Calendario</a>
+                        <% if (webBaseUrl) { %>
+                            <a class="button button-dark" href="<%= webBaseUrl %>/presenze?date=<%= date %>"
+                                target="_blank">Apri URL pubblico</a>
+                            <% } %>
+                                <a class="button button-dark" href="/logout">Logout</a>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <% if (saved) { %>
-            <div class="flash success">✅ Modifiche salvate correttamente.</div>
-            <% } %>
+            <% if (saved) { %>
+                <div class="flash success">✅ Modifiche salvate correttamente.</div>
+                <% } %>
 
-                <% if (syncCount) { %>
-                    <div class="flash info">🔄 Roster sincronizzato. Membri trovati: <strong>
-                            <%= syncCount %>
-                        </strong></div>
-                    <% } %>
+                    <% if (syncCount) { %>
+                        <div class="flash info">🔄 Roster sincronizzato. Membri trovati: <strong>
+                                <%= syncCount %>
+                            </strong></div>
+                        <% } %>
 
-                        <div class="panel">
-                            <div class="toolbar">
-                                <div>
-                                    <form method="get" action="/presenze" class="toolbar-group">
-                                        <div class="field">
-                                            <label for="date">Giorno</label>
-                                            <input id="date" type="date" name="date" value="<%= date %>" />
-                                        </div>
-                                        <button type="submit">Apri giorno</button>
-                                    </form>
-
-                                    <div class="tiny" style="margin-top: 14px;">
-                                        <% if (attendanceChannel) { %>
-                                            Canale Discord configurato
-                                            <% } else { %>
-                                                Nessun canale Discord configurato per la pubblicazione.
-                                                <% } %>
-                                    </div>
-                                </div>
-
-                                <div class="toolbar-right">
-                                    <form method="post" action="/sync-roster">
-                                        <button class="button-dark" type="submit">Sincronizza roster</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="summary">
-                            <div class="summary-header">
-                                <div>
-                                    <div class="summary-title">Quadro generale giornata</div>
-                                    <div class="summary-subtitle">Visuale rapida del roster competitivo EverGreen</div>
-                                </div>
-                            </div>
-
-                            <div class="summary-grid">
-                                <div class="metric">
-                                    <div class="metric-label">Totale roster</div>
-                                    <strong>
-                                        <%= dayView.summary.totalMembers %>
-                                    </strong>
-                                </div>
-                                <div class="metric">
-                                    <div class="metric-label">Presenti almeno una fascia</div>
-                                    <strong>
-                                        <%= dayView.summary.anyPresenceCount %>
-                                    </strong>
-                                </div>
-                                <div class="metric">
-                                    <div class="metric-label">Full presence</div>
-                                    <strong>
-                                        <%= dayView.summary.fullPresenceCount %>
-                                    </strong>
-                                </div>
-                                <div class="metric">
-                                    <div class="metric-label">Assenti</div>
-                                    <strong>
-                                        <%= dayView.summary.absentCount %>
-                                    </strong>
-                                </div>
-                                <div class="metric">
-                                    <div class="metric-label">21-22</div>
-                                    <strong>
-                                        <%= dayView.summary.slot21Count %>
-                                    </strong>
-                                </div>
-                                <div class="metric">
-                                    <div class="metric-label">22-23</div>
-                                    <strong>
-                                        <%= dayView.summary.slot22Count %>
-                                    </strong>
-                                </div>
-                                <div class="metric">
-                                    <div class="metric-label">23-00</div>
-                                    <strong>
-                                        <%= dayView.summary.slot23Count %>
-                                    </strong>
-                                </div>
-                            </div>
-                        </div>
-
-                        <form id="bulk-save-form" method="post" action="/presenze/<%= date %>/save-all">
-                            <div class="table-card">
-                                <div class="table-head">
+                            <div class="panel">
+                                <div class="toolbar">
                                     <div>
-                                        <h2>Roster del giorno</h2>
-                                        <p>Gestisci tutte le disponibilità da una schermata unica.</p>
+                                        <form method="get" action="/presenze" class="toolbar-group">
+                                            <div class="field">
+                                                <label for="date">Giorno</label>
+                                                <input id="date" type="date" name="date" value="<%= date %>" />
+                                            </div>
+                                            <button type="submit">Apri giorno</button>
+                                        </form>
+
+                                        <div class="tiny" style="margin-top: 14px;">
+                                            <% if (attendanceChannel) { %>
+                                                Canale Discord configurato
+                                                <% } else { %>
+                                                    Nessun canale Discord configurato per la pubblicazione.
+                                                    <% } %>
+                                        </div>
                                     </div>
-                                    <div class="tiny">Player mostrati: <strong>
-                                            <%= dayView.entries.length %>
-                                        </strong></div>
+
+                                    <div class="toolbar-right">
+                                        <form method="post" action="/sync-roster">
+                                            <button class="button-dark" type="submit">Sincronizza roster</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="summary">
+                                <div class="summary-header">
+                                    <div>
+                                        <div class="summary-title">Quadro generale giornata</div>
+                                        <div class="summary-subtitle">Visuale rapida del roster competitivo EverGreen
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="table-wrap">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Membro</th>
-                                                <th>Ruoli</th>
-                                                <th>21-22</th>
-                                                <th>22-23</th>
-                                                <th>23-00</th>
-                                                <th>Nota</th>
-                                                <th>Stato attuale</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <% for (const entry of dayView.entries) { %>
-                                                <tr id="member-<%= entry.discord_user_id %>">
-                                                    <td>
-                                                        <div class="member-name">
-                                                            <%= entry.label %>
-                                                        </div>
-                                                        <div class="member-id">
-                                                            <%= entry.discord_user_id %>
-                                                        </div>
-                                                    </td>
+                                <div class="summary-grid">
+                                    <div class="metric">
+                                        <div class="metric-label">Totale roster</div>
+                                        <strong>
+                                            <%= dayView.summary.totalMembers %>
+                                        </strong>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">Presenti almeno una fascia</div>
+                                        <strong>
+                                            <%= dayView.summary.anyPresenceCount %>
+                                        </strong>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">Full presence</div>
+                                        <strong>
+                                            <%= dayView.summary.fullPresenceCount %>
+                                        </strong>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">Assenti</div>
+                                        <strong>
+                                            <%= dayView.summary.absentCount %>
+                                        </strong>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">21-22</div>
+                                        <strong>
+                                            <%= dayView.summary.slot21Count %>
+                                        </strong>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">22-23</div>
+                                        <strong>
+                                            <%= dayView.summary.slot22Count %>
+                                        </strong>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">23-00</div>
+                                        <strong>
+                                            <%= dayView.summary.slot23Count %>
+                                        </strong>
+                                    </div>
+                                </div>
+                            </div>
 
-                                                    <td>
-                                                        <% for (const role of entry.tracked_roles) { %>
-                                                            <span class="role-pill">
-                                                                <%= role.roleName %>
-                                                            </span>
-                                                            <% } %>
-                                                    </td>
+                            <form id="bulk-save-form" method="post" action="/presenze/<%= date %>/save-all">
+                                <div class="table-card">
+                                    <div class="table-head">
+                                        <div>
+                                            <h2>Roster del giorno</h2>
+                                            <p>Gestisci tutte le disponibilità da una schermata unica.</p>
+                                        </div>
+                                        <div class="tiny">Player mostrati: <strong>
+                                                <%= dayView.entries.length %>
+                                            </strong></div>
+                                    </div>
 
-                                                    <td>
-                                                        <label class="slot-pill">
-                                                            <input class="track-change" type="checkbox"
-                                                                name="members[<%= entry.discord_user_id %>][slot_21_22]"
-                                                                value="1" <%=Number(entry.slot_21_22)===1 ? "checked"
-                                                                : "" %> />
-                                                            <span>21-22</span>
-                                                        </label>
-                                                    </td>
-
-                                                    <td>
-                                                        <label class="slot-pill">
-                                                            <input class="track-change" type="checkbox"
-                                                                name="members[<%= entry.discord_user_id %>][slot_22_23]"
-                                                                value="1" <%=Number(entry.slot_22_23)===1 ? "checked"
-                                                                : "" %> />
-                                                            <span>22-23</span>
-                                                        </label>
-                                                    </td>
-
-                                                    <td>
-                                                        <label class="slot-pill">
-                                                            <input class="track-change" type="checkbox"
-                                                                name="members[<%= entry.discord_user_id %>][slot_23_00]"
-                                                                value="1" <%=Number(entry.slot_23_00)===1 ? "checked"
-                                                                : "" %> />
-                                                            <span>23-00</span>
-                                                        </label>
-                                                    </td>
-
-                                                    <td>
-                                                        <input class="track-change" type="text"
-                                                            name="members[<%= entry.discord_user_id %>][note]"
-                                                            value="<%= entry.notes || '' %>"
-                                                            placeholder="Nota facoltativa" />
-                                                    </td>
-
-                                                    <td>
-                                                        <% const statusClass=entry.status==="Presente"
-                                                            ? "status-presente" : entry.status==="Parziale"
-                                                            ? "status-parziale" : "status-assente" ; %>
-                                                            <span class="status-badge <%= statusClass %>">
-                                                                <%= entry.status %>
-                                                            </span>
-                                                    </td>
+                                    <div class="table-wrap">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Membro</th>
+                                                    <th>Ruoli</th>
+                                                    <th>21-22</th>
+                                                    <th>22-23</th>
+                                                    <th>23-00</th>
+                                                    <th>Nota</th>
+                                                    <th>Stato attuale</th>
                                                 </tr>
-                                                <% } %>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                                            </thead>
+                                            <tbody>
+                                                <% for (const entry of dayView.entries) { %>
+                                                    <tr id="member-<%= entry.discord_user_id %>">
+                                                        <td>
+                                                            <div class="member-name">
+                                                                <%= entry.label %>
+                                                            </div>
+                                                            <div class="member-id">
+                                                                <%= entry.discord_user_id %>
+                                                            </div>
+                                                        </td>
 
-                            <div class="savebar">
-                                <div class="savebar-text">
-                                    <strong id="dirty-text">Nessuna modifica non salvata</strong><br />
-                                    Se cambi più presenze, ti basta un solo click su <strong>Salva tutto</strong>.
+                                                        <td>
+                                                            <% for (const role of entry.tracked_roles) { %>
+                                                                <span class="role-pill">
+                                                                    <%= role.roleName %>
+                                                                </span>
+                                                                <% } %>
+                                                        </td>
+
+                                                        <td>
+                                                            <label class="slot-pill">
+                                                                <input class="track-change" type="checkbox"
+                                                                    name="members[<%= entry.discord_user_id %>][slot_21_22]"
+                                                                    value="1" <%=Number(entry.slot_21_22)===1
+                                                                    ? "checked" : "" %> />
+                                                                <span>21-22</span>
+                                                            </label>
+                                                        </td>
+
+                                                        <td>
+                                                            <label class="slot-pill">
+                                                                <input class="track-change" type="checkbox"
+                                                                    name="members[<%= entry.discord_user_id %>][slot_22_23]"
+                                                                    value="1" <%=Number(entry.slot_22_23)===1
+                                                                    ? "checked" : "" %> />
+                                                                <span>22-23</span>
+                                                            </label>
+                                                        </td>
+
+                                                        <td>
+                                                            <label class="slot-pill">
+                                                                <input class="track-change" type="checkbox"
+                                                                    name="members[<%= entry.discord_user_id %>][slot_23_00]"
+                                                                    value="1" <%=Number(entry.slot_23_00)===1
+                                                                    ? "checked" : "" %> />
+                                                                <span>23-00</span>
+                                                            </label>
+                                                        </td>
+
+                                                        <td>
+                                                            <input class="track-change" type="text"
+                                                                name="members[<%= entry.discord_user_id %>][note]"
+                                                                value="<%= entry.notes || '' %>"
+                                                                placeholder="Nota facoltativa" />
+                                                        </td>
+
+                                                        <td>
+                                                            <% const statusClass=entry.status==="Presente"
+                                                                ? "status-presente" : entry.status==="Parziale"
+                                                                ? "status-parziale" : "status-assente" ; %>
+                                                                <span class="status-badge <%= statusClass %>">
+                                                                    <%= entry.status %>
+                                                                </span>
+                                                        </td>
+                                                    </tr>
+                                                    <% } %>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
 
-                                <div class="save-actions">
-                                    <button type="submit" class="button-green">Salva tutto</button>
+                                <div class="savebar">
+                                    <div class="savebar-text">
+                                        <strong id="dirty-text">Nessuna modifica non salvata</strong><br />
+                                        Se cambi più presenze, ti basta un solo click su <strong>Salva tutto</strong>.
+                                    </div>
+
+                                    <div class="save-actions">
+                                        <button type="submit" class="button-green">Salva tutto</button>
+                                    </div>
                                 </div>
-                            </div>
-                        </form>
+                            </form>
     </div>
 
     <script>
