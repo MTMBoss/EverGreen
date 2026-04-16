@@ -33,10 +33,14 @@ function splitTitle(title) {
 }
 
 function parseItalianDate(dateLine) {
-    const clean = normalizeLine(dateLine)
+    const cleanOriginal = normalizeLine(dateLine)
         .replace(/[📅]/g, "")
+        .replace(/\./g, "")
         .trim();
 
+    if (!cleanOriginal) return null;
+
+    const clean = cleanOriginal.toLowerCase();
     const currentYear = dayjs().year();
 
     const formatsWithYear = [
@@ -66,7 +70,12 @@ function parseItalianDate(dateLine) {
     ];
 
     for (const fmt of formatsWithoutYear) {
-        const parsed = dayjs(`${clean} ${currentYear}`, `${fmt} YYYY`, "it", true);
+        const parsed = dayjs(
+            `${clean} ${currentYear}`,
+            `${fmt} YYYY`,
+            "it",
+            true
+        );
         if (parsed.isValid()) {
             return parsed.format("YYYY-MM-DD");
         }
@@ -74,7 +83,6 @@ function parseItalianDate(dateLine) {
 
     return null;
 }
-
 function parseTime(timeLine) {
     const clean = normalizeLine(timeLine).replace(/[🕒]/g, "").trim();
     const match = clean.match(/^(\d{1,2}):(\d{2})$/);
