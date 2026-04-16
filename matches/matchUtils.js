@@ -37,7 +37,9 @@ function parseItalianDate(dateLine) {
         .replace(/[📅]/g, "")
         .trim();
 
-    const formats = [
+    const currentYear = dayjs().year();
+
+    const formatsWithYear = [
         "dddd D MMMM YYYY",
         "ddd D MMMM YYYY",
         "D MMMM YYYY",
@@ -46,8 +48,23 @@ function parseItalianDate(dateLine) {
         "YYYY-MM-DD",
     ];
 
-    for (const fmt of formats) {
+    for (const fmt of formatsWithYear) {
         const parsed = dayjs(clean, fmt, "it", true);
+        if (parsed.isValid()) {
+            return parsed.format("YYYY-MM-DD");
+        }
+    }
+
+    const formatsWithoutYear = [
+        "dddd D MMMM",
+        "ddd D MMMM",
+        "D MMMM",
+        "DD/MM",
+        "D/M",
+    ];
+
+    for (const fmt of formatsWithoutYear) {
+        const parsed = dayjs(`${clean} ${currentYear}`, `${fmt} YYYY`, "it", true);
         if (parsed.isValid()) {
             return parsed.format("YYYY-MM-DD");
         }
@@ -55,7 +72,6 @@ function parseItalianDate(dateLine) {
 
     return null;
 }
-
 function parseTime(timeLine) {
     const clean = normalizeLine(timeLine).replace(/[🕒]/g, "").trim();
     const match = clean.match(/^(\d{1,2}):(\d{2})$/);
