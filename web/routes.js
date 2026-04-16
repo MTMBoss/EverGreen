@@ -18,6 +18,7 @@ const { readConfig } = require("../configStore");
 const {
   getMatchDetailBySlug,
   getMatchList,
+  removeMatchById,
 } = require("../matches/matchService");
 
 function createWebRouter(client) {
@@ -175,6 +176,22 @@ function createWebRouter(client) {
         },
         currentSection: "matches",
       });
+    })
+  );
+
+  router.post(
+    "/matches/:slug/delete",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const match = await getMatchDetailBySlug(req.params.slug);
+
+      if (!match) {
+        res.status(404).send("Match non trovato.");
+        return;
+      }
+
+      await removeMatchById(match.id);
+      res.redirect("/matches");
     })
   );
 

@@ -8,6 +8,7 @@ const {
   markMatchPublished,
   getMatchBySlug,
   listMatches,
+  deleteMatchById,
 } = require("./matchRepository");
 
 const {
@@ -121,10 +122,15 @@ async function getMatchList() {
   return listMatches();
 }
 
+async function removeMatchById(matchId) {
+  await deleteMatchById(matchId);
+}
+
 module.exports = {
   buildMatchWebUrl,
   createMatchDraftFromPart1,
   completeMatchFromPart2,
   getMatchDetailBySlug,
   getMatchList,
+  removeMatchById,
 };

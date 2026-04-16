@@ -477,6 +477,10 @@ async function listMatches() {
   return result.rows;
 }
 
+async function deleteMatchById(matchId) {
+  await pool.query(`DELETE FROM matches WHERE id = $1`, [matchId]);
+}
+
 module.exports = {
   createMatchTables,
   createDraftMatch,
@@ -488,4 +492,5 @@ module.exports = {
   markMatchPublished,
   getMatchBySlug,
   listMatches,
+  deleteMatchById,
 };

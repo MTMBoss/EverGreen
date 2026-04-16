@@ -268,6 +268,25 @@
                         <span class="badge review">Da rivedere manualmente</span>
                         <% } %>
                 </div>
+
+                <div style="margin-top:16px;">
+                    <form method="post" action="/matches/<%= match.slug %>/delete" onsubmit="return confirm('Vuoi davvero eliminare questa partita?');">
+                        <button
+                            type="submit"
+                            style="
+                                border:none;
+                                border-radius:12px;
+                                padding:10px 14px;
+                                cursor:pointer;
+                                font-weight:800;
+                                color:white;
+                                background:#a61e4d;
+                            "
+                        >
+                            Elimina partita
+                        </button>
+                    </form>
+                </div>
             </div>
 
             <% if (match.assets && match.assets.length> 0) { %>
