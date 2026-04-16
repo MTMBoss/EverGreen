@@ -15,6 +15,7 @@ const {
 } = require("./attendanceService");
 const { syncRosterFromGuild } = require("./rosterService");
 const { publishAttendanceForDate } = require("./attendancePublisher");
+const { publishAttendanceLeaderboard } = require("./attendanceLeaderboardPublisher");
 
 const ATTENDANCE_COMMANDS = new Set([
     "set-canale-presenze",
@@ -29,6 +30,7 @@ const ATTENDANCE_COMMANDS = new Set([
     "presenza-set-giornata",
     "presenze-recap",
     "link-presenze",
+    "leaderboard-presenze",
 ]);
 
 function isAttendanceCommand(name) {
@@ -197,6 +199,12 @@ async function handleAttendanceSlashCommand(interaction, client) {
 
         default:
             return false;
+        case "leaderboard-presenze": {
+            const tipo = interaction.options.getString("tipo", false) || "settimana";
+
+            await publishAttendanceLeaderboard(interaction, tipo);
+            return true;
+        }
     }
 }
 

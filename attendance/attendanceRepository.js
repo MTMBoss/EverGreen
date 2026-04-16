@@ -416,6 +416,116 @@ function safeParseRoles(value) {
   }
 }
 
+async function getAttendanceLeaderboardRows(startDate, endDate) {
+  await ensureDbReady();
+
+  const result = await pool.query(
+    `
+    SELECT
+      m.discord_user_id,
+      m.nickname,
+      m.display_name,
+      COUNT(DISTINCT ad.day_date) FILTER (
+        WHERE ae.slot_21_22 OR ae.slot_22_23 OR ae.slot_23_00
+      )::int AS days_present,
+      COUNT(DISTINCT ad.day_date) FILTER (
+        WHERE ae.slot_21_22 AND ae.slot_22_23 AND ae.slot_23_00
+      )::int AS full_days,
+      (
+        COALESCE(SUM(CASE WHEN ae.slot_21_22 THEN 1 ELSE 0 END), 0) +
+        COALESCE(SUM(CASE WHEN ae.slot_22_23 THEN 1 ELSE 0 END), 0) +
+        COALESCE(SUM(CASE WHEN ae.slot_23_00 THEN 1 ELSE 0 END), 0)
+      )::int AS slots_covered,
+      (COUNT(DISTINCT ad.day_date) * 3)::int AS total_slots
+    FROM attendance_entries ae
+    JOIN attendance_days ad ON ad.id = ae.day_id
+    JOIN members m ON m.id = ae.member_id
+    WHERE ad.day_date BETWEEN $1 AND $2
+      AND EXISTS (
+        SELECT 1
+        FROM member_roster_periods p
+        WHERE p.member_id = m.id
+          AND DATE(p.joined_at) <= ad.day_date
+          AND (p.left_at IS NULL OR DATE(p.left_at) > ad.day_date)
+      )
+    GROUP BY
+      m.discord_user_id,
+      m.nickname,
+      m.display_name
+    ORDER BY
+      slots_covered DESC,
+      full_days DESC,
+      days_present DESC,
+      LOWER(COALESCE(NULLIF(m.nickname, ''), m.display_name)) ASC
+    LIMIT 10
+    `,
+    [startDate, endDate]
+  );
+
+  return result.rows;
+}
+
+async function getAttendanceSummaryRange(startDate, endDate) {
+  await ensureDbReady();
+
+  const result = await pool.query(
+    `
+    WITH range_entries AS (
+      SELECT
+        ae.member_id,
+        ad.day_date,
+        ae.slot_21_22,
+        ae.slot_22_23,
+        ae.slot_23_00
+      FROM attendance_entries ae
+      JOIN attendance_days ad ON ad.id = ae.day_id
+      JOIN members m ON m.id = ae.member_id
+      WHERE ad.day_date BETWEEN $1 AND $2
+        AND EXISTS (
+          SELECT 1
+          FROM member_roster_periods p
+          WHERE p.member_id = m.id
+            AND DATE(p.joined_at) <= ad.day_date
+            AND (p.left_at IS NULL OR DATE(p.left_at) > ad.day_date)
+        )
+    )
+    SELECT
+      COUNT(DISTINCT member_id)::int AS total_members,
+      ROUND(AVG(
+        (CASE WHEN slot_21_22 THEN 1 ELSE 0 END) +
+        (CASE WHEN slot_22_23 THEN 1 ELSE 0 END) +
+        (CASE WHEN slot_23_00 THEN 1 ELSE 0 END)
+      )::numeric, 1) AS avg_slots_covered,
+      COALESCE(MAX(slot21_count), 0)::int AS slot_21_22_top,
+      COALESCE(MAX(slot22_count), 0)::int AS slot_22_23_top,
+      COALESCE(MAX(slot23_count), 0)::int AS slot_23_00_top
+    FROM (
+      SELECT
+        member_id,
+        day_date,
+        slot_21_22,
+        slot_22_23,
+        slot_23_00,
+        SUM(CASE WHEN slot_21_22 THEN 1 ELSE 0 END) OVER () AS slot21_count,
+        SUM(CASE WHEN slot_22_23 THEN 1 ELSE 0 END) OVER () AS slot22_count,
+        SUM(CASE WHEN slot_23_00 THEN 1 ELSE 0 END) OVER () AS slot23_count
+      FROM range_entries
+    ) t
+    `,
+    [startDate, endDate]
+  );
+
+  return (
+    result.rows[0] || {
+      total_members: 0,
+      avg_slots_covered: 0,
+      slot_21_22_top: 0,
+      slot_22_23_top: 0,
+      slot_23_00_top: 0,
+    }
+  );
+}
+
 module.exports = {
   syncTrackedMembers,
   getMemberByDiscordId,
@@ -426,4 +536,6 @@ module.exports = {
   getAttendanceForDate,
   getAttendanceSummaryForDate,
   getMonthSummary,
+  getAttendanceLeaderboardRows,
+  getAttendanceSummaryRange,
 };

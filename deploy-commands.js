@@ -24,6 +24,22 @@ const commands = [
   },
 
   new SlashCommandBuilder()
+    .setName("leaderboard-presenze")
+    .setDescription("Genera la leaderboard grafica delle presenze")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addStringOption(option =>
+      option
+        .setName("tipo")
+        .setDescription("Periodo della classifica")
+        .setRequired(false)
+        .addChoices(
+          { name: "Settimana", value: "settimana" },
+          { name: "Mese", value: "mese" }
+        )
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
     .setName("set-canale-parte1")
     .setDescription("Imposta il canale di destinazione per la parte 1")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
