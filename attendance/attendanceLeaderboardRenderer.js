@@ -175,7 +175,6 @@ async function renderAttendanceLeaderboardImage(data) {
         2
     );
 
-    drawRoundedBox(ctx, 36, 36, 16, HEIGHT - 72, 10, "#d9b11f");
 
     let logo = null;
     try {

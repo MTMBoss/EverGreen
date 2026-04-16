@@ -56,6 +56,7 @@ async function buildLeaderboardMessage(type = "settimana") {
         : null;
 
     const embed = new EmbedBuilder()
+        .setColor("#7c3aed")
         .setTitle("📊 Leaderboard Presenze")
         .setDescription(
             `Visualizzazione **${leaderboard.subtitle}**\nPeriodo: **${leaderboard.periodLabel}**`
