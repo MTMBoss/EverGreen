@@ -23,6 +23,10 @@ const {
 } = require("./configStore");
 
 const {
+  startAttendanceLeaderboardScheduler,
+} = require("./attendance/attendanceLeaderboardScheduler");
+
+const {
   extractMatchDate,
   getSeparatorActions,
   commitSeparatorState,
@@ -226,6 +230,7 @@ client.once(Events.ClientReady, async () => {
   startAttendanceReminderScheduler(client);
   startAttendanceRosterSyncScheduler(client);
   startAttendanceWebServer(client);
+  startAttendanceLeaderboardScheduler(client);
 
   for (const guild of client.guilds.cache.values()) {
     scheduleRosterSync(guild, "startup_initial_sync", 3000);

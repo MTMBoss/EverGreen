@@ -15,6 +15,8 @@ const {
     getDayView,
 } = require("./attendanceService");
 
+const { runAttendanceLeaderboardUpdate } = require("./attendanceLeaderboardScheduler");
+
 const { syncRosterFromGuild } = require("./rosterService");
 const { publishAttendanceForDate } = require("./attendancePublisher");
 const {
@@ -127,11 +129,14 @@ async function handleAttendanceSlashCommand(interaction, client) {
 
         case "presenze-sync": {
             const result = await syncRosterFromGuild(interaction.guild);
+            await runAttendanceLeaderboardUpdate(client, "roster_sync");
+
             await interaction.editReply({
                 content:
                     `✅ Roster presenze sincronizzato.\n` +
                     `Ruoli monitorati: ${result.trackedRoleIds.map(id => `<@&${id}>`).join(", ")}\n` +
-                    `Membri trovati: **${result.count}**`,
+                    `Membri trovati: **${result.count}**\n` +
+                    `Leaderboard aggiornata automaticamente.`,
             });
             return true;
         }
@@ -168,7 +173,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
                 value: disponibile,
                 updatedByDiscordUserId: interaction.user.id,
             });
-
+            await runAttendanceLeaderboardUpdate(client, "attendance_change");
             await interaction.editReply({
                 content:
                     `✅ Presenza aggiornata per <@${user.id}> il **${data}**.\n` +
@@ -195,7 +200,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
                 notes: note,
                 updatedByDiscordUserId: interaction.user.id,
             });
-
+            await runAttendanceLeaderboardUpdate(client, "attendance_change");
             await interaction.editReply({
                 content:
                     `✅ Giornata aggiornata per <@${user.id}> il **${data}**.\n` +
@@ -205,6 +210,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
             });
             return true;
         }
+
 
         case "presenze-recap": {
             const date = normalizeDateOption(interaction.options.getString("data"));
