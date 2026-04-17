@@ -13,16 +13,23 @@ const isLocalConnection =
 const pool = new Pool({
   connectionString,
   ssl: isLocalConnection ? false : { rejectUnauthorized: false },
-  max: Number(process.env.PG_POOL_MAX || 10),
-  idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 60000),
-  connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 20000),
+  max: Number(process.env.PG_POOL_MAX || 5),
+  idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 30000),
+  connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 10000),
   query_timeout: Number(process.env.PG_QUERY_TIMEOUT_MS || 30000),
   statement_timeout: Number(process.env.PG_STATEMENT_TIMEOUT_MS || 30000),
   keepAlive: true,
+  keepAliveInitialDelayMillis: Number(process.env.PG_KEEPALIVE_DELAY_MS || 10000),
+  maxLifetimeSeconds: Number(process.env.PG_MAX_LIFETIME_SECONDS || 300),
+  application_name: process.env.PG_APPLICATION_NAME || "evergreen-bot",
 });
 
 pool.on("error", error => {
   console.error("❌ Errore pool PostgreSQL:", error);
+});
+
+pool.on("connect", () => {
+  console.log("ℹ️ Connessione PostgreSQL aperta dal pool");
 });
 
 let initPromise = null;
