@@ -12,15 +12,10 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
   }
 
   const worker = await createWorker("eng");
-  const digitsWorker = await createWorker("eng");
   const maps = [];
   const debug = [];
 
   try {
-    await digitsWorker.setParameters({
-      tessedit_char_whitelist: "0123456789:-",
-    });
-
     for (let index = 0; index < attachments.length; index += 1) {
       const attachment = attachments[index];
       const expectedMap = expectedMaps[index] || null;
@@ -42,7 +37,7 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
         const boxScore = await extractScoreFromBoxes({
           buffer: sourceBuffer,
           boxes: box,
-          digitsWorker,
+          worker,
           expectedMode,
         });
 
@@ -70,8 +65,17 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
         const zoneVariants = await buildZoneVariants(sourceBuffer, zone);
 
         for (const variant of zoneVariants) {
-          const ocrWorker = zone.parser === "digits" ? digitsWorker : worker;
-          const result = await ocrWorker.recognize(variant.buffer);
+          if (zone.parser === "digits") {
+            await worker.setParameters({
+              tessedit_char_whitelist: "0123456789:-",
+            });
+          } else {
+            await worker.setParameters({
+              tessedit_char_whitelist: "",
+            });
+          }
+
+          const result = await worker.recognize(variant.buffer);
           const text = normalizeOcrText(result.data?.text || "");
           const confidence = Number(result.data?.confidence || 0);
 
@@ -128,7 +132,6 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
     }
   } finally {
     await worker.terminate();
-    await digitsWorker.terminate();
   }
 
   return {
@@ -369,9 +372,13 @@ function normalizeOcrText(text) {
     .trim();
 }
 
-async function extractScoreFromBoxes({ buffer, boxes, digitsWorker, expectedMode }) {
-  const left = await recognizeBestDigitBox(buffer, boxes.leftBox, digitsWorker);
-  const right = await recognizeBestDigitBox(buffer, boxes.rightBox, digitsWorker);
+async function extractScoreFromBoxes({ buffer, boxes, worker, expectedMode }) {
+  await worker.setParameters({
+    tessedit_char_whitelist: "0123456789:-",
+  });
+
+  const left = await recognizeBestDigitBox(buffer, boxes.leftBox, worker);
+  const right = await recognizeBestDigitBox(buffer, boxes.rightBox, worker);
   const score = buildScoreFromRecognizedDigits(left.value, right.value, expectedMode);
 
   return {
@@ -382,7 +389,7 @@ async function extractScoreFromBoxes({ buffer, boxes, digitsWorker, expectedMode
   };
 }
 
-async function recognizeBestDigitBox(buffer, box, digitsWorker) {
+async function recognizeBestDigitBox(buffer, box, worker) {
   const variants = await buildDigitBoxVariants(buffer, box);
   let best = {
     text: "",
@@ -391,7 +398,7 @@ async function recognizeBestDigitBox(buffer, box, digitsWorker) {
   };
 
   for (const variant of variants) {
-    const result = await digitsWorker.recognize(variant.buffer);
+    const result = await worker.recognize(variant.buffer);
     const text = normalizeDigitText(result.data?.text || "");
     const confidence = Number(result.data?.confidence || 0);
     const parsed = parseDigitCandidate(text);
