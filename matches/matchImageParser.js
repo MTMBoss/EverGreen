@@ -12,10 +12,15 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
   }
 
   const worker = await createWorker("eng");
+  const digitsWorker = await createWorker("eng");
   const maps = [];
   const debug = [];
 
   try {
+    await digitsWorker.setParameters({
+      tessedit_char_whitelist: "0123456789:-",
+    });
+
     for (let index = 0; index < attachments.length; index += 1) {
       const attachment = attachments[index];
       const expectedMap = expectedMaps[index] || null;
@@ -36,11 +41,18 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
         const zoneVariants = await buildZoneVariants(sourceBuffer, zone);
 
         for (const variant of zoneVariants) {
-          const result = await worker.recognize(variant.buffer);
+          const ocrWorker = zone.parser === "digits" ? digitsWorker : worker;
+          const result = await ocrWorker.recognize(variant.buffer);
           const text = normalizeOcrText(result.data?.text || "");
           const confidence = Number(result.data?.confidence || 0);
 
-          let score = extractScoreNearOutcome(text, expectedMode);
+          let score = null;
+
+          if (zone.parser === "digits") {
+            score = extractScoreFromScoreboxText(text, expectedMode);
+          } else {
+            score = extractScoreNearOutcome(text, expectedMode);
+          }
 
           if (!score) {
             score = extractBestScoreFromText(text, expectedMode);
@@ -87,6 +99,7 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
     }
   } finally {
     await worker.terminate();
+    await digitsWorker.terminate();
   }
 
   return {
@@ -114,7 +127,26 @@ function buildScoreZones(width, height) {
 
   return [
     {
+      name: "score_digits_tight",
+      parser: "digits",
+      left: Math.floor(width * 0.145),
+      top: Math.floor(height * 0.075),
+      width: Math.floor(width * 0.16),
+      height: Math.floor(height * 0.09),
+      baseWeight: 130,
+    },
+    {
+      name: "score_digits_medium",
+      parser: "digits",
+      left: Math.floor(width * 0.11),
+      top: Math.floor(height * 0.055),
+      width: Math.floor(width * 0.24),
+      height: Math.floor(height * 0.11),
+      baseWeight: 110,
+    },
+    {
       name: "header_left_tight",
+      parser: "outcome",
       left: Math.floor(width * 0.00),
       top: Math.floor(height * 0.00),
       width: Math.floor(width * 0.38),
@@ -123,6 +155,7 @@ function buildScoreZones(width, height) {
     },
     {
       name: "header_left_medium",
+      parser: "outcome",
       left: Math.floor(width * 0.00),
       top: Math.floor(height * 0.00),
       width: Math.floor(width * 0.45),
@@ -131,6 +164,7 @@ function buildScoreZones(width, height) {
     },
     {
       name: "header_top_full",
+      parser: "outcome",
       left: 0,
       top: 0,
       width,
@@ -149,7 +183,10 @@ async function buildZoneVariants(buffer, zone) {
       width: Math.max(1, zone.width),
       height: Math.max(1, zone.height),
     })
-    .resize({ width: 1700, withoutEnlargement: false });
+    .resize({
+      width: zone.parser === "digits" ? 2200 : 1700,
+      withoutEnlargement: false,
+    });
 
   const grayscale = await cropped
     .clone()
@@ -240,6 +277,71 @@ function extractScoreNearOutcome(text, expectedMode) {
   }
 
   return null;
+}
+
+function extractScoreFromScoreboxText(text, expectedMode) {
+  const compact = String(text || "")
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/O/g, "0")
+    .replace(/[^0-9:\-]/g, "");
+
+  const directMatch = compact.match(/(\d{1,3})[:\-](\d{1,3})/);
+  if (directMatch) {
+    const left = Number(directMatch[1]);
+    const right = Number(directMatch[2]);
+
+    if (isPlausibleScore(left, right, expectedMode)) {
+      return {
+        team1Score: left,
+        team2Score: right,
+        weight: 150 + modeBonus(left, right, expectedMode),
+      };
+    }
+  }
+
+  const digitsOnly = compact.replace(/[^0-9]/g, "");
+  const candidates = [];
+
+  for (const [left, right] of buildDigitSplitCandidates(digitsOnly, expectedMode)) {
+    if (!isPlausibleScore(left, right, expectedMode)) continue;
+
+    candidates.push({
+      team1Score: left,
+      team2Score: right,
+      weight: 130 + modeBonus(left, right, expectedMode) - Math.max(0, digitsOnly.length - 2) * 2,
+    });
+  }
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => b.weight - a.weight);
+  return candidates[0];
+}
+
+function buildDigitSplitCandidates(digitsOnly, expectedMode) {
+  const candidates = [];
+
+  if (!digitsOnly) return candidates;
+
+  for (let splitIndex = 1; splitIndex < digitsOnly.length; splitIndex += 1) {
+    const leftRaw = digitsOnly.slice(0, splitIndex);
+    const rightRaw = digitsOnly.slice(splitIndex);
+    const left = Number(leftRaw);
+    const right = Number(rightRaw);
+
+    if (!Number.isFinite(left) || !Number.isFinite(right)) continue;
+
+    if (expectedMode === "hp") {
+      if (leftRaw.length < 2 || rightRaw.length < 2) continue;
+    } else {
+      if (leftRaw.length > 1 || rightRaw.length > 1) continue;
+    }
+
+    candidates.push([left, right]);
+  }
+
+  return candidates;
 }
 
 function extractBestScoreFromText(text, expectedMode) {
