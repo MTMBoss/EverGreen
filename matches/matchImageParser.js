@@ -32,10 +32,39 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
       const height = metadata.height || 0;
 
       const scoreZones = buildScoreZones(width, height);
+      const scoreBoxes = buildScoreBoxes(width, height);
 
       let bestScore = null;
       let bestWeight = -1;
       let bestSource = "none";
+
+      for (const box of scoreBoxes) {
+        const boxScore = await extractScoreFromBoxes({
+          buffer: sourceBuffer,
+          boxes: box,
+          digitsWorker,
+          expectedMode,
+        });
+
+        debug.push({
+          image: index + 1,
+          expectedMode,
+          boxSet: box.name,
+          leftPreview: boxScore.leftText,
+          rightPreview: boxScore.rightText,
+          combinedPreview: boxScore.combinedText,
+          score: boxScore.score,
+        });
+
+        if (boxScore.score) {
+          const weight = box.baseWeight + boxScore.score.weight;
+          if (weight > bestWeight) {
+            bestWeight = weight;
+            bestScore = boxScore.score;
+            bestSource = `boxes:${box.name}`;
+          }
+        }
+      }
 
       for (const zone of scoreZones) {
         const zoneVariants = await buildZoneVariants(sourceBuffer, zone);
@@ -129,20 +158,20 @@ function buildScoreZones(width, height) {
     {
       name: "score_digits_tight",
       parser: "digits",
-      left: Math.floor(width * 0.145),
-      top: Math.floor(height * 0.075),
-      width: Math.floor(width * 0.16),
-      height: Math.floor(height * 0.09),
-      baseWeight: 130,
+      left: Math.floor(width * 0.11),
+      top: Math.floor(height * 0.045),
+      width: Math.floor(width * 0.23),
+      height: Math.floor(height * 0.12),
+      baseWeight: 90,
     },
     {
       name: "score_digits_medium",
       parser: "digits",
-      left: Math.floor(width * 0.11),
-      top: Math.floor(height * 0.055),
-      width: Math.floor(width * 0.24),
-      height: Math.floor(height * 0.11),
-      baseWeight: 110,
+      left: Math.floor(width * 0.08),
+      top: Math.floor(height * 0.035),
+      width: Math.floor(width * 0.29),
+      height: Math.floor(height * 0.14),
+      baseWeight: 75,
     },
     {
       name: "header_left_tight",
@@ -170,6 +199,45 @@ function buildScoreZones(width, height) {
       width,
       height: Math.floor(height * 0.20),
       baseWeight: 35,
+    },
+  ];
+}
+
+function buildScoreBoxes(width, height) {
+  if (!width || !height) return [];
+
+  return [
+    {
+      name: "score_pair_tight",
+      baseWeight: 190,
+      leftBox: {
+        left: Math.floor(width * 0.145),
+        top: Math.floor(height * 0.072),
+        width: Math.floor(width * 0.062),
+        height: Math.floor(height * 0.075),
+      },
+      rightBox: {
+        left: Math.floor(width * 0.215),
+        top: Math.floor(height * 0.072),
+        width: Math.floor(width * 0.075),
+        height: Math.floor(height * 0.075),
+      },
+    },
+    {
+      name: "score_pair_medium",
+      baseWeight: 165,
+      leftBox: {
+        left: Math.floor(width * 0.13),
+        top: Math.floor(height * 0.06),
+        width: Math.floor(width * 0.075),
+        height: Math.floor(height * 0.085),
+      },
+      rightBox: {
+        left: Math.floor(width * 0.21),
+        top: Math.floor(height * 0.06),
+        width: Math.floor(width * 0.09),
+        height: Math.floor(height * 0.085),
+      },
     },
   ];
 }
@@ -234,6 +302,63 @@ async function buildZoneVariants(buffer, zone) {
   ];
 }
 
+async function buildDigitBoxVariants(buffer, box) {
+  const cropped = sharp(buffer)
+    .rotate()
+    .extract({
+      left: Math.max(0, box.left),
+      top: Math.max(0, box.top),
+      width: Math.max(1, box.width),
+      height: Math.max(1, box.height),
+    })
+    .resize({ width: 900, withoutEnlargement: false });
+
+  const grayscale = await cropped
+    .clone()
+    .grayscale()
+    .normalize()
+    .sharpen()
+    .png()
+    .toBuffer();
+
+  const thresholdA = await cropped
+    .clone()
+    .grayscale()
+    .normalize()
+    .linear(1.22, -10)
+    .threshold(170)
+    .sharpen()
+    .png()
+    .toBuffer();
+
+  const thresholdB = await cropped
+    .clone()
+    .grayscale()
+    .normalize()
+    .linear(1.35, -20)
+    .threshold(195)
+    .sharpen()
+    .png()
+    .toBuffer();
+
+  const inverted = await cropped
+    .clone()
+    .grayscale()
+    .normalize()
+    .negate()
+    .threshold(170)
+    .sharpen()
+    .png()
+    .toBuffer();
+
+  return [
+    { name: "grayscale", buffer: grayscale },
+    { name: "thresholdA", buffer: thresholdA },
+    { name: "thresholdB", buffer: thresholdB },
+    { name: "inverted", buffer: inverted },
+  ];
+}
+
 function normalizeOcrText(text) {
   return String(text || "")
     .replace(/\r/g, "")
@@ -242,6 +367,126 @@ function normalizeOcrText(text) {
     .replace(/[Ss](?=\d)|(?<=\d)[Ss]/g, "5")
     .replace(/[^\S\r\n]+/g, " ")
     .trim();
+}
+
+async function extractScoreFromBoxes({ buffer, boxes, digitsWorker, expectedMode }) {
+  const left = await recognizeBestDigitBox(buffer, boxes.leftBox, digitsWorker);
+  const right = await recognizeBestDigitBox(buffer, boxes.rightBox, digitsWorker);
+  const score = buildScoreFromRecognizedDigits(left.value, right.value, expectedMode);
+
+  return {
+    leftText: left.text,
+    rightText: right.text,
+    combinedText: `${left.text}:${right.text}`,
+    score,
+  };
+}
+
+async function recognizeBestDigitBox(buffer, box, digitsWorker) {
+  const variants = await buildDigitBoxVariants(buffer, box);
+  let best = {
+    text: "",
+    value: null,
+    weight: -1,
+  };
+
+  for (const variant of variants) {
+    const result = await digitsWorker.recognize(variant.buffer);
+    const text = normalizeDigitText(result.data?.text || "");
+    const confidence = Number(result.data?.confidence || 0);
+    const parsed = parseDigitCandidate(text);
+    const weight = confidence + parsed.weight;
+
+    if (weight > best.weight) {
+      best = {
+        text,
+        value: parsed.value,
+        weight,
+      };
+    }
+  }
+
+  return best;
+}
+
+function normalizeDigitText(text) {
+  return String(text || "")
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/[Oo]/g, "0")
+    .replace(/[IiLl]/g, "1")
+    .replace(/[^0-9]/g, "");
+}
+
+function parseDigitCandidate(text) {
+  const digits = String(text || "").replace(/[^0-9]/g, "");
+  if (!digits) {
+    return { value: null, weight: -20 };
+  }
+
+  const normalized = digits.length > 3 ? digits.slice(0, 3) : digits;
+  const value = Number(normalized);
+
+  if (!Number.isFinite(value)) {
+    return { value: null, weight: -20 };
+  }
+
+  let weight = 0;
+  if (normalized.length >= 2) weight += 12;
+  if (normalized.length === 3) weight += 18;
+
+  return { value, weight };
+}
+
+function buildScoreFromRecognizedDigits(leftValue, rightValue, expectedMode) {
+  if (!Number.isFinite(leftValue) || !Number.isFinite(rightValue)) {
+    return null;
+  }
+
+  const direct = scoreCandidate(leftValue, rightValue, expectedMode, 175);
+  if (direct) return direct;
+
+  if (expectedMode === "hp") {
+    const leftReduced = reduceHpDigitNoise(leftValue);
+    const rightReduced = reduceHpDigitNoise(rightValue);
+
+    const reduced = scoreCandidate(leftReduced, rightReduced, expectedMode, 155);
+    if (reduced) return reduced;
+  }
+
+  return null;
+}
+
+function reduceHpDigitNoise(value) {
+  if (!Number.isFinite(value)) return null;
+  if (value <= 250) return value;
+
+  const digits = String(value).replace(/[^0-9]/g, "");
+  const candidates = [];
+
+  if (digits.length >= 2) {
+    candidates.push(Number(digits.slice(0, 2)));
+    candidates.push(Number(digits.slice(-2)));
+  }
+
+  if (digits.length >= 3) {
+    candidates.push(Number(digits.slice(0, 3)));
+    candidates.push(Number(digits.slice(-3)));
+  }
+
+  const plausible = candidates.find(candidate => Number.isFinite(candidate) && candidate <= 250);
+  return plausible ?? value;
+}
+
+function scoreCandidate(left, right, expectedMode, baseWeight) {
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
+  if (!isPlausibleScore(left, right, expectedMode)) return null;
+
+  return {
+    team1Score: left,
+    team2Score: right,
+    weight: baseWeight + modeBonus(left, right, expectedMode),
+  };
 }
 
 function extractScoreNearOutcome(text, expectedMode) {
