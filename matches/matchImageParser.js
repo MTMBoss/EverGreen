@@ -158,20 +158,20 @@ function buildScoreZones(width, height) {
     {
       name: "score_digits_tight",
       parser: "digits",
-      left: Math.floor(width * 0.11),
-      top: Math.floor(height * 0.045),
-      width: Math.floor(width * 0.23),
-      height: Math.floor(height * 0.12),
-      baseWeight: 90,
+      left: Math.floor(width * 0.145),
+      top: Math.floor(height * 0.075),
+      width: Math.floor(width * 0.16),
+      height: Math.floor(height * 0.09),
+      baseWeight: 100,
     },
     {
       name: "score_digits_medium",
       parser: "digits",
-      left: Math.floor(width * 0.08),
-      top: Math.floor(height * 0.035),
-      width: Math.floor(width * 0.29),
-      height: Math.floor(height * 0.14),
-      baseWeight: 75,
+      left: Math.floor(width * 0.11),
+      top: Math.floor(height * 0.055),
+      width: Math.floor(width * 0.24),
+      height: Math.floor(height * 0.11),
+      baseWeight: 90,
     },
     {
       name: "header_left_tight",
@@ -180,7 +180,7 @@ function buildScoreZones(width, height) {
       top: Math.floor(height * 0.00),
       width: Math.floor(width * 0.38),
       height: Math.floor(height * 0.14),
-      baseWeight: 80,
+      baseWeight: 125,
     },
     {
       name: "header_left_medium",
@@ -189,7 +189,7 @@ function buildScoreZones(width, height) {
       top: Math.floor(height * 0.00),
       width: Math.floor(width * 0.45),
       height: Math.floor(height * 0.18),
-      baseWeight: 60,
+      baseWeight: 100,
     },
     {
       name: "header_top_full",
@@ -198,7 +198,7 @@ function buildScoreZones(width, height) {
       top: 0,
       width,
       height: Math.floor(height * 0.20),
-      baseWeight: 35,
+      baseWeight: 70,
     },
   ];
 }
@@ -209,34 +209,34 @@ function buildScoreBoxes(width, height) {
   return [
     {
       name: "score_pair_tight",
-      baseWeight: 190,
+      baseWeight: 100,
       leftBox: {
-        left: Math.floor(width * 0.145),
-        top: Math.floor(height * 0.072),
-        width: Math.floor(width * 0.062),
-        height: Math.floor(height * 0.075),
+        left: Math.floor(width * 0.135),
+        top: Math.floor(height * 0.066),
+        width: Math.floor(width * 0.078),
+        height: Math.floor(height * 0.085),
       },
       rightBox: {
-        left: Math.floor(width * 0.215),
-        top: Math.floor(height * 0.072),
-        width: Math.floor(width * 0.075),
-        height: Math.floor(height * 0.075),
+        left: Math.floor(width * 0.205),
+        top: Math.floor(height * 0.066),
+        width: Math.floor(width * 0.095),
+        height: Math.floor(height * 0.085),
       },
     },
     {
       name: "score_pair_medium",
-      baseWeight: 165,
+      baseWeight: 90,
       leftBox: {
-        left: Math.floor(width * 0.13),
-        top: Math.floor(height * 0.06),
-        width: Math.floor(width * 0.075),
-        height: Math.floor(height * 0.085),
+        left: Math.floor(width * 0.12),
+        top: Math.floor(height * 0.055),
+        width: Math.floor(width * 0.09),
+        height: Math.floor(height * 0.095),
       },
       rightBox: {
-        left: Math.floor(width * 0.21),
-        top: Math.floor(height * 0.06),
-        width: Math.floor(width * 0.09),
-        height: Math.floor(height * 0.085),
+        left: Math.floor(width * 0.20),
+        top: Math.floor(height * 0.055),
+        width: Math.floor(width * 0.11),
+        height: Math.floor(height * 0.095),
       },
     },
   ];
@@ -311,7 +311,7 @@ async function buildDigitBoxVariants(buffer, box) {
       width: Math.max(1, box.width),
       height: Math.max(1, box.height),
     })
-    .resize({ width: 900, withoutEnlargement: false });
+    .resize({ width: 1200, withoutEnlargement: false });
 
   const grayscale = await cropped
     .clone()
@@ -325,8 +325,8 @@ async function buildDigitBoxVariants(buffer, box) {
     .clone()
     .grayscale()
     .normalize()
-    .linear(1.22, -10)
-    .threshold(170)
+    .linear(1.18, -8)
+    .threshold(180)
     .sharpen()
     .png()
     .toBuffer();
@@ -335,8 +335,8 @@ async function buildDigitBoxVariants(buffer, box) {
     .clone()
     .grayscale()
     .normalize()
-    .linear(1.35, -20)
-    .threshold(195)
+    .linear(1.30, -18)
+    .threshold(200)
     .sharpen()
     .png()
     .toBuffer();
@@ -346,7 +346,7 @@ async function buildDigitBoxVariants(buffer, box) {
     .grayscale()
     .normalize()
     .negate()
-    .threshold(170)
+    .threshold(175)
     .sharpen()
     .png()
     .toBuffer();
@@ -443,14 +443,14 @@ function buildScoreFromRecognizedDigits(leftValue, rightValue, expectedMode) {
     return null;
   }
 
-  const direct = scoreCandidate(leftValue, rightValue, expectedMode, 175);
+  const direct = scoreCandidate(leftValue, rightValue, expectedMode, 120);
   if (direct) return direct;
 
   if (expectedMode === "hp") {
     const leftReduced = reduceHpDigitNoise(leftValue);
     const rightReduced = reduceHpDigitNoise(rightValue);
 
-    const reduced = scoreCandidate(leftReduced, rightReduced, expectedMode, 155);
+    const reduced = scoreCandidate(leftReduced, rightReduced, expectedMode, 105);
     if (reduced) return reduced;
   }
 
