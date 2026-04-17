@@ -117,6 +117,62 @@
             margin: 0 0 14px;
         }
 
+        .editor {
+            margin-top: 18px;
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px solid rgba(187, 121, 255, .22);
+            background: rgba(0, 0, 0, .18);
+        }
+
+        .editor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .editor label {
+            display: block;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+
+        .editor input {
+            width: 100%;
+            border: 1px solid rgba(187, 121, 255, .22);
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: #130021;
+            color: var(--text);
+        }
+
+        .editor-actions {
+            margin-top: 14px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn-primary {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 800;
+            color: #0a0a0a;
+            background: var(--green);
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
         .assets {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -267,6 +323,72 @@
                     <% if (match.needs_review) { %>
                         <span class="badge review">Da rivedere manualmente</span>
                         <% } %>
+                </div>
+
+                <div class="editor">
+                    <h2>Modifica manuale</h2>
+
+                    <% if (saved) { %>
+                        <div class="hint" style="margin-bottom:12px; color:var(--green);">Modifiche salvate.</div>
+                    <% } %>
+
+                    <form method="post" action="/matches/<%= match.slug %>/save">
+                        <div class="editor-grid">
+                            <div>
+                                <label for="team1_series_score">Serie <%= match.team1 %></label>
+                                <input id="team1_series_score" type="number" name="team1_series_score" value="<%= match.team1_series_score ?? '' %>" />
+                            </div>
+                            <div>
+                                <label for="team2_series_score">Serie <%= match.team2 %></label>
+                                <input id="team2_series_score" type="number" name="team2_series_score" value="<%= match.team2_series_score ?? '' %>" />
+                            </div>
+                            <div>
+                                <label for="result_label">Risultato</label>
+                                <input id="result_label" type="text" name="result_label" value="<%= match.result_label || '' %>" />
+                            </div>
+                            <div>
+                                <label for="winner_team">Winner Team</label>
+                                <input id="winner_team" type="text" name="winner_team" value="<%= match.winner_team || '' %>" />
+                            </div>
+                        </div>
+
+                        <% (match.mapsWithPlayers || []).forEach(item => { %>
+                            <div class="editor" style="margin-top:14px;">
+                                <div class="matchtitle">Mappa <%= String(item.order_index).padStart(2, "0") %></div>
+                                <div class="editor-grid" style="margin-top:10px;">
+                                    <div>
+                                        <label>Nome mappa</label>
+                                        <input type="text" name="maps[<%= item.order_index %>][map_name]" value="<%= item.map_name || '' %>" />
+                                    </div>
+                                    <div>
+                                        <label>Modalità</label>
+                                        <input type="text" name="maps[<%= item.order_index %>][mode]" value="<%= item.mode || '' %>" />
+                                    </div>
+                                    <div>
+                                        <label>Lato</label>
+                                        <input type="text" name="maps[<%= item.order_index %>][side_name]" value="<%= item.side_name || '' %>" />
+                                    </div>
+                                    <div>
+                                        <label><%= match.team1 %> score</label>
+                                        <input type="number" name="maps[<%= item.order_index %>][team1_score]" value="<%= item.team1_score ?? '' %>" />
+                                    </div>
+                                    <div>
+                                        <label><%= match.team2 %> score</label>
+                                        <input type="number" name="maps[<%= item.order_index %>][team2_score]" value="<%= item.team2_score ?? '' %>" />
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+
+                        <div class="editor-actions">
+                            <label style="display:flex; gap:8px; align-items:center; margin:0; color:var(--text); text-transform:none; letter-spacing:0;">
+                                <input type="checkbox" name="needs_review" value="1" <%= match.needs_review ? 'checked' : '' %> style="width:auto;" />
+                                Lascia il match come "da rivedere"
+                            </label>
+                            <button type="submit" class="btn-primary">Salva modifiche</button>
+                            <span class="hint">Puoi correggere serie, risultato, nomi mappa, modalità, lato e score.</span>
+                        </div>
+                    </form>
                 </div>
 
                 <div style="margin-top:16px;">

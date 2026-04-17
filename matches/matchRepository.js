@@ -477,6 +477,57 @@ async function listMatches() {
   return result.rows;
 }
 
+async function updateMatchSummary(matchId, payload) {
+  await pool.query(
+    `
+    UPDATE matches
+    SET
+      result_label = $2,
+      winner_team = $3,
+      team1_series_score = $4,
+      team2_series_score = $5,
+      needs_review = $6,
+      updated_at = NOW()
+    WHERE id = $1
+    `,
+    [
+      matchId,
+      payload.resultLabel || "",
+      payload.winnerTeam || "",
+      payload.team1SeriesScore,
+      payload.team2SeriesScore,
+      Boolean(payload.needsReview),
+    ]
+  );
+}
+
+async function updateMatchMaps(matchId, maps) {
+  for (const map of maps || []) {
+    await pool.query(
+      `
+      UPDATE match_maps
+      SET
+        team1_score = $3,
+        team2_score = $4,
+        mode = $5,
+        map_name = $6,
+        side_name = $7
+      WHERE match_id = $1
+        AND order_index = $2
+      `,
+      [
+        matchId,
+        map.orderIndex,
+        map.team1Score,
+        map.team2Score,
+        map.mode || "",
+        map.mapName || "",
+        map.sideName || "",
+      ]
+    );
+  }
+}
+
 async function deleteMatchById(matchId) {
   await pool.query(`DELETE FROM matches WHERE id = $1`, [matchId]);
 }
@@ -492,5 +543,7 @@ module.exports = {
   markMatchPublished,
   getMatchBySlug,
   listMatches,
+  updateMatchSummary,
+  updateMatchMaps,
   deleteMatchById,
 };

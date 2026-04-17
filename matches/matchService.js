@@ -8,6 +8,8 @@ const {
   markMatchPublished,
   getMatchBySlug,
   listMatches,
+  updateMatchSummary,
+  updateMatchMaps,
   deleteMatchById,
 } = require("./matchRepository");
 
@@ -122,6 +124,18 @@ async function getMatchList() {
   return listMatches();
 }
 
+async function updateMatchManualData(matchId, payload) {
+  await updateMatchSummary(matchId, {
+    resultLabel: payload.resultLabel,
+    winnerTeam: payload.winnerTeam,
+    team1SeriesScore: payload.team1SeriesScore,
+    team2SeriesScore: payload.team2SeriesScore,
+    needsReview: payload.needsReview,
+  });
+
+  await updateMatchMaps(matchId, payload.maps || []);
+}
+
 async function removeMatchById(matchId) {
   await deleteMatchById(matchId);
 }
@@ -132,5 +146,6 @@ module.exports = {
   completeMatchFromPart2,
   getMatchDetailBySlug,
   getMatchList,
+  updateMatchManualData,
   removeMatchById,
 };

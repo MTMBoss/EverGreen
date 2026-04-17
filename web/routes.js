@@ -18,6 +18,7 @@ const { readConfig } = require("../configStore");
 const {
   getMatchDetailBySlug,
   getMatchList,
+  updateMatchManualData,
   removeMatchById,
 } = require("../matches/matchService");
 
@@ -170,12 +171,37 @@ function createWebRouter(client) {
 
       res.render("match-detail", {
         pageTitle: `${match.team1} vs ${match.team2}`,
+        saved: req.query.saved === "1",
         match: {
           ...match,
           mapsWithPlayers,
         },
         currentSection: "matches",
       });
+    })
+  );
+
+  router.post(
+    "/matches/:slug/save",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const match = await getMatchDetailBySlug(req.params.slug);
+
+      if (!match) {
+        res.status(404).send("Match non trovato.");
+        return;
+      }
+
+      await updateMatchManualData(match.id, {
+        resultLabel: String(req.body.result_label || "").trim(),
+        winnerTeam: String(req.body.winner_team || "").trim(),
+        team1SeriesScore: parseNullableInteger(req.body.team1_series_score),
+        team2SeriesScore: parseNullableInteger(req.body.team2_series_score),
+        needsReview: Boolean(req.body.needs_review),
+        maps: normalizeMapFormPayload(req.body.maps),
+      });
+
+      res.redirect(`/matches/${match.slug}?saved=1`);
     })
   );
 
@@ -268,6 +294,29 @@ function asyncHandler(handler) {
   return (req, res, next) => {
     Promise.resolve(handler(req, res, next)).catch(next);
   };
+}
+
+function parseNullableInteger(value) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) return null;
+
+  const parsed = Number(normalized);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function normalizeMapFormPayload(mapsPayload) {
+  if (!mapsPayload || typeof mapsPayload !== "object") return [];
+
+  return Object.entries(mapsPayload)
+    .map(([orderIndex, row]) => ({
+      orderIndex: Number(orderIndex),
+      team1Score: parseNullableInteger(row?.team1_score),
+      team2Score: parseNullableInteger(row?.team2_score),
+      mode: String(row?.mode || "").trim(),
+      mapName: String(row?.map_name || "").trim(),
+      sideName: String(row?.side_name || "").trim(),
+    }))
+    .filter(map => Number.isInteger(map.orderIndex) && map.orderIndex > 0);
 }
 
 module.exports = {
