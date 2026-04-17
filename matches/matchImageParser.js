@@ -297,17 +297,19 @@ function isPlausibleScore(a, b, expectedMode) {
 
   if (expectedMode === "hp") {
     if (a > 250 || b > 250) return false;
-    return true;
+    return a === 250 || b === 250;
   }
 
   if (expectedMode === "ced") {
-    if (a > 13 || b > 13) return false;
-    return !(a === 0 && b === 0);
+    if (a > 9 || b > 9) return false;
+    if (a === 0 && b === 0) return false;
+    return a === 9 || b === 9;
   }
 
   if (expectedMode === "ctl") {
-    if (a > 5 || b > 5) return false;
-    return !(a === 0 && b === 0);
+    if (a > 3 || b > 3) return false;
+    if (a === 0 && b === 0) return false;
+    return a === 3 || b === 3;
   }
 
   return true;
@@ -337,13 +339,15 @@ function modeBonus(a, b, expectedMode) {
   }
 
   if (expectedMode === "ced") {
-    if (Math.max(a, b) >= 5) return 25;
+    if (a === 9 || b === 9) return 30;
+    if (Math.max(a, b) >= 5) return 12;
     if ((a === 1 && b === 0) || (a === 0 && b === 1)) return -8;
     return 8;
   }
 
   if (expectedMode === "ctl") {
-    if (Math.max(a, b) >= 2) return 24;
+    if (a === 3 || b === 3) return 28;
+    if (Math.max(a, b) >= 2) return 10;
     if (a === 0 && b === 0) return -20;
     return 8;
   }
