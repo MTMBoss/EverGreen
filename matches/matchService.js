@@ -94,17 +94,20 @@ async function completeMatchFromPart2({ parsed, message }) {
 
   const extracted = await extractMatchDataFromImages(
     imageAttachments,
-    matchDetail?.maps || []
+    matchDetail?.maps || [],
+    {
+      team1: match.team1,
+      team2: match.team2,
+    }
   );
 
   if (Array.isArray(extracted.maps) && extracted.maps.length > 0) {
     await replaceMatchMapScores(match.id, extracted.maps);
   }
 
-  // player parsing ancora sperimentale
-  // if (Array.isArray(extracted.players) && extracted.players.length > 0) {
-  //   await replaceMatchPlayers(match.id, extracted.players);
-  // }
+  if (Array.isArray(extracted.players) && extracted.players.length > 0) {
+    await replaceMatchPlayers(match.id, extracted.players);
+  }
 
   await markMatchPublished(match.id, Boolean(extracted.needsReview));
 

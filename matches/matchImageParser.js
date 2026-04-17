@@ -1,7 +1,7 @@
 const sharp = require("sharp");
 const { createWorker } = require("tesseract.js");
 
-async function extractMatchDataFromImages(attachments, expectedMaps = []) {
+async function extractMatchDataFromImages(attachments, expectedMaps = [], matchContext = {}) {
   if (!Array.isArray(attachments) || attachments.length === 0) {
     return {
       maps: [],
@@ -11,16 +11,47 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
     };
   }
 
-  const worker = await createWorker("eng");
   const maps = [];
+  const players = [];
   const debug = [];
+  let worker = null;
 
   try {
     for (let index = 0; index < attachments.length; index += 1) {
       const attachment = attachments[index];
       const expectedMap = expectedMaps[index] || null;
       const expectedMode = normalizeMode(expectedMap?.mode || "");
-      const sourceBuffer = await downloadImageBuffer(attachment.url);
+      let sourceBuffer = null;
+
+      const visionResult = await extractWithVisionModel({
+        attachment,
+        expectedMap,
+        matchContext,
+        orderIndex: index + 1,
+      });
+
+      if (visionResult.debug) {
+        debug.push({
+          image: index + 1,
+          provider: "vision",
+          ...visionResult.debug,
+        });
+      }
+
+      if (visionResult.map) {
+        maps.push(visionResult.map);
+      }
+
+      if (Array.isArray(visionResult.players) && visionResult.players.length > 0) {
+        players.push(...visionResult.players);
+      }
+
+      if (visionResult.map && visionResult.players.length > 0) {
+        continue;
+      }
+
+      sourceBuffer = await downloadImageBuffer(attachment.url);
+      worker = await ensureOcrWorker(worker);
 
       const metadata = await sharp(sourceBuffer).metadata();
       const width = metadata.width || 0;
@@ -131,16 +162,23 @@ async function extractMatchDataFromImages(attachments, expectedMaps = []) {
       });
     }
   } finally {
-    await worker.terminate();
+    if (worker) {
+      await worker.terminate();
+    }
   }
 
   return {
     maps: dedupeMapsByOrder(maps),
-    players: [],
+    players,
     needsReview: true,
-    extractionSummary: buildSummary(maps, attachments.length),
+    extractionSummary: buildSummary(maps, attachments.length, players.length),
     debug,
   };
+}
+
+async function ensureOcrWorker(worker) {
+  if (worker) return worker;
+  return createWorker("eng");
 }
 
 async function downloadImageBuffer(url) {
@@ -370,6 +408,214 @@ function normalizeOcrText(text) {
     .replace(/[Ss](?=\d)|(?<=\d)[Ss]/g, "5")
     .replace(/[^\S\r\n]+/g, " ")
     .trim();
+}
+
+async function extractWithVisionModel({ attachment, expectedMap, matchContext, orderIndex }) {
+  if (!process.env.OPENAI_API_KEY) {
+    return { map: null, players: [], debug: { skipped: "OPENAI_API_KEY missing" } };
+  }
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MATCH_VISION_MODEL || "gpt-4.1-mini",
+        max_output_tokens: Number(process.env.OPENAI_MATCH_VISION_MAX_TOKENS || 1600),
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: buildVisionPrompt({ expectedMap, matchContext }),
+              },
+              {
+                type: "input_image",
+                image_url: attachment.url,
+                detail: "high",
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        map: null,
+        players: [],
+        debug: {
+          error: `vision_http_${response.status}`,
+          preview: errorText.slice(0, 300),
+        },
+      };
+    }
+
+    const payload = await response.json();
+    const outputText = String(payload.output_text || "");
+    const parsed = tryParseVisionJson(outputText);
+
+    if (!parsed) {
+      return {
+        map: null,
+        players: [],
+        debug: {
+          error: "vision_json_parse_failed",
+          preview: outputText.slice(0, 300),
+        },
+      };
+    }
+
+    return normalizeVisionExtraction(parsed, {
+      orderIndex,
+      expectedMap,
+      matchContext,
+      outputPreview: outputText.slice(0, 300),
+    });
+  } catch (error) {
+    return {
+      map: null,
+      players: [],
+      debug: {
+        error: "vision_request_failed",
+        preview: error.message,
+      },
+    };
+  }
+}
+
+function buildVisionPrompt({ expectedMap, matchContext }) {
+  const team1 = matchContext.team1 || "TEAM_1";
+  const team2 = matchContext.team2 || "TEAM_2";
+  const expectedMode = expectedMap?.mode || "";
+  const expectedMapName = expectedMap?.map_name || expectedMap?.map || "";
+
+  return [
+    "Analyze this Call of Duty Mobile post-match screenshot and return JSON only.",
+    `The left scoreboard side is team1: ${team1}.`,
+    `The right scoreboard side is team2: ${team2}.`,
+    `Expected mode hint: ${expectedMode || "unknown"}.`,
+    `Expected map hint: ${expectedMapName || "unknown"}.`,
+    "Extract as much reliable information as possible.",
+    "Return exactly this JSON shape:",
+    JSON.stringify({
+      map: {
+        mode: "",
+        map_name: "",
+        result_label: "",
+        team1_score: null,
+        team2_score: null,
+      },
+      players: [
+        {
+          side: "left",
+          player_name: "",
+          kills: null,
+          deaths: null,
+          assists: null,
+          points: null,
+          impact: null,
+          is_mvp: false,
+        },
+      ],
+    }),
+    "Rules:",
+    "- JSON only, no markdown.",
+    "- If a value is not visible, use null or empty string.",
+    "- side must be left or right.",
+    "- team1_score/team2_score must be the actual final map score, not points.",
+    "- For HP one side should usually be 250, for Search one side 9, for Control one side 3.",
+  ].join("\n");
+}
+
+function tryParseVisionJson(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch {}
+
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw.slice(firstBrace, lastBrace + 1));
+  } catch {
+    return null;
+  }
+}
+
+function normalizeVisionExtraction(parsed, { orderIndex, expectedMap, matchContext, outputPreview }) {
+  const rawMap = parsed?.map || {};
+  const normalizedMode = normalizeMode(rawMap.mode || expectedMap?.mode || "");
+  const team1Score = toNullableInteger(rawMap.team1_score);
+  const team2Score = toNullableInteger(rawMap.team2_score);
+
+  const map = isPlausibleScore(team1Score, team2Score, normalizedMode)
+    ? {
+        orderIndex,
+        team1Score,
+        team2Score,
+        mode: rawMap.mode || "",
+        map: rawMap.map_name || rawMap.map || "",
+        side: rawMap.side_name || rawMap.side || "",
+      }
+    : null;
+
+  const players = Array.isArray(parsed?.players)
+    ? parsed.players
+        .map(player => normalizeVisionPlayer(player, {
+          orderIndex,
+          team1: matchContext.team1 || "",
+          team2: matchContext.team2 || "",
+        }))
+        .filter(Boolean)
+    : [];
+
+  return {
+    map,
+    players,
+    debug: {
+      outputPreview,
+      parsedPlayers: players.length,
+      parsedMap: map ? `${map.team1Score}:${map.team2Score}` : "none",
+    },
+  };
+}
+
+function normalizeVisionPlayer(player, { orderIndex, team1, team2 }) {
+  const side = String(player?.side || "").trim().toLowerCase();
+  const teamName = side === "left" ? team1 : side === "right" ? team2 : "";
+  const playerName = String(player?.player_name || "").trim();
+
+  if (!teamName || !playerName) return null;
+
+  return {
+    orderIndex,
+    teamName,
+    playerName,
+    kills: toNullableInteger(player?.kills),
+    deaths: toNullableInteger(player?.deaths),
+    assists: toNullableInteger(player?.assists),
+    points: toNullableInteger(player?.points),
+    impact: toNullableInteger(player?.impact),
+    isMvp: Boolean(player?.is_mvp),
+  };
+}
+
+function toNullableInteger(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
 }
 
 async function extractScoreFromBoxes({ buffer, boxes, worker, expectedMode }) {
@@ -732,10 +978,11 @@ function dedupeMapsByOrder(maps) {
   return out;
 }
 
-function buildSummary(maps, totalImages) {
+function buildSummary(maps, totalImages, totalPlayers = 0) {
   return (
     `OCR eseguito su ${totalImages} screenshot. ` +
     `Score mappa riconosciuti: ${maps.length}. ` +
+    `Player riconosciuti: ${totalPlayers}. ` +
     `Review manuale consigliata.`
   );
 }
