@@ -61,7 +61,6 @@ const { startAttendanceWebServer } = require("./web/server");
 const {
   createMatchDraftFromPart1,
   completeMatchFromPart2,
-  buildMatchWebUrl,
 } = require("./matches/matchService");
 const { createMatchTables } = require("./matches/matchRepository");
 
@@ -436,8 +435,6 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      let webMessage = "";
-
       if (isPart1) {
         if (!ch1 || ch1.type !== ChannelType.GuildText) {
           await interaction.editReply({
@@ -452,17 +449,10 @@ client.on(Events.InteractionCreate, async interaction => {
 
         await sendDefaultSeparator(ch1);
 
-        const draftMatch = await createMatchDraftFromPart1({
+        await createMatchDraftFromPart1({
           parsed,
           message: msg,
         });
-
-        const webUrl = buildMatchWebUrl(
-          config.attendanceWebBaseUrl,
-          draftMatch.slug
-        );
-
-        webMessage = `\n🌐 Match web creato: ${webUrl}`;
       }
 
       if (isPart2) {
@@ -485,21 +475,20 @@ client.on(Events.InteractionCreate, async interaction => {
           message: msg,
         });
 
-        const webUrl = buildMatchWebUrl(
-          config.attendanceWebBaseUrl,
-          completed.slug
-        );
-
-        webMessage =
-          `\n🌐 Match web aggiornato: ${webUrl}` +
+        const extractionMessage =
           (completed.needsReview ? `\n🛠 Stato: da rivedere manualmente` : "") +
           (completed.extractionSummary
             ? `\nℹ️ ${completed.extractionSummary}`
             : "");
+
+        await interaction.editReply({
+          content: `✅ Pubblicato${extractionMessage}`,
+        });
+        return;
       }
 
       await interaction.editReply({
-        content: `✅ Pubblicato${webMessage}`,
+        content: "✅ Pubblicato",
       });
       return;
     }
