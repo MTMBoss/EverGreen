@@ -14,6 +14,7 @@ const {
 } = require("../logging/roleLogger");
 const {
   startAttendanceLeaderboardScheduler,
+  runAttendanceLeaderboardUpdate,
 } = require("../attendance/attendanceLeaderboardScheduler");
 const {
   handleAttendanceSlashCommand,
@@ -24,7 +25,7 @@ const {
   startAttendanceReminderScheduler,
   startAttendanceRosterSyncScheduler,
 } = require("../attendance/attendanceScheduler");
-const { scheduleRosterSync } = require("../attendance/rosterAutoSync");
+const { scheduleRosterSync, runRosterSync } = require("../attendance/rosterAutoSync");
 const { startAttendanceWebServer } = require("../web/server");
 const { createMatchTables } = require("../matches/matchRepository");
 const { startScheduler } = require("../schedule/scheduler");
@@ -41,9 +42,29 @@ function registerClientEvents(client) {
     await createMatchTables();
     startAttendanceLeaderboardScheduler(client);
 
-    for (const guild of client.guilds.cache.values()) {
-      scheduleRosterSync(guild, "startup_initial_sync", 3000);
-    }
+    queueMicrotask(async () => {
+      try {
+        const guilds = [...client.guilds.cache.values()];
+
+        await Promise.all(
+          guilds.map(guild =>
+            runRosterSync(guild, "startup_initial_sync", {
+              updateLeaderboard: false,
+            })
+          )
+        );
+
+        await runAttendanceLeaderboardUpdate(
+          client,
+          "roster_auto_sync:startup_initial_sync_batch"
+        );
+      } catch (error) {
+        console.error(
+          "❌ Errore batch startup sync roster/leaderboard:",
+          error
+        );
+      }
+    });
   });
 
   client.on(Events.GuildMemberAdd, member => {

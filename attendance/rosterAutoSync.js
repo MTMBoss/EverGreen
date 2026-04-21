@@ -5,7 +5,35 @@ const { runAttendanceLeaderboardUpdate } = require("./attendanceLeaderboardSched
 const pendingGuilds = new Map();
 const DEFAULT_DELAY_MS = 10000;
 
-function scheduleRosterSync(guild, reason = "unknown", delayMs = DEFAULT_DELAY_MS) {
+async function runRosterSync(guild, reason = "unknown", options = {}) {
+    const {
+        updateLeaderboard = true,
+    } = options;
+
+    await syncRosterFromGuild(guild);
+
+    const today = getTodayIsoDate();
+    await ensureDate(today);
+
+    if (updateLeaderboard) {
+        await runAttendanceLeaderboardUpdate(
+            guild.client,
+            `roster_auto_sync:${reason}`
+        );
+    }
+
+    console.log(
+        `✅ Roster sincronizzato automaticamente (${reason}) per guild ${guild.id} + giornata ${today}` +
+        (updateLeaderboard ? " + leaderboard aggiornata" : "")
+    );
+}
+
+function scheduleRosterSync(
+    guild,
+    reason = "unknown",
+    delayMs = DEFAULT_DELAY_MS,
+    options = {}
+) {
     if (!guild) return;
 
     const existing = pendingGuilds.get(guild.id);
@@ -15,19 +43,7 @@ function scheduleRosterSync(guild, reason = "unknown", delayMs = DEFAULT_DELAY_M
 
     const timeout = setTimeout(async () => {
         try {
-            await syncRosterFromGuild(guild);
-
-            const today = getTodayIsoDate();
-            await ensureDate(today);
-
-            await runAttendanceLeaderboardUpdate(
-                guild.client,
-                `roster_auto_sync:${reason}`
-            );
-
-            console.log(
-                `✅ Roster sincronizzato automaticamente (${reason}) per guild ${guild.id} + giornata ${today} + leaderboard aggiornata`
-            );
+            await runRosterSync(guild, reason, options);
         } catch (error) {
             console.error(
                 `❌ Errore sync roster automatico (${reason}) guild ${guild.id}:`,
@@ -43,4 +59,5 @@ function scheduleRosterSync(guild, reason = "unknown", delayMs = DEFAULT_DELAY_M
 
 module.exports = {
     scheduleRosterSync,
+    runRosterSync,
 };
