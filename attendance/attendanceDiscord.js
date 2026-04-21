@@ -5,7 +5,7 @@ const {
     setAttendanceReminderUserId,
     setAttendanceRoleIds,
     setAttendanceWebBaseUrl,
-} = require("../configStore");
+} = require("../config/configStore");
 
 const {
     normalizeDateInput,

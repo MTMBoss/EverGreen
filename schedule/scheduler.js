@@ -1,6 +1,6 @@
 const cron = require("node-cron");
 const { ChannelType } = require("discord.js");
-const { readConfig, writeConfig } = require("./configStore");
+const { readConfig, writeConfig } = require("../config/configStore");
 
 const SCHEDULE_EMOJIS = ["1️⃣", "2️⃣", "3️⃣"];
 

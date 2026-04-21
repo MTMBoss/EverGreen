@@ -1,6 +1,6 @@
 const cron = require("node-cron");
 const { ChannelType } = require("discord.js");
-const { readConfig } = require("../configStore");
+const { readConfig } = require("../config/configStore");
 const { getTodayIsoDate } = require("./attendanceService");
 const { publishAttendanceForDate } = require("./attendancePublisher");
 const { syncRosterFromGuild } = require("./rosterService");

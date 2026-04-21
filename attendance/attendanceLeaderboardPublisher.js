@@ -11,7 +11,7 @@ const {
 const {
     readConfig,
     writeConfig,
-} = require("../configStore");
+} = require("../config/configStore");
 
 const { getTodayIsoDate } = require("./attendanceService");
 const { getAttendanceLeaderboard } = require("./attendanceLeaderboardService");

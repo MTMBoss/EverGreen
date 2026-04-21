@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const { readConfig } = require("../configStore");
+const { readConfig } = require("../config/configStore");
 const { publishPersistentAttendanceLeaderboard } = require("./attendanceLeaderboardPublisher");
 
 let started = false;

@@ -1,5 +1,5 @@
 const { ChannelType } = require("discord.js");
-const { readConfig } = require("../configStore");
+const { readConfig } = require("../config/configStore");
 const { getDayView } = require("./attendanceService");
 
 function buildAttendanceMessages({ date, entries, summary, baseUrl }) {

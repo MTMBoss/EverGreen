@@ -14,7 +14,7 @@ const {
   setDaySlots,
 } = require("../attendance/attendanceService");
 const { syncRosterFromGuild } = require("../attendance/rosterService");
-const { readConfig } = require("../configStore");
+const { readConfig } = require("../config/configStore");
 
 function createWebRouter(client) {
   const router = express.Router();

@@ -1,5 +1,5 @@
 const { syncTrackedMembers } = require("./attendanceRepository");
-const { readConfig } = require("../configStore");
+const { readConfig } = require("../config/configStore");
 
 async function syncRosterFromGuild(guild) {
     if (!guild) {

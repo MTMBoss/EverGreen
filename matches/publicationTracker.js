@@ -1,7 +1,7 @@
 const {
   getChannelPublicationState,
   setChannelPublicationState,
-} = require("./configStore");
+} = require("../config/configStore");
 
 const MONTHS = {
   gennaio: 0,
