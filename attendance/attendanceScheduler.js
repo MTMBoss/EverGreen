@@ -8,6 +8,8 @@ const { syncRosterFromGuild } = require("./rosterService");
 const ATTENDANCE_REMINDER_CRON = "0 18 * * *";
 const ATTENDANCE_ROSTER_SYNC_CRON =
     process.env.ATTENDANCE_ROSTER_SYNC_CRON || "*/30 * * * *";
+const ATTENDANCE_ROSTER_SYNC_STARTUP_GRACE_MS =
+    Number(process.env.ATTENDANCE_ROSTER_SYNC_STARTUP_GRACE_MS || 5 * 60 * 1000);
 
 let rosterSyncRunning = false;
 let lastRosterSyncStartedAt = 0;
@@ -81,6 +83,19 @@ function startAttendanceRosterSyncScheduler(client) {
     cron.schedule(
         ATTENDANCE_ROSTER_SYNC_CRON,
         async () => {
+            const uptimeMs = typeof client.uptime === "number" ? client.uptime : 0;
+
+            if (uptimeMs > 0 && uptimeMs < ATTENDANCE_ROSTER_SYNC_STARTUP_GRACE_MS) {
+                console.log(
+                    `ℹ️ Sync roster schedulato saltato: bot avviato da ${Math.round(
+                        uptimeMs / 1000
+                    )}s (grace ${Math.round(
+                        ATTENDANCE_ROSTER_SYNC_STARTUP_GRACE_MS / 1000
+                    )}s)`
+                );
+                return;
+            }
+
             if (rosterSyncRunning) {
                 console.log("⚠️ Sync roster schedulato saltato: job precedente ancora in esecuzione");
                 return;
@@ -106,7 +121,7 @@ function startAttendanceRosterSyncScheduler(client) {
                 await syncRosterFromGuild(guild);
                 console.log("✅ Sync roster automatico schedulato completato");
             } catch (error) {
-                console.error("❌ Errore scheduler sync roster:", error);
+                logRosterSyncError(error);
             } finally {
                 const elapsedMs = Date.now() - lastRosterSyncStartedAt;
                 console.log(`ℹ️ Sync roster schedulato terminato in ${elapsedMs} ms`);
@@ -131,6 +146,29 @@ async function resolveAttendanceGuild(client, attendanceChannelId, reminderChann
 
     const firstGuild = client.guilds.cache.first();
     return firstGuild || null;
+}
+
+function logRosterSyncError(error) {
+    if (!error) {
+        console.error("❌ Errore scheduler sync roster: sconosciuto");
+        return;
+    }
+
+    if (error.name === "GatewayRateLimitError") {
+        const retryAfter =
+            typeof error.data?.retry_after === "number"
+                ? `${error.data.retry_after}s`
+                : "n/d";
+
+        console.error(
+            `❌ Errore scheduler sync roster: rate limit gateway Discord (retry_after=${retryAfter})`
+        );
+        return;
+    }
+
+    console.error(
+        `❌ Errore scheduler sync roster: ${error.message || String(error)}`
+    );
 }
 
 module.exports = {
