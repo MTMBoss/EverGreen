@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const crypto = require("crypto");
 const {
   REST,
   Routes,
@@ -377,20 +378,69 @@ const commands = [
     .toJSON(),
 ];
 
-const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+function getCommands() {
+  return commands;
+}
 
-(async () => {
-  try {
-    await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.CLIENT_ID,
-        process.env.GUILD_ID
-      ),
-      { body: commands }
-    );
+function getCommandsHash() {
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify(commands))
+    .digest("hex");
+}
 
-    console.log("✅ Comandi registrati correttamente");
-  } catch (error) {
-    console.error("❌ Errore registrazione comandi:", error);
+async function deployCommands() {
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+  await rest.put(
+    Routes.applicationGuildCommands(
+      process.env.CLIENT_ID,
+      process.env.GUILD_ID
+    ),
+    { body: commands }
+  );
+
+  return {
+    hash: getCommandsHash(),
+    count: commands.length,
+  };
+}
+
+async function ensureCommandsDeployed({
+  readHash,
+  writeHash,
+  force = false,
+} = {}) {
+  const currentHash = getCommandsHash();
+  const deployedHash = typeof readHash === "function" ? readHash() : "";
+
+  if (!force && deployedHash === currentHash) {
+    console.log("ℹ️ Comandi Discord già allineati, deploy saltato");
+    return {
+      deployed: false,
+      hash: currentHash,
+      count: commands.length,
+    };
   }
-})();
+
+  const result = await deployCommands();
+
+  if (typeof writeHash === "function") {
+    writeHash(result.hash);
+  }
+
+  console.log(`✅ Comandi registrati correttamente (${result.count})`);
+
+  return {
+    deployed: true,
+    hash: result.hash,
+    count: result.count,
+  };
+}
+
+module.exports = {
+  getCommands,
+  getCommandsHash,
+  deployCommands,
+  ensureCommandsDeployed,
+};

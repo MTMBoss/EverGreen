@@ -4,13 +4,14 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "deploy:commands": "node deploy-commands.js",
     "deploy": "node deploy-commands.js",
-    "start:bot": "node deploy-commands.js && node index.js",
+    "start:bot": "node index.js",
     "push": "git add . && git commit -m \"update\" && git push",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
   },
   "keywords": [],
   "author": "",

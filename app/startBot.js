@@ -6,8 +6,13 @@ const {
   Partials,
 } = require("discord.js");
 
-const { initializeConfigStore } = require("../config/configStore");
+const {
+  initializeConfigStore,
+  readConfig,
+  setCommandDeploymentHash,
+} = require("../config/configStore");
 const { initializeAttendance } = require("../attendance/attendanceService");
+const { ensureCommandsDeployed } = require("../discord/deployCommands");
 const { registerClientEvents } = require("./registerClientEvents");
 
 initializeAttendance();
@@ -25,7 +30,14 @@ const client = new Client({
 registerClientEvents(client);
 
 initializeConfigStore()
-  .then(() => client.login(process.env.TOKEN))
+  .then(async () => {
+    await ensureCommandsDeployed({
+      readHash: () => readConfig().commandDeploymentHash || "",
+      writeHash: hash => setCommandDeploymentHash(hash),
+    });
+
+    await client.login(process.env.TOKEN);
+  })
   .catch(error => {
     console.error("❌ Errore inizializzazione config store:", error);
     process.exit(1);

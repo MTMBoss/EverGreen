@@ -26,6 +26,7 @@ const DEFAULT_CONFIG = {
     ? process.env.ATTENDANCE_ROLE_IDS.split(",").map(id => id.trim()).filter(Boolean)
     : [],
   attendanceWebBaseUrl: process.env.ATTENDANCE_WEB_BASE_URL || "",
+  commandDeploymentHash: "",
 
   currentSchedule: null,
   publicationState: {},
@@ -56,6 +57,7 @@ function normalizeConfigValue(key, value) {
     case "attendanceReminderChannel":
     case "attendanceReminderUserId":
     case "attendanceWebBaseUrl":
+    case "commandDeploymentHash":
       return typeof value === "string" ? value : "";
 
     case "scheduleChannels":
@@ -306,6 +308,12 @@ function setAttendanceWebBaseUrl(url) {
   });
 }
 
+function setCommandDeploymentHash(hash) {
+  return updateConfig(config => {
+    config.commandDeploymentHash = typeof hash === "string" ? hash : "";
+  });
+}
+
 module.exports = {
   initializeConfigStore,
   readConfig,
@@ -324,4 +332,5 @@ module.exports = {
   setAttendanceReminderUserId,
   setAttendanceRoleIds,
   setAttendanceWebBaseUrl,
+  setCommandDeploymentHash,
 };
