@@ -11,6 +11,7 @@ const {
   updateMatchSummary,
   updateMatchMaps,
   deleteMatchById,
+  deleteAllMatches,
 } = require("./matchRepository");
 
 const {
@@ -158,6 +159,10 @@ async function removeMatchById(matchId) {
   await deleteMatchById(matchId);
 }
 
+async function removeAllMatches() {
+  await deleteAllMatches();
+}
+
 module.exports = {
   buildMatchWebUrl,
   createMatchDraftFromPart1,
@@ -166,4 +171,5 @@ module.exports = {
   getMatchList,
   updateMatchManualData,
   removeMatchById,
+  removeAllMatches,
 };

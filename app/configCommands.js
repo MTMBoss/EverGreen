@@ -13,6 +13,7 @@ const {
 const {
   importMatchHistoryFromConfiguredSources,
 } = require("../matches/autoMatchImporter");
+const { removeAllMatches } = require("../matches/matchService");
 
 async function handleConfigCommand(interaction, client) {
   if (interaction.commandName === "set-canale-parte1") {
@@ -72,6 +73,8 @@ async function handleConfigCommand(interaction, client) {
     setSourceChannelPart1(channelPart1.id);
     setSourceChannelPart2(channelPart2.id);
 
+    await removeAllMatches();
+
     const summary = await importMatchHistoryFromConfiguredSources(client, {
       sourceChannelPart1: channelPart1.id,
       sourceChannelPart2: channelPart2.id,
@@ -92,7 +95,7 @@ async function handleConfigCommand(interaction, client) {
 
     await interaction.editReply({
       content:
-        `✅ Import storico completato\n` +
+        `✅ Archivio match azzerato e import storico completato\n` +
         `Canale parte 1: ${channelPart1}\n` +
         `Canale parte 2: ${channelPart2}\n` +
         `Lettura cronologia: **completa**\n` +

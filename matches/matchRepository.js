@@ -552,6 +552,10 @@ async function deleteMatchById(matchId) {
   await pool.query(`DELETE FROM matches WHERE id = $1`, [matchId]);
 }
 
+async function deleteAllMatches() {
+  await pool.query(`TRUNCATE TABLE matches RESTART IDENTITY CASCADE`);
+}
+
 module.exports = {
   createMatchTables,
   createDraftMatch,
@@ -567,4 +571,5 @@ module.exports = {
   updateMatchSummary,
   updateMatchMaps,
   deleteMatchById,
+  deleteAllMatches,
 };
