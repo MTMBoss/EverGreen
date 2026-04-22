@@ -32,7 +32,7 @@ function splitTitle(title) {
     };
 }
 
-function parseItalianDate(dateLine) {
+function parseItalianDate(dateLine, options = {}) {
     const clean = normalizeLine(dateLine)
         .replace(/[📅]/g, "")
         .replace(/\./g, "")
@@ -45,7 +45,13 @@ function parseItalianDate(dateLine) {
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
 
-    const currentYear = dayjs().year();
+    const referenceDate = options.referenceDate
+        ? dayjs(options.referenceDate)
+        : dayjs();
+
+    const currentYear = referenceDate.isValid()
+        ? referenceDate.year()
+        : dayjs().year();
 
     const weekdays = [
         "lunedi",
@@ -182,10 +188,12 @@ function buildMatchSlug({ team1, team2, matchDate }) {
     return `${slugify(team1)}-vs-${slugify(team2)}-${matchDate || "senza-data"}`;
 }
 
-function parseMatchDraftFromParsedMessage(parsed) {
+function parseMatchDraftFromParsedMessage(parsed, options = {}) {
     const { team1, team2 } = splitTitle(parsed.title || "");
 
-    const matchDate = parseItalianDate(parsed.dateLine || "");
+    const matchDate = parseItalianDate(parsed.dateLine || "", {
+        referenceDate: options.referenceDate,
+    });
     const matchTime = parseTime(parsed.timeLine || "");
     const result = parseResultLine(parsed.resultLine || "", team1, team2);
 

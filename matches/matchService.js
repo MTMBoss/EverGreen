@@ -27,7 +27,9 @@ function buildMatchWebUrl(baseUrl, slug) {
 }
 
 async function createMatchDraftFromPart1({ parsed, message }) {
-  const draft = parseMatchDraftFromParsedMessage(parsed);
+  const draft = parseMatchDraftFromParsedMessage(parsed, {
+    referenceDate: message?.createdTimestamp || message?.createdAt || null,
+  });
 
   if (!draft.team1 || !draft.team2) {
     throw new Error("Parte 1 non valida: titolo match mancante.");
@@ -45,7 +47,9 @@ async function createMatchDraftFromPart1({ parsed, message }) {
 }
 
 async function completeMatchFromPart2({ parsed, message }) {
-  const draft = parseMatchDraftFromParsedMessage(parsed);
+  const draft = parseMatchDraftFromParsedMessage(parsed, {
+    referenceDate: message?.createdTimestamp || message?.createdAt || null,
+  });
 
   if (!draft.team1 || !draft.team2) {
     throw new Error("Parte 2 non valida: titolo match mancante.");
