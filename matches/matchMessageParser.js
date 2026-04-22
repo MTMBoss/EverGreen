@@ -2,6 +2,31 @@ function normalizeLine(text) {
   return (text || "").replace(/^[•>\-\s]+/, "").replace(/\s+/g, " ").trim();
 }
 
+function extractRawText(input) {
+  if (!input) return "";
+  if (typeof input === "string") return input;
+
+  const chunks = [];
+
+  if (typeof input.content === "string" && input.content.trim()) {
+    chunks.push(input.content);
+  }
+
+  const embeds = Array.isArray(input.embeds) ? input.embeds : [];
+  for (const embed of embeds) {
+    if (embed?.title) chunks.push(embed.title);
+    if (embed?.description) chunks.push(embed.description);
+
+    const fields = Array.isArray(embed?.fields) ? embed.fields : [];
+    for (const field of fields) {
+      if (field?.name) chunks.push(field.name);
+      if (field?.value) chunks.push(field.value);
+    }
+  }
+
+  return chunks.join("\n");
+}
+
 function isDateLine(line) {
   const clean = normalizeLine(line);
 
@@ -32,7 +57,7 @@ function cleanResult(line) {
 }
 
 function parseMatchMessage(content) {
-  const lines = (content || "")
+  const lines = extractRawText(content)
     .split("\n")
     .map(normalizeLine)
     .filter(Boolean);
@@ -118,6 +143,7 @@ module.exports = {
   buildPart1Message,
   buildPart2Draft,
   buildPart2Message,
+  extractRawText,
   getImageAttachments,
   parseMatchMessage,
 };

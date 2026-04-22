@@ -25,7 +25,7 @@ async function handleAutoMatchSourceMessage(message, client) {
     return { handled: false, imported: false, reason: "not_source_channel" };
   }
 
-  const parsed = parseMatchMessage(message.content || "");
+  const parsed = parseMatchMessage(message);
   if (!parsed.title || !parsed.dateLine) {
     return { handled: true, imported: false, reason: "not_a_match" };
   }
@@ -232,7 +232,7 @@ async function processChannelHistoryInBatches({
       } catch (error) {
         channelStats.failed += 1;
 
-        const parsed = parseMatchMessage(message.content || "");
+        const parsed = parseMatchMessage(message);
         const failure = {
           channelType: source.type,
           channelId: source.id,

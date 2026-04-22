@@ -78,7 +78,7 @@ async function handleMatchContextCommand(interaction, client) {
   await interaction.deferReply({ flags: 64 });
 
   const message = interaction.targetMessage;
-  const parsed = parseMatchMessage(message.content || "");
+  const parsed = parseMatchMessage(message);
 
   if (interaction.commandName === "Prepara Parte 2") {
     await interaction.editReply({
