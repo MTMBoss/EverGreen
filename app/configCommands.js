@@ -66,15 +66,23 @@ async function handleConfigCommand(interaction, client) {
   }
 
   if (interaction.commandName === "import-match-storici") {
-    const limit = interaction.options.getInteger("limite", false) || 100;
+    const channelPart1 = interaction.options.getChannel("canale_parte1", true);
+    const channelPart2 = interaction.options.getChannel("canale_parte2", true);
+
+    setSourceChannelPart1(channelPart1.id);
+    setSourceChannelPart2(channelPart2.id);
+
     const summary = await importMatchHistoryFromConfiguredSources(client, {
-      limitPerChannel: limit,
+      sourceChannelPart1: channelPart1.id,
+      sourceChannelPart2: channelPart2.id,
     });
 
     await interaction.editReply({
       content:
         `✅ Import storico completato\n` +
-        `Limite per canale: **${summary.limitPerChannel}**\n` +
+        `Canale parte 1: ${channelPart1}\n` +
+        `Canale parte 2: ${channelPart2}\n` +
+        `Lettura cronologia: **completa**\n` +
         `Messaggi scansionati: **${summary.scanned}**\n` +
         `Match importati: **${summary.imported}**\n` +
         `Già presenti: **${summary.duplicates}**\n` +

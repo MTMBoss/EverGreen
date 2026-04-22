@@ -149,13 +149,21 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("import-match-storici")
-    .setDescription("Legge lo storico dei canali sorgente match e importa le scrim nel web")
+    .setDescription("Legge tutta la cronologia di due canali match e importa le scrim nel web")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addIntegerOption(option =>
+    .addChannelOption(option =>
       option
-        .setName("limite")
-        .setDescription("Quanti messaggi recenti leggere per ogni canale sorgente (max 1000)")
-        .setRequired(false)
+        .setName("canale_parte1")
+        .setDescription("Canale sorgente che contiene le parti 1")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .addChannelOption(option =>
+      option
+        .setName("canale_parte2")
+        .setDescription("Canale sorgente che contiene le parti 2")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
     )
     .toJSON(),
 

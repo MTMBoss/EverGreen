@@ -124,16 +124,17 @@ async function handleAutoMatchSourceDelete(message) {
 }
 
 async function importMatchHistoryFromConfiguredSources(client, options = {}) {
-  const limitPerChannel = Math.max(1, Math.min(Number(options.limitPerChannel || 100), 1000));
   const config = readConfig();
+  const sourceChannelPart1 = options.sourceChannelPart1 || config.sourceChannelPart1 || "";
+  const sourceChannelPart2 = options.sourceChannelPart2 || config.sourceChannelPart2 || "";
 
   const channels = [
-    { type: "part1", id: config.sourceChannelPart1 || "" },
-    { type: "part2", id: config.sourceChannelPart2 || "" },
+    { type: "part1", id: sourceChannelPart1 },
+    { type: "part2", id: sourceChannelPart2 },
   ].filter(item => item.id);
 
   const summary = {
-    limitPerChannel,
+    limitPerChannel: null,
     scanned: 0,
     imported: 0,
     duplicates: 0,
@@ -156,7 +157,7 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
       continue;
     }
 
-    const messages = await fetchRecentMessages(channel, limitPerChannel);
+    const messages = await fetchRecentMessages(channel);
     const orderedMessages = messages
       .filter(message => !message.author?.bot)
       .sort((left, right) => left.createdTimestamp - right.createdTimestamp);
@@ -194,12 +195,12 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
   return summary;
 }
 
-async function fetchRecentMessages(channel, limit) {
+async function fetchRecentMessages(channel) {
   const collected = [];
   let before;
 
-  while (collected.length < limit) {
-    const batchSize = Math.min(100, limit - collected.length);
+  while (true) {
+    const batchSize = 100;
     const batch = await channel.messages.fetch(
       before
         ? { limit: batchSize, before }
