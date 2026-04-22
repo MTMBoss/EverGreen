@@ -62,13 +62,20 @@ async function completeMatchFromPart2({ parsed, message }) {
       team1: draft.team1,
       team2: draft.team2,
       matchDate: draft.matchDate,
+      rawTitle: parsed.title || "",
+      rawDateLine: parsed.dateLine || "",
+      rawResultLine: parsed.resultLine || "",
       sourceMessageId: message.id,
       sourceChannelId: message.channelId,
     });
-    const matchLabel = `${draft.team1} vs ${draft.team2}`;
-    const dateLabel = draft.matchDate || "data sconosciuta";
+    const details = [
+      parsed.title ? `Titolo: ${parsed.title}` : "",
+      parsed.dateLine ? `Data: ${parsed.dateLine}` : "",
+      parsed.resultLine ? `Risultato: ${parsed.resultLine}` : "",
+    ].filter(Boolean);
+
     throw new Error(
-      `Nessun match collegabile trovato per questa Parte 2: ${matchLabel} (${dateLabel}).`
+      `Nessuna Parte 1 collegabile trovata per questa Parte 2.\n${details.join("\n")}`
     );
   }
 
