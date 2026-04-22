@@ -122,6 +122,32 @@ const commands = [
     .toJSON(),
 
   new SlashCommandBuilder()
+    .setName("set-canale-sorgente-parte1")
+    .setDescription("Imposta il canale sorgente da cui leggere automaticamente le parti 1")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addChannelOption(option =>
+      option
+        .setName("canale")
+        .setDescription("Canale testuale sorgente parte 1")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set-canale-sorgente-parte2")
+    .setDescription("Imposta il canale sorgente da cui leggere automaticamente le parti 2")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addChannelOption(option =>
+      option
+        .setName("canale")
+        .setDescription("Canale testuale sorgente parte 2")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
     .setName("set-canali-schedule")
     .setDescription("Imposta 1 o 2 canali per lo schedule settimanale")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)

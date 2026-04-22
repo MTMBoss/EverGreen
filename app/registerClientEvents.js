@@ -28,6 +28,7 @@ const {
 const { scheduleRosterSync, runRosterSync } = require("../attendance/rosterAutoSync");
 const { startAttendanceWebServer } = require("../web/server");
 const { createMatchTables } = require("../matches/matchRepository");
+const { handleAutoMatchSourceMessage } = require("../matches/autoMatchImporter");
 const { startScheduler } = require("../schedule/scheduler");
 const { handleMatchContextCommand } = require("./matchContextCommands");
 const { handleConfigCommand } = require("./configCommands");
@@ -130,6 +131,7 @@ function registerClientEvents(client) {
 
   client.on(Events.MessageCreate, async message => {
     try {
+      await handleAutoMatchSourceMessage(message, client);
       await handleMessageCreate(message);
     } catch (error) {
       console.error("❌ Errore logger messageCreate:", error);

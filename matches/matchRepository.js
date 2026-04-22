@@ -267,6 +267,26 @@ async function findMatchForPart2({ team1, team2, matchDate }) {
   return result.rows[0] || null;
 }
 
+async function findMatchBySourceMessage({ part, sourceChannelId, sourceMessageId }) {
+  const channelColumn =
+    part === 2 ? "source_channel_id_part2" : "source_channel_id_part1";
+  const messageColumn =
+    part === 2 ? "source_message_id_part2" : "source_message_id_part1";
+
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM matches
+    WHERE ${channelColumn} = $1
+      AND ${messageColumn} = $2
+    LIMIT 1
+    `,
+    [sourceChannelId || "", sourceMessageId || ""]
+  );
+
+  return result.rows[0] || null;
+}
+
 async function attachPart2ToMatch(matchId, payload) {
   await pool.query(
     `
@@ -536,6 +556,7 @@ module.exports = {
   createMatchTables,
   createDraftMatch,
   findMatchForPart2,
+  findMatchBySourceMessage,
   attachPart2ToMatch,
   replaceMatchAssets,
   replaceMatchMapScores,

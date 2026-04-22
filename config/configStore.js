@@ -12,6 +12,8 @@ const DEFAULT_CONFIG = {
   targetChannel1: process.env.TARGET_CHANNEL_1 || "",
   targetChannel2: process.env.TARGET_CHANNEL_2 || "",
   pngChannel: process.env.PNG_CHANNEL || "",
+  sourceChannelPart1: process.env.SOURCE_CHANNEL_PART_1 || "",
+  sourceChannelPart2: process.env.SOURCE_CHANNEL_PART_2 || "",
   scheduleChannels: process.env.SCHEDULE_CHANNELS
     ? process.env.SCHEDULE_CHANNELS.split(",").map(id => id.trim()).filter(Boolean)
     : [],
@@ -50,6 +52,8 @@ function normalizeConfigValue(key, value) {
     case "targetChannel1":
     case "targetChannel2":
     case "pngChannel":
+    case "sourceChannelPart1":
+    case "sourceChannelPart2":
     case "scheduleAnnouncementChannel":
     case "requiredRoleId":
     case "optionalRoleId":
@@ -230,6 +234,18 @@ function setPngChannel(channelId) {
   });
 }
 
+function setSourceChannelPart1(channelId) {
+  return updateConfig(config => {
+    config.sourceChannelPart1 = channelId;
+  });
+}
+
+function setSourceChannelPart2(channelId) {
+  return updateConfig(config => {
+    config.sourceChannelPart2 = channelId;
+  });
+}
+
 function getChannelPublicationState(channelId) {
   const config = readConfig();
   const state = config.publicationState?.[channelId];
@@ -321,6 +337,8 @@ module.exports = {
   setTargetChannel1,
   setTargetChannel2,
   setPngChannel,
+  setSourceChannelPart1,
+  setSourceChannelPart2,
   getChannelPublicationState,
   setChannelPublicationState,
   setScheduleChannels,

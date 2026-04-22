@@ -3,6 +3,8 @@ const {
   setTargetChannel1,
   setTargetChannel2,
   setPngChannel,
+  setSourceChannelPart1,
+  setSourceChannelPart2,
   setScheduleChannels,
   setScheduleAnnouncementChannel,
   setRequiredRoleId,
@@ -36,6 +38,26 @@ async function handleConfigCommand(interaction) {
 
     await interaction.editReply({
       content: `✅ Canale PNG impostato su ${channel}.`,
+    });
+    return true;
+  }
+
+  if (interaction.commandName === "set-canale-sorgente-parte1") {
+    const channel = interaction.options.getChannel("canale", true);
+    setSourceChannelPart1(channel.id);
+
+    await interaction.editReply({
+      content: `✅ Canale sorgente parte 1 impostato su ${channel}.`,
+    });
+    return true;
+  }
+
+  if (interaction.commandName === "set-canale-sorgente-parte2") {
+    const channel = interaction.options.getChannel("canale", true);
+    setSourceChannelPart2(channel.id);
+
+    await interaction.editReply({
+      content: `✅ Canale sorgente parte 2 impostato su ${channel}.`,
     });
     return true;
   }
@@ -98,6 +120,8 @@ async function handleConfigCommand(interaction) {
         `Parte 1: ${config.targetChannel1 ? `<#${config.targetChannel1}>` : "non impostato"}\n` +
         `Parte 2: ${config.targetChannel2 ? `<#${config.targetChannel2}>` : "non impostato"}\n` +
         `PNG: ${config.pngChannel ? `<#${config.pngChannel}>` : "non impostato"}\n` +
+        `Sorgente parte 1: ${config.sourceChannelPart1 ? `<#${config.sourceChannelPart1}>` : "non impostato"}\n` +
+        `Sorgente parte 2: ${config.sourceChannelPart2 ? `<#${config.sourceChannelPart2}>` : "non impostato"}\n` +
         `Schedule: ${config.scheduleChannels.length > 0
           ? config.scheduleChannels.map(id => `<#${id}>`).join(", ")
           : "non impostato"}\n` +
