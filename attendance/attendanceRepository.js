@@ -440,6 +440,7 @@ async function getAttendanceLeaderboardRows(startDate, endDate) {
     `
     SELECT
       m.discord_user_id,
+      m.ingame_name,
       m.nickname,
       m.display_name,
       COUNT(DISTINCT ad.day_date) FILTER (
@@ -467,6 +468,7 @@ async function getAttendanceLeaderboardRows(startDate, endDate) {
       )
     GROUP BY
       m.discord_user_id,
+      m.ingame_name,
       m.nickname,
       m.display_name
     ORDER BY
