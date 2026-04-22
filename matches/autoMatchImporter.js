@@ -202,11 +202,11 @@ async function processChannelHistoryInBatches({
   let before;
 
   while (true) {
-    const batchSize = 100;
+    const batchSize = 25;
     const batch = await channel.messages.fetch(
       before
-        ? { limit: batchSize, before }
-        : { limit: batchSize }
+        ? { limit: batchSize, before, cache: false }
+        : { limit: batchSize, cache: false }
     );
 
     if (!batch.size) break;
@@ -257,10 +257,14 @@ async function processChannelHistoryInBatches({
     const rawMessages = [...batch.values()];
     before = rawMessages[rawMessages.length - 1].id;
 
+    if (channel.messages?.cache?.size) {
+      channel.messages.cache.clear();
+    }
+
     if (batch.size < batchSize) break;
 
-    // Piccola pausa per alleggerire memoria e rate limit durante import lunghi.
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // Batch piccoli e pausa un po' più lunga per non saturare memoria/cache del processo.
+    await new Promise(resolve => setTimeout(resolve, 150));
   }
 }
 
