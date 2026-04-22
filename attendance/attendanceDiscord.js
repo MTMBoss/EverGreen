@@ -39,7 +39,6 @@ const ATTENDANCE_COMMANDS = new Set([
     "presenza-set",
     "presenza-set-giornata",
     "presenze-recap",
-    "link-presenze",
     "leaderboard-presenze",
     "set-canale-leaderboard-presenze",
     "pubblica-leaderboard-presenze",
@@ -197,7 +196,6 @@ async function handleAttendanceSlashCommand(interaction, client) {
             const dalle21 = interaction.options.getBoolean("dalle_21", true);
             const dalle22 = interaction.options.getBoolean("dalle_22", true);
             const dalle23 = interaction.options.getBoolean("dalle_23", true);
-            const note = interaction.options.getString("note", false) || "";
 
             const dayView = await setDaySlots({
                 dateInput: data,
@@ -205,7 +203,7 @@ async function handleAttendanceSlashCommand(interaction, client) {
                 slot_21_22: dalle21,
                 slot_22_23: dalle22,
                 slot_23_00: dalle23,
-                notes: note,
+                notes: "",
                 updatedByDiscordUserId: interaction.user.id,
             });
 
@@ -216,7 +214,6 @@ async function handleAttendanceSlashCommand(interaction, client) {
                 content:
                     `✅ Giornata aggiornata per <@${user.id}> il **${data}**.\n` +
                     `21-22: ${dalle21 ? "✅" : "❌"} | 22-23: ${dalle22 ? "✅" : "❌"} | 23-00: ${dalle23 ? "✅" : "❌"}` +
-                    `${note ? `\nNote: ${note}` : ""}` +
                     `\n\n${formatSummaryMessage(dayView)}`,
             });
             return true;
@@ -228,23 +225,6 @@ async function handleAttendanceSlashCommand(interaction, client) {
             const dayView = await getDayView(date);
             await interaction.editReply({
                 content: formatDetailedRecap(dayView),
-            });
-            return true;
-        }
-
-        case "link-presenze": {
-            const date = normalizeDateOption(interaction.options.getString("data"));
-            const config = readConfig();
-
-            if (!config.attendanceWebBaseUrl) {
-                await interaction.editReply({
-                    content: "❌ URL pannello presenze non configurato. Usa /set-url-pannello-presenze.",
-                });
-                return true;
-            }
-
-            await interaction.editReply({
-                content: `🔗 Pannello presenze: ${config.attendanceWebBaseUrl}/presenze?date=${date}`,
             });
             return true;
         }

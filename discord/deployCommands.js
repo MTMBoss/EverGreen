@@ -148,6 +148,18 @@ const commands = [
     .toJSON(),
 
   new SlashCommandBuilder()
+    .setName("import-match-storici")
+    .setDescription("Legge lo storico dei canali sorgente match e importa le scrim nel web")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addIntegerOption(option =>
+      option
+        .setName("limite")
+        .setDescription("Quanti messaggi recenti leggere per ogni canale sorgente (max 1000)")
+        .setRequired(false)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
     .setName("set-canali-schedule")
     .setDescription("Imposta 1 o 2 canali per lo schedule settimanale")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
@@ -365,29 +377,11 @@ const commands = [
         .setDescription("Data nel formato YYYY-MM-DD. Se omessa usa oggi")
         .setRequired(false)
     )
-    .addStringOption(option =>
-      option
-        .setName("note")
-        .setDescription("Nota facoltativa")
-        .setRequired(false)
-    )
     .toJSON(),
 
   new SlashCommandBuilder()
     .setName("presenze-recap")
     .setDescription("Mostra il recap completo delle presenze del giorno")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addStringOption(option =>
-      option
-        .setName("data")
-        .setDescription("Data nel formato YYYY-MM-DD. Se omessa usa oggi")
-        .setRequired(false)
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("link-presenze")
-    .setDescription("Mostra il link diretto al pannello web presenze")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addStringOption(option =>
       option

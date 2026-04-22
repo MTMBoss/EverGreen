@@ -192,7 +192,7 @@ function registerClientEvents(client) {
         return;
       }
 
-      const handled = await handleConfigCommand(interaction);
+      const handled = await handleConfigCommand(interaction, client);
       if (handled) return;
     } catch (error) {
       console.error("❌ Errore:", error);

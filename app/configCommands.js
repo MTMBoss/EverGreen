@@ -10,8 +10,11 @@ const {
   setRequiredRoleId,
   setOptionalRoleId,
 } = require("../config/configStore");
+const {
+  importMatchHistoryFromConfiguredSources,
+} = require("../matches/autoMatchImporter");
 
-async function handleConfigCommand(interaction) {
+async function handleConfigCommand(interaction, client) {
   if (interaction.commandName === "set-canale-parte1") {
     const channel = interaction.options.getChannel("canale", true);
     setTargetChannel1(channel.id);
@@ -58,6 +61,24 @@ async function handleConfigCommand(interaction) {
 
     await interaction.editReply({
       content: `✅ Canale sorgente parte 2 impostato su ${channel}.`,
+    });
+    return true;
+  }
+
+  if (interaction.commandName === "import-match-storici") {
+    const limit = interaction.options.getInteger("limite", false) || 100;
+    const summary = await importMatchHistoryFromConfiguredSources(client, {
+      limitPerChannel: limit,
+    });
+
+    await interaction.editReply({
+      content:
+        `✅ Import storico completato\n` +
+        `Limite per canale: **${summary.limitPerChannel}**\n` +
+        `Messaggi scansionati: **${summary.scanned}**\n` +
+        `Match importati: **${summary.imported}**\n` +
+        `Già presenti: **${summary.duplicates}**\n` +
+        `Saltati: **${summary.skipped}**`,
     });
     return true;
   }
