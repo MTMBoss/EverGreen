@@ -164,6 +164,31 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
     summary.channels.push(channelStats);
   }
 
+  console.log(
+    "ℹ️ Riepilogo import storico match:",
+    JSON.stringify(
+      {
+        scanned: summary.scanned,
+        imported: summary.imported,
+        duplicates: summary.duplicates,
+        skipped: summary.skipped,
+        failed: summary.failed,
+        channels: summary.channels.map(channel => ({
+          type: channel.type,
+          channelId: channel.channelId,
+          scanned: channel.scanned,
+          imported: channel.imported,
+          duplicates: channel.duplicates,
+          skipped: channel.skipped,
+          failed: channel.failed || 0,
+          error: channel.error || "",
+        })),
+      },
+      null,
+      2
+    )
+  );
+
   return summary;
 }
 

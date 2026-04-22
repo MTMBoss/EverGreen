@@ -79,6 +79,8 @@ async function handleConfigCommand(interaction, client) {
       sourceChannelPart1: channelPart1.id,
       sourceChannelPart2: channelPart2.id,
     });
+    const part1Summary = summary.channels.find(item => item.type === "part1") || null;
+    const part2Summary = summary.channels.find(item => item.type === "part2") || null;
 
     const failedPreview = summary.failedMatches
       .slice(0, 5)
@@ -93,6 +95,13 @@ async function handleConfigCommand(interaction, client) {
       )
       .filter(Boolean);
 
+    const channelBreakdown = [
+      formatImportChannelSummary("Parte 1", part1Summary),
+      formatImportChannelSummary("Parte 2", part2Summary),
+    ]
+      .filter(Boolean)
+      .join("\n");
+
     await interaction.editReply({
       content:
         `✅ Archivio match azzerato e import storico completato\n` +
@@ -104,6 +113,7 @@ async function handleConfigCommand(interaction, client) {
         `Già presenti: **${summary.duplicates}**\n` +
         `Saltati: **${summary.skipped}**\n` +
         `Errori: **${summary.failed}**` +
+        (channelBreakdown ? `\n\n${channelBreakdown}` : "") +
         (failedPreview.length
           ? `\n\nPrime partite non collegate:\n- ${failedPreview.join("\n- ")}`
           : ""),
@@ -202,6 +212,22 @@ async function handleConfigCommand(interaction, client) {
   }
 
   return false;
+}
+
+function formatImportChannelSummary(label, summary) {
+  if (!summary) return "";
+  if (summary.error) {
+    return `**${label}**\nScansione non riuscita: ${summary.error}`;
+  }
+
+  return (
+    `**${label}**\n` +
+    `Scansionati: **${summary.scanned}**\n` +
+    `Importati: **${summary.imported}**\n` +
+    `Già presenti: **${summary.duplicates}**\n` +
+    `Saltati: **${summary.skipped}**\n` +
+    `Errori: **${summary.failed || 0}**`
+  );
 }
 
 module.exports = {
