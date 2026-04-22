@@ -233,7 +233,7 @@ function startScheduler(client) {
   );
 
   cron.schedule(
-    "0 15 * * *",
+    "0 9 * * *",
     async () => {
       console.log("🕒 Esecuzione cron rimozione reaction giornaliera...");
       await removeBotReactionsFromToday(client);
