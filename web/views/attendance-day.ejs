@@ -129,7 +129,6 @@
                             <th>21-22 reale</th>
                             <th>22-23 reale</th>
                             <th>23-00 reale</th>
-                            <th>Nota</th>
                             <th>Sync</th>
                         </tr>
                     </thead>
@@ -138,8 +137,21 @@
                             <% const syncClass = entry.mismatchCount === 0 ? "good" : entry.declaredSlotCount > entry.actualSlotCount ? "warn" : "bad"; %>
                             <tr id="member-<%= entry.discord_user_id %>">
                                 <td>
-                                    <div class="hub-member-name"><%= entry.label %></div>
-                                    <div class="hub-member-sub"><%= entry.discord_user_id %></div>
+                                    <div style="display:flex; gap:12px; align-items:flex-start;">
+                                        <% if (entry.avatarUrl) { %>
+                                            <img src="<%= entry.avatarUrl %>" alt="<%= entry.label %>"
+                                                style="width:44px; height:44px; border-radius:14px; object-fit:cover; border:1px solid rgba(255,255,255,.08);" />
+                                        <% } else { %>
+                                            <div class="hub-avatar" style="width:44px; height:44px; border-radius:14px; font-size:14px;">
+                                                <%= (entry.label || "?").slice(0, 2).toUpperCase() %>
+                                            </div>
+                                        <% } %>
+                                        <div>
+                                            <div class="hub-member-name"><%= entry.label %></div>
+                                            <div class="hub-member-sub">Discord: <%= entry.discordLabel %></div>
+                                            <div class="hub-member-sub"><%= entry.discord_user_id %></div>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <% if (entry.tracked_roles.length) { %>
@@ -183,12 +195,6 @@
                                             value="1" <%= Number(entry.slot_23_00) === 1 ? "checked" : "" %> />
                                         <span>23-00</span>
                                     </label>
-                                </td>
-                                <td>
-                                    <input class="hub-input track-change" type="text"
-                                        name="members[<%= entry.discord_user_id %>][note]"
-                                        value="<%= entry.notes || '' %>"
-                                        placeholder="Nota facoltativa" />
                                 </td>
                                 <td>
                                     <span class="hub-badge <%= syncClass %>"><%= entry.syncLabel %></span>

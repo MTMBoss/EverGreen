@@ -16,11 +16,12 @@ async function syncTrackedMembers(members, syncedAt) {
           discord_user_id,
           nickname,
           display_name,
+          ingame_name,
           tracked_roles_json,
           active,
           last_synced_at
         )
-        VALUES ($1, $2, $3, $4, TRUE, $5)
+        VALUES ($1, $2, $3, $4, $5, TRUE, $6)
         ON CONFLICT (discord_user_id) DO UPDATE SET
           nickname = EXCLUDED.nickname,
           display_name = EXCLUDED.display_name,
@@ -33,6 +34,7 @@ async function syncTrackedMembers(members, syncedAt) {
           member.discord_user_id,
           member.nickname || "",
           member.display_name,
+          member.ingame_name || "",
           JSON.stringify(member.tracked_roles || []),
           syncedAt,
         ]
@@ -115,7 +117,7 @@ async function getActiveMembers() {
     SELECT *
     FROM members
     WHERE active = TRUE
-    ORDER BY LOWER(COALESCE(NULLIF(nickname, ''), display_name)) ASC
+    ORDER BY LOWER(COALESCE(NULLIF(ingame_name, ''), NULLIF(nickname, ''), display_name)) ASC
   `);
 
   return result.rows.map(row => ({
@@ -254,6 +256,7 @@ async function getAttendanceEntryByMemberAndDate(date, discordUserId) {
       m.discord_user_id,
       m.nickname,
       m.display_name,
+      m.ingame_name,
       m.tracked_roles_json
     FROM attendance_entries ae
     JOIN attendance_days ad ON ad.id = ae.day_id
@@ -291,6 +294,7 @@ async function getAttendanceForDate(date) {
       m.discord_user_id,
       m.nickname,
       m.display_name,
+      m.ingame_name,
       m.tracked_roles_json
     FROM attendance_entries ae
     JOIN attendance_days ad ON ad.id = ae.day_id
@@ -309,7 +313,7 @@ async function getAttendanceForDate(date) {
         )
         OR COALESCE(ae.updated_by_discord_user_id, '') <> ''
       )
-    ORDER BY LOWER(COALESCE(NULLIF(m.nickname, ''), m.display_name)) ASC
+    ORDER BY LOWER(COALESCE(NULLIF(m.ingame_name, ''), NULLIF(m.nickname, ''), m.display_name)) ASC
     `,
     [date]
   );
@@ -364,6 +368,19 @@ async function getAttendanceSummaryForDate(date) {
       full_presence_count: 0,
       absent_count: 0,
     }
+  );
+}
+
+async function updateMemberInGameName(discordUserId, ingameName) {
+  await ensureDbReady();
+
+  await pool.query(
+    `
+    UPDATE members
+    SET ingame_name = $2
+    WHERE discord_user_id = $1
+    `,
+    [discordUserId, String(ingameName || "").trim()]
   );
 }
 
@@ -456,7 +473,7 @@ async function getAttendanceLeaderboardRows(startDate, endDate) {
       slots_covered DESC,
       full_days DESC,
       days_present DESC,
-      LOWER(COALESCE(NULLIF(m.nickname, ''), m.display_name)) ASC
+      LOWER(COALESCE(NULLIF(m.ingame_name, ''), NULLIF(m.nickname, ''), m.display_name)) ASC
     LIMIT 10
     `,
     [startDate, endDate]
@@ -530,6 +547,7 @@ module.exports = {
   syncTrackedMembers,
   getMemberByDiscordId,
   getActiveMembers,
+  updateMemberInGameName,
   ensureAttendanceDay,
   upsertAttendanceEntry,
   getAttendanceEntryByMemberAndDate,

@@ -31,42 +31,71 @@
         </div>
     </section>
 
-    <section class="hub-roster-grid">
-        <% for (const member of roster) { %>
-            <article class="hub-roster-card">
-                <div class="hub-roster-body">
-                    <div class="hub-roster-top">
-                        <div class="hub-avatar">
-                            <%= (member.label || "?").slice(0, 2).toUpperCase() %>
-                        </div>
-                        <div style="flex: 1; min-width: 0;">
-                            <div class="hub-member-name"><%= member.label %></div>
-                            <div class="hub-member-sub"><%= member.discord_user_id %></div>
-                            <div style="margin-top: 10px;">
-                                <% if (member.tracked_roles.length) { %>
-                                    <% for (const role of member.tracked_roles) { %>
-                                        <span class="hub-role-pill"><%= role.roleName %></span>
+    <% if (saved) { %>
+        <div class="hub-flash success">✅ Nomi in-game aggiornati correttamente.</div>
+    <% } %>
+
+    <form method="post" action="/roster/save">
+        <section class="hub-roster-grid">
+            <% for (const member of roster) { %>
+                <article class="hub-roster-card">
+                    <div class="hub-roster-body">
+                        <div class="hub-roster-top">
+                            <% if (member.avatarUrl) { %>
+                                <img src="<%= member.avatarUrl %>" alt="<%= member.label %>"
+                                    style="width:52px; height:52px; border-radius:16px; object-fit:cover; border:1px solid rgba(255,255,255,.08);" />
+                            <% } else { %>
+                                <div class="hub-avatar">
+                                    <%= (member.label || "?").slice(0, 2).toUpperCase() %>
+                                </div>
+                            <% } %>
+                            <div style="flex: 1; min-width: 0;">
+                                <div class="hub-member-name"><%= member.label %></div>
+                                <div class="hub-member-sub">Discord: <%= member.discordLabel %></div>
+                                <div class="hub-member-sub"><%= member.discord_user_id %></div>
+                                <div style="margin-top: 10px;">
+                                    <% if (member.tracked_roles.length) { %>
+                                        <% for (const role of member.tracked_roles) { %>
+                                            <span class="hub-role-pill"><%= role.roleName %></span>
+                                        <% } %>
+                                    <% } else { %>
+                                        <span class="hub-muted">Nessun ruolo tracciato</span>
                                     <% } %>
-                                <% } else { %>
-                                    <span class="hub-muted">Nessun ruolo tracciato</span>
-                                <% } %>
+                                </div>
                             </div>
                         </div>
+                        <div style="margin-top: 16px;">
+                            <label class="hub-label" for="ign-<%= member.discord_user_id %>">Nome in-game</label>
+                            <input id="ign-<%= member.discord_user_id %>" class="hub-input" type="text"
+                                name="members[<%= member.discord_user_id %>][ingame_name]"
+                                value="<%= member.ingame_name || '' %>"
+                                placeholder="Inserisci nickname in game" />
+                        </div>
                     </div>
-                </div>
-                <div class="hub-roster-footer">
-                    <div>
-                        <div class="hub-stat-label">Nickname Discord</div>
-                        <div class="hub-stat-value"><%= member.nickname || "-" %></div>
+                    <div class="hub-roster-footer">
+                        <div>
+                            <div class="hub-stat-label">Nickname Discord</div>
+                            <div class="hub-stat-value"><%= member.nickname || "-" %></div>
+                        </div>
+                        <div>
+                            <div class="hub-stat-label">Display Name</div>
+                            <div class="hub-stat-value"><%= member.display_name || "-" %></div>
+                        </div>
                     </div>
-                    <div>
-                        <div class="hub-stat-label">Display Name</div>
-                        <div class="hub-stat-value"><%= member.display_name || "-" %></div>
-                    </div>
-                </div>
-            </article>
-        <% } %>
-    </section>
+                </article>
+            <% } %>
+        </section>
+
+        <div class="hub-savebar">
+            <div class="hub-muted">
+                <strong style="color: var(--text);">Gestione roster</strong><br />
+                Qui puoi impostare i nomi in-game dei player senza toccare i nomi Discord.
+            </div>
+            <div class="hub-save-actions">
+                <button class="hub-button" type="submit">Salva roster</button>
+            </div>
+        </div>
+    </form>
 
     </main>
 </div>

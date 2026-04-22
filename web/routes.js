@@ -13,6 +13,7 @@ const {
   getCalendarView,
   setDaySlots,
   getTrackedRoster,
+  setMemberInGameName,
 } = require("../attendance/attendanceService");
 const { syncRosterFromGuild } = require("../attendance/rosterService");
 const { readConfig } = require("../config/configStore");
@@ -67,6 +68,10 @@ function createWebRouter(client) {
       const dayView = await getDayView(date);
       const scheduleAvailability = await getScheduleAvailabilityForDate(client, date);
       const config = readConfig();
+      const avatarUrls = await getMemberAvatarUrls(
+        client,
+        dayView.entries.map(entry => entry.discord_user_id)
+      );
 
       const entries = dayView.entries.map(entry => {
         const declaredSchedule =
@@ -88,6 +93,7 @@ function createWebRouter(client) {
           declaredSlotCount: countDeclaredSlots(declaredSchedule),
           actualSlotCount: countDeclaredSlots(actualSlots),
           mismatchCount,
+          avatarUrl: avatarUrls[entry.discord_user_id] || "",
           syncLabel:
             mismatchCount === 0
               ? "Allineato"
@@ -117,14 +123,37 @@ function createWebRouter(client) {
   router.get(
     "/roster",
     requireAdmin,
-    asyncHandler(async (_req, res) => {
+    asyncHandler(async (req, res) => {
       const roster = await getTrackedRoster();
+      const avatarUrls = await getMemberAvatarUrls(
+        client,
+        roster.map(member => member.discord_user_id)
+      );
 
       res.render("roster", {
         pageTitle: "Roster EverGreen",
-        roster,
+        roster: roster.map(member => ({
+          ...member,
+          avatarUrl: avatarUrls[member.discord_user_id] || "",
+        })),
+        saved: req.query.saved === "1",
         currentSection: "roster",
       });
+    })
+  );
+
+  router.post(
+    "/roster/save",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const membersPayload = req.body.members || {};
+
+      for (const discordUserId of Object.keys(membersPayload)) {
+        const row = membersPayload[discordUserId] || {};
+        await setMemberInGameName(discordUserId, row.ingame_name || "");
+      }
+
+      res.redirect("/roster?saved=1");
     })
   );
 
@@ -145,7 +174,7 @@ function createWebRouter(client) {
           slot_21_22: Boolean(row.slot_21_22),
           slot_22_23: Boolean(row.slot_22_23),
           slot_23_00: Boolean(row.slot_23_00),
-          notes: String(row.note || "").trim(),
+          notes: "",
           updatedByDiscordUserId: "WEB_PANEL",
         });
       }
@@ -245,6 +274,39 @@ function buildCalendarGrid(month, summaryByDate) {
   }
 
   return rows;
+}
+
+async function getMemberAvatarUrls(client, discordUserIds) {
+  const uniqueIds = Array.from(new Set((discordUserIds || []).filter(Boolean)));
+  if (!uniqueIds.length) return {};
+
+  const guild =
+    client.guilds.cache.get(process.env.GUILD_ID) ||
+    client.guilds.cache.first() ||
+    null;
+
+  if (!guild) return {};
+
+  const avatarUrls = {};
+
+  for (const discordUserId of uniqueIds) {
+    try {
+      const member =
+        guild.members.cache.get(discordUserId) ||
+        await guild.members.fetch(discordUserId).catch(() => null);
+
+      if (!member) continue;
+
+      avatarUrls[discordUserId] = member.displayAvatarURL({
+        extension: "png",
+        size: 128,
+      });
+    } catch {
+      avatarUrls[discordUserId] = "";
+    }
+  }
+
+  return avatarUrls;
 }
 
 function asyncHandler(handler) {

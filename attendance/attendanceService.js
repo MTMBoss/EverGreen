@@ -9,6 +9,7 @@ const { ensureDbReady } = require("./db");
 const {
     getMemberByDiscordId,
     getActiveMembers,
+    updateMemberInGameName,
     ensureAttendanceDay,
     upsertAttendanceEntry,
     getAttendanceEntryByMemberAndDate,
@@ -133,7 +134,8 @@ async function getDayView(dateInput) {
 
     const entries = (await getAttendanceForDate(date)).map(entry => ({
         ...entry,
-        label: entry.nickname || entry.display_name,
+        label: entry.ingame_name || entry.nickname || entry.display_name,
+        discordLabel: entry.nickname || entry.display_name,
         status: getStatusLabel(entry),
     }));
 
@@ -192,8 +194,14 @@ async function getCalendarView(monthInput) {
 async function getTrackedRoster() {
     return (await getActiveMembers()).map(member => ({
         ...member,
-        label: member.nickname || member.display_name,
+        label: member.ingame_name || member.nickname || member.display_name,
+        discordLabel: member.nickname || member.display_name,
     }));
+}
+
+async function setMemberInGameName(discordUserId, ingameName) {
+    await getMemberOrThrow(discordUserId);
+    await updateMemberInGameName(discordUserId, ingameName);
 }
 
 function getStatusLabel(entry) {
@@ -227,5 +235,6 @@ module.exports = {
     getDayView,
     getCalendarView,
     getTrackedRoster,
+    setMemberInGameName,
     getStatusLabel,
 };

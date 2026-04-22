@@ -44,10 +44,16 @@ async function ensureDbReady() {
         discord_user_id TEXT UNIQUE NOT NULL,
         nickname TEXT NOT NULL DEFAULT '',
         display_name TEXT NOT NULL,
+        ingame_name TEXT NOT NULL DEFAULT '',
         tracked_roles_json TEXT NOT NULL DEFAULT '[]',
         active BOOLEAN NOT NULL DEFAULT TRUE,
         last_synced_at TIMESTAMPTZ NOT NULL
       )
+    `);
+
+    await pool.query(`
+      ALTER TABLE members
+      ADD COLUMN IF NOT EXISTS ingame_name TEXT NOT NULL DEFAULT ''
     `);
 
     await pool.query(`
