@@ -137,15 +137,10 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
       continue;
     }
 
-    const messages = await fetchRecentMessages(channel);
-    const orderedMessages = messages
-      .filter(message => !message.author?.bot)
-      .sort((left, right) => left.createdTimestamp - right.createdTimestamp);
-
     const channelStats = {
       type: source.type,
       channelId: source.id,
-      scanned: orderedMessages.length,
+      scanned: 0,
       imported: 0,
       duplicates: 0,
       skipped: 0,
@@ -153,7 +148,51 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
       error: "",
     };
 
-    for (const message of orderedMessages) {
+    await processChannelHistoryInBatches({
+      channel,
+      source,
+      client,
+      channelStats,
+      summary,
+    });
+
+    summary.scanned += channelStats.scanned;
+    summary.imported += channelStats.imported;
+    summary.duplicates += channelStats.duplicates;
+    summary.skipped += channelStats.skipped;
+    summary.failed += channelStats.failed;
+    summary.channels.push(channelStats);
+  }
+
+  return summary;
+}
+
+async function processChannelHistoryInBatches({
+  channel,
+  source,
+  client,
+  channelStats,
+  summary,
+}) {
+  let before;
+
+  while (true) {
+    const batchSize = 100;
+    const batch = await channel.messages.fetch(
+      before
+        ? { limit: batchSize, before }
+        : { limit: batchSize }
+    );
+
+    if (!batch.size) break;
+
+    const messages = [...batch.values()]
+      .filter(message => !message.author?.bot)
+      .reverse();
+
+    for (const message of messages) {
+      channelStats.scanned += 1;
+
       try {
         const result = await handleAutoMatchSourceMessage(message, client);
         if (!result.handled) continue;
@@ -179,7 +218,10 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
           error: error.message || String(error),
         };
 
-        summary.failedMatches.push(failure);
+        if (summary.failedMatches.length < 25) {
+          summary.failedMatches.push(failure);
+        }
+
         console.error(
           `❌ Errore import storico ${source.type} ${message.id}:`,
           failure.error
@@ -187,39 +229,14 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
       }
     }
 
-    summary.scanned += channelStats.scanned;
-    summary.imported += channelStats.imported;
-    summary.duplicates += channelStats.duplicates;
-    summary.skipped += channelStats.skipped;
-    summary.failed += channelStats.failed;
-    summary.channels.push(channelStats);
-  }
-
-  return summary;
-}
-
-async function fetchRecentMessages(channel) {
-  const collected = [];
-  let before;
-
-  while (true) {
-    const batchSize = 100;
-    const batch = await channel.messages.fetch(
-      before
-        ? { limit: batchSize, before }
-        : { limit: batchSize }
-    );
-
-    if (!batch.size) break;
-
-    const messages = [...batch.values()];
-    collected.push(...messages);
-    before = messages[messages.length - 1].id;
+    const rawMessages = [...batch.values()];
+    before = rawMessages[rawMessages.length - 1].id;
 
     if (batch.size < batchSize) break;
-  }
 
-  return collected;
+    // Piccola pausa per alleggerire memoria e rate limit durante import lunghi.
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
 }
 
 module.exports = {
