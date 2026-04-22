@@ -108,14 +108,40 @@ async function completeMatchFromPart2({ parsed, message }) {
 
   await replaceMatchAssets(match.id, imageAttachments);
 
-  const extracted = await extractMatchDataFromImages(
-    imageAttachments,
-    matchDetail?.maps || [],
-    {
-      team1: match.team1,
-      team2: match.team2,
+  let extracted = {
+    maps: [],
+    players: [],
+    needsReview: imageAttachments.length > 0,
+    extractionSummary: "",
+  };
+
+  if (imageAttachments.length > 0) {
+    try {
+      extracted = await extractMatchDataFromImages(
+        imageAttachments,
+        matchDetail?.maps || [],
+        {
+          team1: match.team1,
+          team2: match.team2,
+        }
+      );
+    } catch (error) {
+      console.error(`❌ Errore OCR parte 2 per ${match.slug}:`, error);
+      extracted = {
+        maps: [],
+        players: [],
+        needsReview: true,
+        extractionSummary: "OCR non riuscito, match pubblicato con solo risultato serie.",
+      };
     }
-  );
+  } else {
+    extracted = {
+      maps: [],
+      players: [],
+      needsReview: false,
+      extractionSummary: "Nessuna immagine allegata, match pubblicato con solo risultato serie.",
+    };
+  }
 
   if (Array.isArray(extracted.maps) && extracted.maps.length > 0) {
     await replaceMatchMapScores(match.id, extracted.maps);
