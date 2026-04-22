@@ -17,6 +17,7 @@ const {
 const {
   parseMatchDraftFromParsedMessage,
 } = require("./matchUtils");
+const { isImageAttachment } = require("./matchMessageParser");
 
 const {
   extractMatchDataFromImages,
@@ -87,7 +88,7 @@ async function completeMatchFromPart2({ parsed, message }) {
   const matchDetail = await getMatchBySlug(match.slug);
 
   const imageAttachments = [...message.attachments.values()]
-    .filter(att => att.contentType?.startsWith("image/"))
+    .filter(isImageAttachment)
     .map((att, index) => ({
       url: att.url,
       sortOrder: index + 1,

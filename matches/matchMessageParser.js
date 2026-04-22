@@ -134,9 +134,15 @@ function buildPart2Draft(data) {
 }
 
 function getImageAttachments(message) {
-  return [...message.attachments.values()].filter(attachment =>
-    attachment.contentType?.startsWith("image/")
-  );
+  return [...message.attachments.values()].filter(isImageAttachment);
+}
+
+function isImageAttachment(attachment) {
+  if (!attachment) return false;
+  if (attachment.contentType?.startsWith("image/")) return true;
+
+  const fileName = String(attachment.name || attachment.url || "").toLowerCase();
+  return /\.(png|jpe?g|webp|gif|bmp)$/i.test(fileName);
 }
 
 module.exports = {
@@ -145,5 +151,6 @@ module.exports = {
   buildPart2Message,
   extractRawText,
   getImageAttachments,
+  isImageAttachment,
   parseMatchMessage,
 };
