@@ -117,6 +117,8 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
     imported: 0,
     duplicates: 0,
     skipped: 0,
+    failed: 0,
+    failedMatches: [],
     channels: [],
   };
 
@@ -147,19 +149,41 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
       imported: 0,
       duplicates: 0,
       skipped: 0,
+      failed: 0,
       error: "",
     };
 
     for (const message of orderedMessages) {
-      const result = await handleAutoMatchSourceMessage(message, client);
-      if (!result.handled) continue;
+      try {
+        const result = await handleAutoMatchSourceMessage(message, client);
+        if (!result.handled) continue;
 
-      if (result.imported) {
-        channelStats.imported += 1;
-      } else if (result.reason === "already_imported") {
-        channelStats.duplicates += 1;
-      } else {
-        channelStats.skipped += 1;
+        if (result.imported) {
+          channelStats.imported += 1;
+        } else if (result.reason === "already_imported") {
+          channelStats.duplicates += 1;
+        } else {
+          channelStats.skipped += 1;
+        }
+      } catch (error) {
+        channelStats.failed += 1;
+
+        const parsed = parseMatchMessage(message.content || "");
+        const failure = {
+          channelType: source.type,
+          channelId: source.id,
+          messageId: message.id,
+          title: parsed.title || "",
+          dateLine: parsed.dateLine || "",
+          resultLine: parsed.resultLine || "",
+          error: error.message || String(error),
+        };
+
+        summary.failedMatches.push(failure);
+        console.error(
+          `❌ Errore import storico ${source.type} ${message.id}:`,
+          failure.error
+        );
       }
     }
 
@@ -167,6 +191,7 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
     summary.imported += channelStats.imported;
     summary.duplicates += channelStats.duplicates;
     summary.skipped += channelStats.skipped;
+    summary.failed += channelStats.failed;
     summary.channels.push(channelStats);
   }
 

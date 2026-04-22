@@ -77,6 +77,19 @@ async function handleConfigCommand(interaction, client) {
       sourceChannelPart2: channelPart2.id,
     });
 
+    const failedPreview = summary.failedMatches
+      .slice(0, 5)
+      .map(item =>
+        [
+          item.title ? `Titolo: ${item.title}` : "",
+          item.dateLine ? `Data: ${item.dateLine}` : "",
+          item.resultLine ? `Risultato: ${item.resultLine}` : "",
+        ]
+          .filter(Boolean)
+          .join(" | ")
+      )
+      .filter(Boolean);
+
     await interaction.editReply({
       content:
         `✅ Import storico completato\n` +
@@ -86,7 +99,11 @@ async function handleConfigCommand(interaction, client) {
         `Messaggi scansionati: **${summary.scanned}**\n` +
         `Match importati: **${summary.imported}**\n` +
         `Già presenti: **${summary.duplicates}**\n` +
-        `Saltati: **${summary.skipped}**`,
+        `Saltati: **${summary.skipped}**\n` +
+        `Errori: **${summary.failed}**` +
+        (failedPreview.length
+          ? `\n\nPrime partite non collegate:\n- ${failedPreview.join("\n- ")}`
+          : ""),
     });
     return true;
   }
