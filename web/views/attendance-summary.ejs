@@ -4,263 +4,84 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
-        <%= pageTitle %>
-    </title>
-    <style>
-        :root {
-            --bg: #06070b;
-            --card: #121521;
-            --line: rgba(170, 110, 255, 0.18);
-            --text: #eef2ff;
-            --muted: #a7b0c9;
-            --purple: #8b4dff;
-            --purple-2: #5f23cb;
-            --green: #7eea57;
-            --shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            padding: 24px;
-            min-height: 100vh;
-            font-family: Arial, sans-serif;
-            color: var(--text);
-            background:
-                radial-gradient(circle at top, rgba(139, 77, 255, 0.20), transparent 30%),
-                linear-gradient(180deg, #05060a 0%, #090b12 100%);
-        }
-
-        a {
-            color: #e5dcff;
-            text-decoration: none;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .hero,
-        .card,
-        .day,
-        .weekday {
-            background: linear-gradient(180deg, rgba(18, 21, 33, 0.98), rgba(13, 15, 23, 0.98));
-            border: 1px solid var(--line);
-            border-radius: 20px;
-            box-shadow: var(--shadow);
-        }
-
-        .hero {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            padding: 22px;
-            margin-bottom: 18px;
-            flex-wrap: wrap;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .brand img {
-            width: 66px;
-            height: 66px;
-            object-fit: contain;
-            border-radius: 16px;
-            background: rgba(139, 77, 255, 0.14);
-            padding: 8px;
-        }
-
-        .eyebrow {
-            color: var(--green);
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 1.3px;
-            text-transform: uppercase;
-            margin-bottom: 6px;
-        }
-
-        .hero h1 {
-            margin: 0 0 6px;
-            font-size: 30px;
-        }
-
-        .hero p {
-            margin: 0;
-            color: var(--muted);
-        }
-
-        .nav-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 12px 16px;
-            border-radius: 14px;
-            font-weight: 800;
-            color: white;
-            background: linear-gradient(135deg, var(--purple), var(--purple-2));
-        }
-
-        .button-dark {
-            background: linear-gradient(135deg, #1d2233, #10131d);
-        }
-
-        .calendar {
-            display: grid;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-            gap: 12px;
-        }
-
-        .weekday,
-        .day {
-            padding: 14px;
-        }
-
-        .weekday {
-            text-align: center;
-            font-size: 12px;
-            font-weight: 800;
-            text-transform: uppercase;
-            color: #d6dcfa;
-            letter-spacing: .8px;
-        }
-
-        .day {
-            min-height: 170px;
-        }
-
-        .day.empty {
-            opacity: .25;
-            border-style: dashed;
-        }
-
-        .date {
-            font-size: 22px;
-            font-weight: 800;
-            margin-bottom: 12px;
-        }
-
-        .stats {
-            font-size: 13px;
-            line-height: 1.6;
-            color: #d0d8f7;
-        }
-
-        .link {
-            display: inline-block;
-            margin-top: 12px;
-            font-weight: 800;
-            color: var(--green);
-        }
-
-        @media (max-width: 1000px) {
-            .calendar {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .weekday {
-                display: none;
-            }
-        }
-
-        @media (max-width: 640px) {
-            body {
-                padding: 14px;
-            }
-
-            .calendar {
-                grid-template-columns: 1fr;
-            }
-
-            .hero h1 {
-                font-size: 24px;
-            }
-        }
-    </style>
+    <title><%= pageTitle %></title>
+    <link rel="stylesheet" href="/assets/hub.css" />
 </head>
 
-<body>
-    <div class="container">
-        <%- include("partials/nav", { currentSection }) %>
-            <div class="hero">
-                <div class="brand">
-                    <img src="/assets/evergreen-logo.png" alt="EverGreen logo" onerror="this.style.display='none'">
-                    <div>
-                        <div class="eyebrow">EverGreen Competitive Calendar</div>
-                        <h1>Calendario presenze <%= month %>
-                        </h1>
-                        <p>Panoramica giornaliera del roster competitivo.</p>
+<body class="hub-body">
+    <%- include("partials/nav", { currentSection }) %>
+
+    <section class="hub-page-header">
+        <div>
+            <h1>Calendario Presenze</h1>
+            <p>
+                Vista mensile del roster competitivo. Rimane collegata ai dati reali del bot, ma ora usa la stessa
+                interfaccia hub del nuovo layout.
+            </p>
+            <div class="hub-chip">
+                <span class="hub-chip-dot"></span>
+                Mese attivo: <%= month %>
+            </div>
+        </div>
+
+        <div class="hub-actions">
+            <a class="hub-button secondary" href="/presenze">Vai a oggi</a>
+            <a class="hub-button secondary" href="/calendario?month=<%= prevMonth %>">← Mese precedente</a>
+            <a class="hub-button secondary" href="/calendario?month=<%= nextMonth %>">Mese successivo →</a>
+            <a class="hub-button danger" href="/logout">Logout</a>
+        </div>
+    </section>
+
+    <section class="hub-summary-grid">
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Periodo</div>
+            <div class="hub-summary-value"><%= calendarView.title %></div>
+            <div class="hub-summary-sub">Vista calendario operativa</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Giorni con dati</div>
+            <div class="hub-summary-value"><%= Array.from(calendarView.summaryByDate.keys()).length %></div>
+            <div class="hub-summary-sub">Date con almeno una riga salvata</div>
+        </article>
+    </section>
+
+    <section class="hub-calendar-grid">
+        <div class="hub-weekday">Lun</div>
+        <div class="hub-weekday">Mar</div>
+        <div class="hub-weekday">Mer</div>
+        <div class="hub-weekday">Gio</div>
+        <div class="hub-weekday">Ven</div>
+        <div class="hub-weekday">Sab</div>
+        <div class="hub-weekday">Dom</div>
+
+        <% for (const row of grid) { %>
+            <% for (const cell of row) { %>
+                <% if (!cell) { %>
+                    <div class="hub-day-card empty"></div>
+                <% } else { %>
+                    <div class="hub-day-card">
+                        <div class="hub-day-number"><%= cell.day %></div>
+
+                        <% if (cell.summary) { %>
+                            <div class="hub-day-stats">
+                                Roster: <strong><%= cell.summary.totalMembers %></strong><br />
+                                Presenti: <strong><%= cell.summary.anyPresenceCount %></strong><br />
+                                Full: <strong><%= cell.summary.fullPresenceCount %></strong><br />
+                                Assenti: <strong><%= cell.summary.absentCount %></strong>
+                            </div>
+                        <% } else { %>
+                            <div class="hub-day-stats">Nessun dato salvato</div>
+                        <% } %>
+
+                        <a class="hub-day-link" href="/presenze?date=<%= cell.date %>">Apri giorno</a>
                     </div>
-                </div>
+                <% } %>
+            <% } %>
+        <% } %>
+    </section>
 
-                <div class="nav-actions">
-                    <a class="button button-dark" href="/presenze">Vai a oggi</a>
-                    <a class="button button-dark" href="/calendario?month=<%= prevMonth %>">← Mese precedente</a>
-                    <a class="button button-dark" href="/calendario?month=<%= nextMonth %>">Mese successivo →</a>
-                    <a class="button button-dark" href="/logout">Logout</a>
-                </div>
-            </div>
-
-            <div class="calendar">
-                <div class="weekday">Lun</div>
-                <div class="weekday">Mar</div>
-                <div class="weekday">Mer</div>
-                <div class="weekday">Gio</div>
-                <div class="weekday">Ven</div>
-                <div class="weekday">Sab</div>
-                <div class="weekday">Dom</div>
-
-                <% for (const row of grid) { %>
-                    <% for (const cell of row) { %>
-                        <% if (!cell) { %>
-                            <div class="day empty"></div>
-                            <% } else { %>
-                                <div class="day">
-                                    <div class="date">
-                                        <%= cell.day %>
-                                    </div>
-
-                                    <% if (cell.summary) { %>
-                                        <div class="stats">
-                                            Roster: <strong>
-                                                <%= cell.summary.totalMembers %>
-                                            </strong><br />
-                                            Presenti: <strong>
-                                                <%= cell.summary.anyPresenceCount %>
-                                            </strong><br />
-                                            Full: <strong>
-                                                <%= cell.summary.fullPresenceCount %>
-                                            </strong><br />
-                                            Assenti: <strong>
-                                                <%= cell.summary.absentCount %>
-                                            </strong>
-                                        </div>
-                                        <% } else { %>
-                                            <div class="stats">Nessun dato salvato</div>
-                                            <% } %>
-
-                                                <a class="link" href="/presenze?date=<%= cell.date %>">Apri giorno</a>
-                                </div>
-                                <% } %>
-                                    <% } %>
-                                        <% } %>
-            </div>
-    </div>
+    </main>
+</div>
 </body>
 
 </html>

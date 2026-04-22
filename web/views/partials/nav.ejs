@@ -1,34 +1,55 @@
-<nav class="eg-nav">
-    <a href="/presenze?date=<%= typeof date !== 'undefined' ? date : '' %>"
-        class="<%= currentSection === 'presenze' ? 'active' : '' %>">Presenze</a>
-    <a href="/calendario" class="<%= currentSection === 'calendario' ? 'active' : '' %>">Calendario</a>
-    <a href="/logout" class="logout">Logout</a>
-</nav>
+<div class="hub-topbar">
+    <div>EverGreen | COD Mobile | Northflank Web</div>
+    <div>Sec_Level: <strong>Alpha</strong></div>
+</div>
 
-<style>
-    .eg-nav {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin: 0 0 20px;
-    }
+<div class="hub-shell">
+    <aside class="hub-sidebar">
+        <div class="hub-brand">
+            <div class="hub-brand-mark">EG</div>
+            <div class="hub-brand-copy">
+                <strong>EVERGREEN</strong>
+                <span>Competitive Hub</span>
+            </div>
+        </div>
 
-    .eg-nav a {
-        text-decoration: none;
-        padding: 10px 14px;
-        border-radius: 12px;
-        background: #170227;
-        color: #eadbff;
-        border: 1px solid rgba(187, 121, 255, .2);
-        font-weight: 700;
-    }
+        <div class="hub-nav-title">Navigazione Operativa</div>
+        <nav class="hub-nav-links">
+            <a class="hub-nav-link <%= currentSection === 'presenze' ? 'active' : '' %>"
+                href="/presenze?date=<%= typeof date !== 'undefined' ? date : '' %>">
+                <span class="hub-nav-icon">PR</span>
+                <span>Presenze</span>
+            </a>
+            <a class="hub-nav-link <%= currentSection === 'calendario' ? 'active' : '' %>" href="/calendario">
+                <span class="hub-nav-icon">CA</span>
+                <span>Calendario</span>
+            </a>
+            <a class="hub-nav-link <%= currentSection === 'roster' ? 'active' : '' %>" href="/roster">
+                <span class="hub-nav-icon">RO</span>
+                <span>Roster</span>
+            </a>
+            <a class="hub-nav-link" href="/logout">
+                <span class="hub-nav-icon">LO</span>
+                <span>Logout</span>
+            </a>
+        </nav>
 
-    .eg-nav a.active {
-        background: #2b0a4a;
-        border-color: #8f4fff;
-    }
+        <div class="hub-sidebar-footer">
+            Sys_Ver: 3.0.0<br />
+            Mode: Replit UI Migration
+        </div>
+    </aside>
 
-    .eg-nav a.logout {
-        margin-left: auto;
-    }
-</style>
+    <main class="hub-main">
+        <div class="hub-mobilebar">
+            <div>
+                <strong style="display:block; letter-spacing: 2px;">EVERGREEN</strong>
+                <span class="hub-muted">Competitive Hub</span>
+            </div>
+            <div class="hub-actions">
+                <a class="hub-button secondary" href="/presenze?date=<%= typeof date !== 'undefined' ? date : '' %>">Presenze</a>
+                <a class="hub-button secondary" href="/calendario">Calendario</a>
+                <a class="hub-button secondary" href="/roster">Roster</a>
+                <a class="hub-button danger" href="/logout">Logout</a>
+            </div>
+        </div>

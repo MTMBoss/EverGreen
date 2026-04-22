@@ -4,904 +4,248 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
-        <%= pageTitle %>
-    </title>
-    <style>
-        :root {
-            --background: #090c12;
-            --background-elevated: rgba(14, 18, 28, 0.92);
-            --card: rgba(15, 20, 31, 0.88);
-            --card-strong: rgba(18, 24, 37, 0.98);
-            --border: rgba(123, 162, 255, 0.14);
-            --border-strong: rgba(123, 162, 255, 0.28);
-            --foreground: #edf3ff;
-            --muted: #8e9bb2;
-            --primary: #7ae582;
-            --primary-soft: rgba(122, 229, 130, 0.14);
-            --accent: #6ba5ff;
-            --danger: #ff6b7a;
-            --warning: #ffd166;
-            --shadow: 0 24px 64px rgba(0, 0, 0, 0.42);
-            --radius: 18px;
-            --sidebar-width: 260px;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            min-height: 100%;
-            background:
-                radial-gradient(circle at top left, rgba(107, 165, 255, 0.16), transparent 30%),
-                radial-gradient(circle at top right, rgba(122, 229, 130, 0.08), transparent 20%),
-                linear-gradient(180deg, #070a10 0%, #090d14 100%);
-            color: var(--foreground);
-            font-family: "Segoe UI", Arial, sans-serif;
-        }
-
-        body {
-            min-height: 100vh;
-        }
-
-        a {
-            color: inherit;
-            text-decoration: none;
-        }
-
-        .top-strip {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 28px;
-            background: rgba(10, 12, 18, 0.94);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 14px;
-            z-index: 1000;
-            font-size: 10px;
-            letter-spacing: 1.2px;
-            text-transform: uppercase;
-            color: var(--muted);
-        }
-
-        .top-strip strong {
-            color: var(--primary);
-        }
-
-        .shell {
-            display: flex;
-            min-height: 100vh;
-            padding-top: 28px;
-        }
-
-        .sidebar {
-            width: var(--sidebar-width);
-            position: fixed;
-            top: 28px;
-            bottom: 0;
-            left: 0;
-            background: rgba(13, 17, 26, 0.96);
-            border-right: 1px solid var(--border);
-            backdrop-filter: blur(16px);
-            display: flex;
-            flex-direction: column;
-            z-index: 200;
-        }
-
-        .sidebar-brand {
-            height: 72px;
-            padding: 0 22px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .shield {
-            width: 36px;
-            height: 36px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, rgba(122, 229, 130, 0.24), rgba(107, 165, 255, 0.22));
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.06);
-        }
-
-        .brand-copy {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .brand-copy strong {
-            letter-spacing: 2px;
-            font-size: 18px;
-        }
-
-        .brand-copy span {
-            font-size: 11px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .nav-section-title {
-            padding: 20px 22px 8px;
-            color: var(--muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1.4px;
-        }
-
-        .nav-links {
-            padding: 0 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            border-radius: 14px;
-            color: var(--muted);
-            border: 1px solid transparent;
-            transition: .18s ease;
-        }
-
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.03);
-            color: var(--foreground);
-        }
-
-        .nav-link.active {
-            background: rgba(107, 165, 255, 0.12);
-            color: var(--accent);
-            border-color: rgba(107, 165, 255, 0.22);
-            box-shadow: 0 0 0 1px rgba(107, 165, 255, 0.08) inset;
-        }
-
-        .nav-icon {
-            width: 26px;
-            height: 26px;
-            border-radius: 9px;
-            background: rgba(255, 255, 255, 0.04);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        .sidebar-footer {
-            margin-top: auto;
-            padding: 18px 22px 20px;
-            border-top: 1px solid var(--border);
-            font-size: 11px;
-            color: var(--muted);
-            line-height: 1.5;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .main {
-            flex: 1;
-            margin-left: var(--sidebar-width);
-            padding: 30px 26px 26px;
-        }
-
-        .mobile-bar {
-            display: none;
-        }
-
-        .page-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 18px;
-            margin-bottom: 24px;
-            padding-bottom: 18px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .page-header h1 {
-            margin: 0 0 8px;
-            font-size: 34px;
-            letter-spacing: -0.03em;
-        }
-
-        .page-header p {
-            margin: 0;
-            color: var(--muted);
-            max-width: 760px;
-            line-height: 1.6;
-        }
-
-        .header-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 14px;
-            border-radius: 999px;
-            border: 1px solid var(--border-strong);
-            background: rgba(255, 255, 255, 0.03);
-            padding: 10px 14px;
-            color: var(--foreground);
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .header-chip .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 999px;
-            background: var(--primary);
-            box-shadow: 0 0 12px rgba(122, 229, 130, 0.7);
-        }
-
-        .header-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .button,
-        button {
-            appearance: none;
-            border: 1px solid transparent;
-            border-radius: 14px;
-            padding: 11px 16px;
-            cursor: pointer;
-            font-weight: 800;
-            color: #07100a;
-            background: linear-gradient(135deg, #7ae582, #57d96c);
-            box-shadow: 0 14px 30px rgba(87, 217, 108, 0.18);
-        }
-
-        .button-secondary {
-            color: var(--foreground);
-            background: rgba(255, 255, 255, 0.03);
-            border-color: var(--border);
-            box-shadow: none;
-        }
-
-        .button-danger {
-            color: #fff1f3;
-            background: rgba(255, 107, 122, 0.10);
-            border-color: rgba(255, 107, 122, 0.24);
-            box-shadow: none;
-        }
-
-        .panel,
-        .summary-card,
-        .table-card,
-        .flash {
-            background: var(--background-elevated);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(16px);
-        }
-
-        .panel {
-            padding: 18px;
-            margin-bottom: 18px;
-        }
-
-        .toolbar {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 18px;
-            align-items: end;
-        }
-
-        .toolbar-group {
-            display: flex;
-            gap: 12px;
-            align-items: end;
-            flex-wrap: wrap;
-        }
-
-        .field label {
-            display: block;
-            margin-bottom: 7px;
-            color: var(--muted);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 800;
-        }
-
-        input[type="date"],
-        input[type="text"] {
-            width: 100%;
-            background: rgba(5, 8, 13, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 12px 14px;
-            color: var(--foreground);
-            outline: none;
-        }
-
-        input[type="date"]:focus,
-        input[type="text"]:focus {
-            border-color: rgba(107, 165, 255, 0.45);
-            box-shadow: 0 0 0 4px rgba(107, 165, 255, 0.08);
-        }
-
-        .hint {
-            color: var(--muted);
-            font-size: 12px;
-            margin-top: 10px;
-            line-height: 1.5;
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-            gap: 14px;
-            margin-bottom: 18px;
-        }
-
-        .summary-card {
-            padding: 16px;
-        }
-
-        .summary-label {
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .summary-value {
-            margin-top: 8px;
-            font-size: 30px;
-            font-weight: 900;
-            line-height: 1;
-        }
-
-        .summary-sub {
-            margin-top: 10px;
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .flash {
-            padding: 14px 16px;
-            margin-bottom: 16px;
-            font-weight: 700;
-        }
-
-        .flash.success {
-            border-color: rgba(122, 229, 130, 0.26);
-            background: rgba(122, 229, 130, 0.10);
-            color: #dfffe2;
-        }
-
-        .flash.info {
-            border-color: rgba(107, 165, 255, 0.24);
-            background: rgba(107, 165, 255, 0.09);
-            color: #d8e9ff;
-        }
-
-        .table-card {
-            overflow: hidden;
-        }
-
-        .table-head {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-            padding: 18px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .table-head h2 {
-            margin: 0 0 6px;
-            font-size: 20px;
-        }
-
-        .table-head p {
-            margin: 0;
-            color: var(--muted);
-            font-size: 14px;
-        }
-
-        .table-wrap {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 1080px;
-        }
-
-        thead th {
-            text-align: left;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--muted);
-            padding: 14px 16px;
-            background: rgba(255, 255, 255, 0.02);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-        }
-
-        tbody td {
-            padding: 14px 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            vertical-align: middle;
-        }
-
-        tbody tr:hover {
-            background: rgba(107, 165, 255, 0.04);
-        }
-
-        .member-name {
-            font-weight: 800;
-            font-size: 15px;
-        }
-
-        .member-id {
-            margin-top: 4px;
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .role-pill {
-            display: inline-flex;
-            align-items: center;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(107, 165, 255, 0.10);
-            border: 1px solid rgba(107, 165, 255, 0.16);
-            color: #daeaff;
-            font-size: 12px;
-            font-weight: 700;
-            margin: 4px 6px 0 0;
-        }
-
-        .slot-pill {
-            position: relative;
-            display: inline-flex;
-        }
-
-        .slot-pill input {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .slot-pill span {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 88px;
-            padding: 10px 12px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(4, 8, 13, 0.9);
-            color: var(--muted);
-            font-weight: 800;
-            transition: .18s ease;
-        }
-
-        .slot-pill input:checked+span {
-            color: #0c170e;
-            background: linear-gradient(135deg, #7ae582, #57d96c);
-            border-color: rgba(122, 229, 130, 0.34);
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 999px;
-            padding: 8px 12px;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        .status-presente {
-            background: rgba(122, 229, 130, 0.12);
-            border: 1px solid rgba(122, 229, 130, 0.25);
-            color: #dfffe2;
-        }
-
-        .status-parziale {
-            background: rgba(255, 209, 102, 0.10);
-            border: 1px solid rgba(255, 209, 102, 0.22);
-            color: #ffefc2;
-        }
-
-        .status-assente {
-            background: rgba(255, 107, 122, 0.10);
-            border: 1px solid rgba(255, 107, 122, 0.22);
-            color: #ffe1e5;
-        }
-
-        .savebar {
-            position: sticky;
-            bottom: 16px;
-            margin-top: 18px;
-            padding: 14px 16px;
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            background: rgba(8, 11, 17, 0.92);
-            backdrop-filter: blur(18px);
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            align-items: center;
-            box-shadow: var(--shadow);
-        }
-
-        .savebar-text {
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        .savebar-text strong {
-            color: var(--foreground);
-        }
-
-        .save-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .tiny {
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        @media (max-width: 1080px) {
-            .sidebar {
-                display: none;
-            }
-
-            .main {
-                margin-left: 0;
-                padding-top: 16px;
-            }
-
-            .mobile-bar {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 12px;
-                margin-bottom: 18px;
-                padding: 14px 16px;
-                background: rgba(13, 17, 26, 0.92);
-                border: 1px solid var(--border);
-                border-radius: 16px;
-                box-shadow: var(--shadow);
-            }
-
-            .mobile-links {
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
-        }
-
-        @media (max-width: 760px) {
-            .main {
-                padding: 14px;
-            }
-
-            .page-header {
-                flex-direction: column;
-            }
-
-            .header-actions,
-            .toolbar,
-            .toolbar-group,
-            .savebar,
-            .save-actions {
-                width: 100%;
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .button,
-            button {
-                width: 100%;
-                text-align: center;
-            }
-
-            .page-header h1 {
-                font-size: 28px;
-            }
-        }
-    </style>
+    <title><%= pageTitle %></title>
+    <link rel="stylesheet" href="/assets/hub.css" />
 </head>
 
-<body>
-    <div class="top-strip">
-        <div>EverGreen | COD Mobile | Northflank Web</div>
-        <div>Sec_Level: <strong>Alpha</strong></div>
-    </div>
+<body class="hub-body">
+    <%- include("partials/nav", { currentSection, date }) %>
 
-    <div class="shell">
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <div class="shield">EG</div>
-                <div class="brand-copy">
-                    <strong>EVERGREEN</strong>
-                    <span>Competitive Hub</span>
+    <section class="hub-page-header">
+        <div>
+            <h1>Presenze Operative</h1>
+            <p>
+                Il nuovo pannello unisce due dati diversi: quello che i player hanno dichiarato via reaction
+                allo schedule e la presenza effettiva che confermi tu manualmente nel roster reale.
+            </p>
+            <div class="hub-chip">
+                <span class="hub-chip-dot"></span>
+                Giorno attivo: <%= date %>
+            </div>
+        </div>
+
+        <div class="hub-actions">
+            <a class="hub-button secondary" href="/calendario">Apri calendario</a>
+            <a class="hub-button secondary" href="/roster">Apri roster</a>
+            <a class="hub-button danger" href="/logout">Logout</a>
+        </div>
+    </section>
+
+    <% if (saved) { %>
+        <div class="hub-flash success">✅ Modifiche salvate correttamente.</div>
+    <% } %>
+
+    <% if (syncCount) { %>
+        <div class="hub-flash info">🔄 Roster sincronizzato. Membri trovati: <strong><%= syncCount %></strong></div>
+    <% } %>
+
+    <section class="hub-panel">
+        <div class="hub-toolbar">
+            <div>
+                <form method="get" action="/presenze" class="hub-toolbar-group">
+                    <div class="hub-field">
+                        <label for="date">Giorno operativo</label>
+                        <input id="date" class="hub-input" type="date" name="date" value="<%= date %>" />
+                    </div>
+                    <button class="hub-button" type="submit">Apri giorno</button>
+                </form>
+
+                <div class="hub-hint">
+                    Lo schedule rappresenta la disponibilità dichiarata dai player su Discord. Le checkbox qui sotto
+                    invece rappresentano la presenza effettiva che vuoi registrare nel database del bot.
                 </div>
             </div>
 
-            <div class="nav-section-title">Navigazione Operativa</div>
-            <nav class="nav-links">
-                <a class="nav-link active" href="/presenze?date=<%= date %>">
-                    <span class="nav-icon">PR</span>
-                    <span>Presenze</span>
-                </a>
-                <a class="nav-link" href="/calendario">
-                    <span class="nav-icon">CA</span>
-                    <span>Calendario</span>
-                </a>
-                <a class="nav-link" href="/logout">
-                    <span class="nav-icon">LO</span>
-                    <span>Logout</span>
-                </a>
-            </nav>
-
-            <div class="sidebar-footer">
-                Sys_Ver: 2.0.26<br />
-                Status: Online
+            <div>
+                <form method="post" action="/sync-roster">
+                    <button class="hub-button secondary" type="submit">Sincronizza roster</button>
+                </form>
             </div>
-        </aside>
+        </div>
+    </section>
 
-        <main class="main">
-            <div class="mobile-bar">
+    <section class="hub-summary-grid">
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Roster attivo</div>
+            <div class="hub-summary-value"><%= dayView.summary.totalMembers %></div>
+            <div class="hub-summary-sub">Player monitorati nel giorno selezionato</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Dichiarati da schedule</div>
+            <div class="hub-summary-value"><%= scheduleAvailability.declaredCount %></div>
+            <div class="hub-summary-sub">Hanno reagito almeno a una fascia</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Presenti reali</div>
+            <div class="hub-summary-value"><%= dayView.summary.anyPresenceCount %></div>
+            <div class="hub-summary-sub">Confermati almeno una fascia</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Mismatch</div>
+            <div class="hub-summary-value"><%= dayView.entries.filter(entry => entry.mismatchCount > 0).length %></div>
+            <div class="hub-summary-sub">Schedule e presenza reale non allineati</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Sched. 21-22</div>
+            <div class="hub-summary-value"><%= scheduleAvailability.slotCounts.slot_21_22 %></div>
+            <div class="hub-summary-sub">Reaction 1️⃣ sul giorno</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Sched. 22-23</div>
+            <div class="hub-summary-value"><%= scheduleAvailability.slotCounts.slot_22_23 %></div>
+            <div class="hub-summary-sub">Reaction 2️⃣ sul giorno</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Sched. 23-00</div>
+            <div class="hub-summary-value"><%= scheduleAvailability.slotCounts.slot_23_00 %></div>
+            <div class="hub-summary-sub">Reaction 3️⃣ sul giorno</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Assenti reali</div>
+            <div class="hub-summary-value"><%= dayView.summary.absentCount %></div>
+            <div class="hub-summary-sub">Nessuna fascia confermata nel sistema</div>
+        </article>
+    </section>
+
+    <form id="bulk-save-form" method="post" action="/presenze/<%= date %>/save-all">
+        <section class="hub-card hub-table-card">
+            <div class="hub-table-head">
                 <div>
-                    <strong style="display:block; letter-spacing: 2px;">EVERGREEN</strong>
-                    <span class="tiny">Competitive Hub</span>
-                </div>
-                <div class="mobile-links">
-                    <a class="button button-secondary" href="/calendario">Calendario</a>
-                    <a class="button button-danger" href="/logout">Logout</a>
-                </div>
-            </div>
-
-            <section class="page-header">
-                <div>
-                    <h1>Registro Presenze</h1>
+                    <h2>Registro giornaliero</h2>
                     <p>
-                        Stiamo usando i dati reali del bot e del database Northflank, ma con una prima
-                        interfaccia ispirata al nuovo hub Replit. Questa e` la base su cui possiamo
-                        continuare a migrare il resto del pannello.
+                        Colonne schedule = cosa hanno dichiarato su Discord. Colonne effettive = realtà operativa del team.
                     </p>
-                    <div class="header-chip">
-                        <span class="dot"></span>
-                        Giorno attivo: <%= date %>
-                    </div>
                 </div>
+                <div class="hub-muted">Player mostrati: <strong><%= dayView.entries.length %></strong></div>
+            </div>
 
-                <div class="header-actions">
-                    <a class="button button-secondary" href="/calendario">Apri Calendario</a>
-                    <a class="button button-danger" href="/logout">Logout</a>
-                </div>
-            </section>
+            <div class="hub-table-wrap">
+                <table class="hub-table">
+                    <thead>
+                        <tr>
+                            <th>Membro</th>
+                            <th>Ruoli</th>
+                            <th>Schedule dichiarato</th>
+                            <th>21-22 reale</th>
+                            <th>22-23 reale</th>
+                            <th>23-00 reale</th>
+                            <th>Nota</th>
+                            <th>Sync</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% for (const entry of dayView.entries) { %>
+                            <% const syncClass = entry.mismatchCount === 0 ? "good" : entry.declaredSlotCount > entry.actualSlotCount ? "warn" : "bad"; %>
+                            <tr id="member-<%= entry.discord_user_id %>">
+                                <td>
+                                    <div class="hub-member-name"><%= entry.label %></div>
+                                    <div class="hub-member-sub"><%= entry.discord_user_id %></div>
+                                </td>
+                                <td>
+                                    <% if (entry.tracked_roles.length) { %>
+                                        <% for (const role of entry.tracked_roles) { %>
+                                            <span class="hub-role-pill"><%= role.roleName %></span>
+                                        <% } %>
+                                    <% } else { %>
+                                        <span class="hub-muted">Nessun ruolo tracciato</span>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <div>
+                                        <span class="hub-mini-pill <%= entry.declaredSchedule.slot_21_22 ? 'active' : '' %>">1️⃣ 21</span>
+                                        <span class="hub-mini-pill <%= entry.declaredSchedule.slot_22_23 ? 'active' : '' %>">2️⃣ 22</span>
+                                        <span class="hub-mini-pill <%= entry.declaredSchedule.slot_23_00 ? 'active' : '' %>">3️⃣ 23</span>
+                                    </div>
+                                    <div class="hub-member-sub">
+                                        <%= entry.declaredSlotCount > 0 ? `${entry.declaredSlotCount} fasce dichiarate` : "Nessuna reaction sullo schedule" %>
+                                    </div>
+                                </td>
+                                <td>
+                                    <label class="hub-slot-pill">
+                                        <input class="track-change" type="checkbox"
+                                            name="members[<%= entry.discord_user_id %>][slot_21_22]"
+                                            value="1" <%= Number(entry.slot_21_22) === 1 ? "checked" : "" %> />
+                                        <span>21-22</span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <label class="hub-slot-pill">
+                                        <input class="track-change" type="checkbox"
+                                            name="members[<%= entry.discord_user_id %>][slot_22_23]"
+                                            value="1" <%= Number(entry.slot_22_23) === 1 ? "checked" : "" %> />
+                                        <span>22-23</span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <label class="hub-slot-pill">
+                                        <input class="track-change" type="checkbox"
+                                            name="members[<%= entry.discord_user_id %>][slot_23_00]"
+                                            value="1" <%= Number(entry.slot_23_00) === 1 ? "checked" : "" %> />
+                                        <span>23-00</span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <input class="hub-input track-change" type="text"
+                                        name="members[<%= entry.discord_user_id %>][note]"
+                                        value="<%= entry.notes || '' %>"
+                                        placeholder="Nota facoltativa" />
+                                </td>
+                                <td>
+                                    <span class="hub-badge <%= syncClass %>"><%= entry.syncLabel %></span>
+                                    <div class="hub-member-sub">
+                                        <%= entry.mismatchCount === 0 ? "Schedule e presenza reale coincidono." : `${entry.mismatchCount} fasce diverse tra Discord e presenza reale.` %>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-            <% if (saved) { %>
-                <div class="flash success">✅ Modifiche salvate correttamente.</div>
-            <% } %>
+        <div class="hub-savebar">
+            <div class="hub-muted">
+                <strong id="dirty-text" style="color: var(--text);">Nessuna modifica non salvata</strong><br />
+                Qui registri la presenza effettiva, anche se diversa da quella dichiarata nello schedule.
+            </div>
+            <div class="hub-save-actions">
+                <button class="hub-button" type="submit">Salva tutto</button>
+            </div>
+        </div>
+    </form>
 
-            <% if (syncCount) { %>
-                <div class="flash info">🔄 Roster sincronizzato. Membri trovati: <strong><%= syncCount %></strong></div>
-            <% } %>
+    </main>
+</div>
 
-            <section class="panel">
-                <div class="toolbar">
-                    <div>
-                        <form method="get" action="/presenze" class="toolbar-group">
-                            <div class="field">
-                                <label for="date">Giorno operativo</label>
-                                <input id="date" type="date" name="date" value="<%= date %>" />
-                            </div>
-                            <button type="submit">Apri giorno</button>
-                        </form>
+<script>
+    (function () {
+        const form = document.getElementById("bulk-save-form");
+        const dirtyText = document.getElementById("dirty-text");
+        let dirty = false;
 
-                        <div class="hint">
-                            Pannello servito dal web attuale su Northflank. Se cambi la data, continui a lavorare
-                            sugli stessi dati reali del roster e delle presenze.
-                        </div>
-                    </div>
+        function setDirty(value) {
+            dirty = value;
+            dirtyText.textContent = dirty
+                ? "Ci sono modifiche non salvate"
+                : "Nessuna modifica non salvata";
+        }
 
-                    <div>
-                        <form method="post" action="/sync-roster">
-                            <button class="button button-secondary" type="submit">Sincronizza roster</button>
-                        </form>
-                    </div>
-                </div>
-            </section>
+        document.querySelectorAll(".track-change").forEach((el) => {
+            el.addEventListener("change", () => setDirty(true));
+            el.addEventListener("input", () => setDirty(true));
+        });
 
-            <section class="summary-grid">
-                <article class="summary-card">
-                    <div class="summary-label">Totale roster</div>
-                    <div class="summary-value"><%= dayView.summary.totalMembers %></div>
-                    <div class="summary-sub">Player monitorati per il giorno attivo</div>
-                </article>
-                <article class="summary-card">
-                    <div class="summary-label">Presenti almeno una fascia</div>
-                    <div class="summary-value"><%= dayView.summary.anyPresenceCount %></div>
-                    <div class="summary-sub">Disponibili parziali o full</div>
-                </article>
-                <article class="summary-card">
-                    <div class="summary-label">Full presence</div>
-                    <div class="summary-value"><%= dayView.summary.fullPresenceCount %></div>
-                    <div class="summary-sub">Copertura completa 21-23</div>
-                </article>
-                <article class="summary-card">
-                    <div class="summary-label">Assenti</div>
-                    <div class="summary-value"><%= dayView.summary.absentCount %></div>
-                    <div class="summary-sub">Nessuna fascia selezionata</div>
-                </article>
-                <article class="summary-card">
-                    <div class="summary-label">Slot 21-22</div>
-                    <div class="summary-value"><%= dayView.summary.slot21Count %></div>
-                    <div class="summary-sub">Copertura apertura serata</div>
-                </article>
-                <article class="summary-card">
-                    <div class="summary-label">Slot 22-23</div>
-                    <div class="summary-value"><%= dayView.summary.slot22Count %></div>
-                    <div class="summary-sub">Fascia centrale</div>
-                </article>
-                <article class="summary-card">
-                    <div class="summary-label">Slot 23-00</div>
-                    <div class="summary-value"><%= dayView.summary.slot23Count %></div>
-                    <div class="summary-sub">Late session</div>
-                </article>
-            </section>
+        form.addEventListener("submit", () => {
+            setDirty(false);
+        });
 
-            <form id="bulk-save-form" method="post" action="/presenze/<%= date %>/save-all">
-                <section class="table-card">
-                    <div class="table-head">
-                        <div>
-                            <h2>Griglia operativa</h2>
-                            <p>Le presenze sono ancora quelle reali del tuo sistema attuale, ma la visualizzazione
-                                sta iniziando a seguire il design del nuovo hub.</p>
-                        </div>
-                        <div class="tiny">Player mostrati: <strong><%= dayView.entries.length %></strong></div>
-                    </div>
-
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Membro</th>
-                                    <th>Ruoli</th>
-                                    <th>21-22</th>
-                                    <th>22-23</th>
-                                    <th>23-00</th>
-                                    <th>Nota</th>
-                                    <th>Stato</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% for (const entry of dayView.entries) { %>
-                                    <tr id="member-<%= entry.discord_user_id %>">
-                                        <td>
-                                            <div class="member-name"><%= entry.label %></div>
-                                            <div class="member-id"><%= entry.discord_user_id %></div>
-                                        </td>
-                                        <td>
-                                            <% for (const role of entry.tracked_roles) { %>
-                                                <span class="role-pill"><%= role.roleName %></span>
-                                            <% } %>
-                                        </td>
-                                        <td>
-                                            <label class="slot-pill">
-                                                <input class="track-change" type="checkbox"
-                                                    name="members[<%= entry.discord_user_id %>][slot_21_22]"
-                                                    value="1" <%= Number(entry.slot_21_22) === 1 ? "checked" : "" %> />
-                                                <span>21-22</span>
-                                            </label>
-                                        </td>
-                                        <td>
-                                            <label class="slot-pill">
-                                                <input class="track-change" type="checkbox"
-                                                    name="members[<%= entry.discord_user_id %>][slot_22_23]"
-                                                    value="1" <%= Number(entry.slot_22_23) === 1 ? "checked" : "" %> />
-                                                <span>22-23</span>
-                                            </label>
-                                        </td>
-                                        <td>
-                                            <label class="slot-pill">
-                                                <input class="track-change" type="checkbox"
-                                                    name="members[<%= entry.discord_user_id %>][slot_23_00]"
-                                                    value="1" <%= Number(entry.slot_23_00) === 1 ? "checked" : "" %> />
-                                                <span>23-00</span>
-                                            </label>
-                                        </td>
-                                        <td>
-                                            <input class="track-change" type="text"
-                                                name="members[<%= entry.discord_user_id %>][note]"
-                                                value="<%= entry.notes || '' %>"
-                                                placeholder="Nota facoltativa" />
-                                        </td>
-                                        <td>
-                                            <% const statusClass = entry.status === "Presente"
-                                                ? "status-presente"
-                                                : entry.status === "Parziale"
-                                                    ? "status-parziale"
-                                                    : "status-assente"; %>
-                                            <span class="status-badge <%= statusClass %>"><%= entry.status %></span>
-                                        </td>
-                                    </tr>
-                                <% } %>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <div class="savebar">
-                    <div class="savebar-text">
-                        <strong id="dirty-text">Nessuna modifica non salvata</strong><br />
-                        Cambia piu` disponibilita` e salva tutto in un solo invio, sempre sul database del bot.
-                    </div>
-                    <div class="save-actions">
-                        <button type="submit">Salva tutto</button>
-                    </div>
-                </div>
-            </form>
-        </main>
-    </div>
-
-    <script>
-        (function () {
-            const form = document.getElementById("bulk-save-form");
-            const dirtyText = document.getElementById("dirty-text");
-            let dirty = false;
-
-            function setDirty(value) {
-                dirty = value;
-                dirtyText.textContent = dirty
-                    ? "Ci sono modifiche non salvate"
-                    : "Nessuna modifica non salvata";
-            }
-
-            document.querySelectorAll(".track-change").forEach((el) => {
-                el.addEventListener("change", () => setDirty(true));
-                el.addEventListener("input", () => setDirty(true));
-            });
-
-            form.addEventListener("submit", () => {
-                setDirty(false);
-            });
-
-            window.addEventListener("beforeunload", (event) => {
-                if (!dirty) return;
-                event.preventDefault();
-                event.returnValue = "";
-            });
-        })();
-    </script>
+        window.addEventListener("beforeunload", (event) => {
+            if (!dirty) return;
+            event.preventDefault();
+            event.returnValue = "";
+        });
+    })();
+</script>
 </body>
 
 </html>

@@ -12,9 +12,15 @@ const {
   getDayView,
   getCalendarView,
   setDaySlots,
+  getTrackedRoster,
 } = require("../attendance/attendanceService");
 const { syncRosterFromGuild } = require("../attendance/rosterService");
 const { readConfig } = require("../config/configStore");
+const {
+  getScheduleAvailabilityForDate,
+  makeEmptyDeclaration,
+  countDeclaredSlots,
+} = require("../schedule/scheduleAvailabilityService");
 
 function createWebRouter(client) {
   const router = express.Router();
@@ -59,17 +65,65 @@ function createWebRouter(client) {
     asyncHandler(async (req, res) => {
       const date = normalizeDateInput(req.query.date || getTodayIsoDate());
       const dayView = await getDayView(date);
+      const scheduleAvailability = await getScheduleAvailabilityForDate(client, date);
       const config = readConfig();
+
+      const entries = dayView.entries.map(entry => {
+        const declaredSchedule =
+          scheduleAvailability.byUserId[entry.discord_user_id] || makeEmptyDeclaration();
+        const actualSlots = {
+          slot_21_22: Number(entry.slot_21_22) === 1,
+          slot_22_23: Number(entry.slot_22_23) === 1,
+          slot_23_00: Number(entry.slot_23_00) === 1,
+        };
+
+        const mismatchCount = ["slot_21_22", "slot_22_23", "slot_23_00"].reduce(
+          (count, key) => count + (declaredSchedule[key] !== actualSlots[key] ? 1 : 0),
+          0
+        );
+
+        return {
+          ...entry,
+          declaredSchedule,
+          declaredSlotCount: countDeclaredSlots(declaredSchedule),
+          actualSlotCount: countDeclaredSlots(actualSlots),
+          mismatchCount,
+          syncLabel:
+            mismatchCount === 0
+              ? "Allineato"
+              : countDeclaredSlots(declaredSchedule) > countDeclaredSlots(actualSlots)
+                ? "Dichiarato ma non presente"
+                : "Presenza extra rispetto allo schedule",
+        };
+      });
 
       res.render("attendance-day", {
         pageTitle: `Presenze ${date}`,
         date,
-        dayView,
+        dayView: {
+          ...dayView,
+          entries,
+        },
+        scheduleAvailability,
         saved: req.query.saved === "1",
         syncCount: Number(req.query.sync || 0),
         webBaseUrl: config.attendanceWebBaseUrl || "",
         attendanceChannel: config.attendanceChannel || "",
         currentSection: "presenze",
+      });
+    })
+  );
+
+  router.get(
+    "/roster",
+    requireAdmin,
+    asyncHandler(async (_req, res) => {
+      const roster = await getTrackedRoster();
+
+      res.render("roster", {
+        pageTitle: "Roster EverGreen",
+        roster,
+        currentSection: "roster",
       });
     })
   );

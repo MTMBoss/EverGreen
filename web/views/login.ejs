@@ -4,150 +4,34 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login pannello presenze EverGreen</title>
-    <style>
-        :root {
-            --bg: #06070b;
-            --card: #121521;
-            --line: rgba(170, 110, 255, 0.18);
-            --text: #eef2ff;
-            --muted: #a7b0c9;
-            --purple: #8b4dff;
-            --purple-2: #5f23cb;
-            --green: #7eea57;
-            --danger: #ff7e94;
-            --shadow: 0 18px 60px rgba(0, 0, 0, 0.40);
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 18px;
-            font-family: Arial, sans-serif;
-            color: var(--text);
-            background:
-                radial-gradient(circle at top, rgba(139, 77, 255, 0.22), transparent 30%),
-                radial-gradient(circle at right, rgba(126, 234, 87, 0.08), transparent 20%),
-                linear-gradient(180deg, #05060a 0%, #090b12 100%);
-        }
-
-        .card {
-            width: 100%;
-            max-width: 470px;
-            background: linear-gradient(180deg, rgba(18, 21, 33, 0.98), rgba(13, 15, 23, 0.98));
-            border: 1px solid var(--line);
-            border-radius: 26px;
-            padding: 30px;
-            box-shadow: var(--shadow);
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 20px;
-        }
-
-        .brand img {
-            width: 72px;
-            height: 72px;
-            object-fit: contain;
-            border-radius: 18px;
-            background: rgba(139, 77, 255, 0.14);
-            padding: 8px;
-        }
-
-        .eyebrow {
-            color: var(--green);
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.4px;
-            margin-bottom: 6px;
-        }
-
-        h1 {
-            margin: 0 0 8px;
-            font-size: 28px;
-        }
-
-        p {
-            margin: 0 0 18px;
-            color: var(--muted);
-            line-height: 1.5;
-        }
-
-        input,
-        button {
-            width: 100%;
-            padding: 14px 16px;
-            border-radius: 14px;
-            box-sizing: border-box;
-        }
-
-        input {
-            margin-bottom: 14px;
-            background: #0c0f18;
-            color: white;
-            border: 1px solid rgba(151, 116, 255, 0.18);
-            outline: none;
-        }
-
-        input:focus {
-            border-color: rgba(126, 234, 87, 0.65);
-            box-shadow: 0 0 0 4px rgba(126, 234, 87, 0.10);
-        }
-
-        button {
-            border: none;
-            cursor: pointer;
-            font-weight: 800;
-            color: white;
-            background: linear-gradient(135deg, var(--purple), var(--purple-2));
-            box-shadow: 0 12px 30px rgba(95, 35, 203, 0.35);
-        }
-
-        .error {
-            background: rgba(255, 126, 148, 0.10);
-            border: 1px solid rgba(255, 126, 148, 0.24);
-            color: #ffd4dc;
-            border-radius: 14px;
-            padding: 12px 14px;
-            margin-bottom: 14px;
-            font-weight: 700;
-        }
-    </style>
+    <title>Login pannello EverGreen</title>
+    <link rel="stylesheet" href="/assets/hub.css" />
 </head>
 
-<body>
-    <div class="card">
-        <div class="brand">
+<body class="hub-login">
+    <div class="hub-login-card">
+        <div class="hub-login-brand">
             <img src="/assets/evergreen-logo.png" alt="EverGreen logo" onerror="this.style.display='none'">
             <div>
-                <div class="eyebrow">EverGreen Competitive Panel</div>
+                <div class="hub-login-eyebrow">EverGreen Competitive Hub</div>
                 <h1>Accesso admin</h1>
             </div>
         </div>
 
-        <p>Inserisci il token admin del pannello web per gestire le presenze del roster competitivo.</p>
+        <p>
+            Questo pannello gira sempre sul web Northflank del bot. Da qui gestisci presenze reali, calendario e roster
+            del team con la nuova interfaccia hub.
+        </p>
 
         <% if (error) { %>
-            <div class="error">
-                <%= error %>
-            </div>
-            <% } %>
+            <div class="hub-flash error"><%= error %></div>
+        <% } %>
 
-                <form method="post" action="/login">
-                    <input type="password" name="token" placeholder="Token admin" required />
-                    <button type="submit">Accedi al pannello</button>
-                </form>
+        <form method="post" action="/login">
+            <label class="hub-label" for="token">Token admin</label>
+            <input id="token" class="hub-input" type="password" name="token" placeholder="Inserisci il token admin" required />
+            <button class="hub-button" type="submit" style="margin-top: 14px;">Accedi al pannello</button>
+        </form>
     </div>
 </body>
 
