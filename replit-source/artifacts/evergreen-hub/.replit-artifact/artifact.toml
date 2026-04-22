@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "EverGreen Team Hub"
+version = "1.0.0"
+id = "artifacts/evergreen-hub"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23383
+
+[services.development]
+run = "pnpm --filter @workspace/evergreen-hub run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/evergreen-hub", "run", "build" ]
+publicDir = "artifacts/evergreen-hub/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23383"
+BASE_PATH = "/"

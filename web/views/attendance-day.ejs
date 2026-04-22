@@ -9,22 +9,22 @@
     </title>
     <style>
         :root {
-            --bg: #06070b;
-            --bg-soft: #0d0f17;
-            --card: #121521;
-            --card-2: #171b2a;
-            --line: rgba(170, 110, 255, 0.18);
-            --line-strong: rgba(170, 110, 255, 0.35);
-            --text: #eef2ff;
-            --muted: #a7b0c9;
-            --purple: #8b4dff;
-            --purple-2: #5f23cb;
-            --green: #7eea57;
-            --green-dark: #4dc62b;
-            --danger: #ff6b81;
+            --background: #090c12;
+            --background-elevated: rgba(14, 18, 28, 0.92);
+            --card: rgba(15, 20, 31, 0.88);
+            --card-strong: rgba(18, 24, 37, 0.98);
+            --border: rgba(123, 162, 255, 0.14);
+            --border-strong: rgba(123, 162, 255, 0.28);
+            --foreground: #edf3ff;
+            --muted: #8e9bb2;
+            --primary: #7ae582;
+            --primary-soft: rgba(122, 229, 130, 0.14);
+            --accent: #6ba5ff;
+            --danger: #ff6b7a;
             --warning: #ffd166;
-            --shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
-            --radius: 20px;
+            --shadow: 0 24px 64px rgba(0, 0, 0, 0.42);
+            --radius: 18px;
+            --sidebar-width: 260px;
         }
 
         * {
@@ -35,127 +35,265 @@
         body {
             margin: 0;
             padding: 0;
+            min-height: 100%;
             background:
-                radial-gradient(circle at top, rgba(139, 77, 255, 0.22), transparent 30%),
-                radial-gradient(circle at right, rgba(126, 234, 87, 0.08), transparent 20%),
-                linear-gradient(180deg, #05060a 0%, #090b12 100%);
-            color: var(--text);
-            font-family: Arial, sans-serif;
+                radial-gradient(circle at top left, rgba(107, 165, 255, 0.16), transparent 30%),
+                radial-gradient(circle at top right, rgba(122, 229, 130, 0.08), transparent 20%),
+                linear-gradient(180deg, #070a10 0%, #090d14 100%);
+            color: var(--foreground);
+            font-family: "Segoe UI", Arial, sans-serif;
         }
 
         body {
             min-height: 100vh;
-            padding: 24px;
         }
 
         a {
-            color: #d8c8ff;
+            color: inherit;
             text-decoration: none;
         }
 
-        a:hover {
-            color: white;
-        }
-
-        .container {
-            max-width: 1450px;
-            margin: 0 auto;
-        }
-
-        .hero {
-            position: relative;
-            overflow: hidden;
-            background:
-                linear-gradient(135deg, rgba(139, 77, 255, 0.22), rgba(95, 35, 203, 0.16)),
-                linear-gradient(180deg, rgba(18, 21, 33, 0.98), rgba(12, 14, 23, 0.98));
-            border: 1px solid var(--line-strong);
-            border-radius: 28px;
-            padding: 26px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow);
-        }
-
-        .hero::after {
-            content: "";
-            position: absolute;
-            inset: auto -80px -80px auto;
-            width: 240px;
-            height: 240px;
-            background: radial-gradient(circle, rgba(126, 234, 87, 0.18), transparent 70%);
-            pointer-events: none;
-        }
-
-        .hero-grid {
-            display: grid;
-            grid-template-columns: 110px 1fr auto;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .logo-wrap {
-            width: 118px;
-            height: 118px;
-            border-radius: 28px;
-            background: linear-gradient(180deg, rgba(139, 77, 255, 0.20), rgba(95, 35, 203, 0.12));
-            border: 1px solid rgba(167, 115, 255, 0.28);
+        .top-strip {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 28px;
+            background: rgba(10, 12, 18, 0.94);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 14px;
+            z-index: 1000;
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .top-strip strong {
+            color: var(--primary);
+        }
+
+        .shell {
+            display: flex;
+            min-height: 100vh;
+            padding-top: 28px;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            position: fixed;
+            top: 28px;
+            bottom: 0;
+            left: 0;
+            background: rgba(13, 17, 26, 0.96);
+            border-right: 1px solid var(--border);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            z-index: 200;
+        }
+
+        .sidebar-brand {
+            height: 72px;
+            padding: 0 22px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .shield {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(122, 229, 130, 0.24), rgba(107, 165, 255, 0.22));
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            box-shadow: inset 0 0 30px rgba(139, 77, 255, 0.15);
+            font-weight: 900;
+            box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.06);
         }
 
-        .logo-wrap img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: block;
-            padding: 10px;
+        .brand-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
-        .eyebrow {
-            color: var(--green);
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 1.5px;
+        .brand-copy strong {
+            letter-spacing: 2px;
+            font-size: 18px;
+        }
+
+        .brand-copy span {
+            font-size: 11px;
+            color: var(--muted);
             text-transform: uppercase;
-            margin-bottom: 8px;
+            letter-spacing: 1px;
         }
 
-        .hero h1 {
-            margin: 0 0 10px;
-            font-size: 34px;
-            line-height: 1.05;
+        .nav-section-title {
+            padding: 20px 22px 8px;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
         }
 
-        .hero p {
-            margin: 0;
+        .nav-links {
+            padding: 0 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            color: var(--muted);
+            border: 1px solid transparent;
+            transition: .18s ease;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--foreground);
+        }
+
+        .nav-link.active {
+            background: rgba(107, 165, 255, 0.12);
+            color: var(--accent);
+            border-color: rgba(107, 165, 255, 0.22);
+            box-shadow: 0 0 0 1px rgba(107, 165, 255, 0.08) inset;
+        }
+
+        .nav-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, 0.04);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 18px 22px 20px;
+            border-top: 1px solid var(--border);
+            font-size: 11px;
             color: var(--muted);
             line-height: 1.5;
-            max-width: 780px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .hero-actions {
+        .main {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 30px 26px 26px;
+        }
+
+        .mobile-bar {
+            display: none;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 24px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-header h1 {
+            margin: 0 0 8px;
+            font-size: 34px;
+            letter-spacing: -0.03em;
+        }
+
+        .page-header p {
+            margin: 0;
+            color: var(--muted);
+            max-width: 760px;
+            line-height: 1.6;
+        }
+
+        .header-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            border-radius: 999px;
+            border: 1px solid var(--border-strong);
+            background: rgba(255, 255, 255, 0.03);
+            padding: 10px 14px;
+            color: var(--foreground);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .header-chip .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--primary);
+            box-shadow: 0 0 12px rgba(122, 229, 130, 0.7);
+        }
+
+        .header-actions {
             display: flex;
             flex-wrap: wrap;
-            justify-content: flex-end;
             gap: 10px;
-            align-items: center;
+            justify-content: flex-end;
         }
 
-        .hero-actions .button {
-            min-width: 170px;
-            text-align: center;
+        .button,
+        button {
+            appearance: none;
+            border: 1px solid transparent;
+            border-radius: 14px;
+            padding: 11px 16px;
+            cursor: pointer;
+            font-weight: 800;
+            color: #07100a;
+            background: linear-gradient(135deg, #7ae582, #57d96c);
+            box-shadow: 0 14px 30px rgba(87, 217, 108, 0.18);
+        }
+
+        .button-secondary {
+            color: var(--foreground);
+            background: rgba(255, 255, 255, 0.03);
+            border-color: var(--border);
+            box-shadow: none;
+        }
+
+        .button-danger {
+            color: #fff1f3;
+            background: rgba(255, 107, 122, 0.10);
+            border-color: rgba(255, 107, 122, 0.24);
+            box-shadow: none;
         }
 
         .panel,
-        .summary,
+        .summary-card,
         .table-card,
-        .calendar-card,
-        .login-card {
-            background: linear-gradient(180deg, rgba(18, 21, 33, 0.98), rgba(13, 15, 23, 0.98));
-            border: 1px solid var(--line);
+        .flash {
+            background: var(--background-elevated);
+            border: 1px solid var(--border);
             border-radius: var(--radius);
             box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
         }
 
         .panel {
@@ -166,152 +304,99 @@
         .toolbar {
             display: grid;
             grid-template-columns: 1fr auto;
-            gap: 14px;
+            gap: 18px;
             align-items: end;
         }
 
         .toolbar-group {
             display: flex;
             gap: 12px;
+            align-items: end;
             flex-wrap: wrap;
-            align-items: end;
-        }
-
-        .toolbar-right {
-            display: flex;
-            justify-content: flex-end;
-            align-items: end;
         }
 
         .field label {
             display: block;
-            font-size: 12px;
+            margin-bottom: 7px;
             color: var(--muted);
-            margin-bottom: 6px;
-            font-weight: 700;
+            font-size: 12px;
             text-transform: uppercase;
-            letter-spacing: .7px;
+            letter-spacing: 1px;
+            font-weight: 800;
         }
 
         input[type="date"],
-        input[type="text"],
-        input[type="password"],
-        textarea {
+        input[type="text"] {
             width: 100%;
-            background: #0c0f18;
-            color: white;
-            border: 1px solid rgba(151, 116, 255, 0.18);
+            background: rgba(5, 8, 13, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 12px;
             padding: 12px 14px;
+            color: var(--foreground);
             outline: none;
         }
 
-        input:focus,
-        textarea:focus {
-            border-color: rgba(126, 234, 87, 0.65);
-            box-shadow: 0 0 0 4px rgba(126, 234, 87, 0.10);
+        input[type="date"]:focus,
+        input[type="text"]:focus {
+            border-color: rgba(107, 165, 255, 0.45);
+            box-shadow: 0 0 0 4px rgba(107, 165, 255, 0.08);
         }
 
-        .button,
-        button {
-            border: none;
-            border-radius: 14px;
-            padding: 12px 16px;
-            cursor: pointer;
-            font-weight: 800;
-            color: white;
-            background: linear-gradient(135deg, var(--purple), var(--purple-2));
-            box-shadow: 0 12px 30px rgba(95, 35, 203, 0.35);
-        }
-
-        .button:hover,
-        button:hover {
-            transform: translateY(-1px);
-        }
-
-        .button-green {
-            background: linear-gradient(135deg, var(--green), var(--green-dark));
-            color: #07110a;
-            box-shadow: 0 12px 30px rgba(77, 198, 43, 0.24);
-        }
-
-        .button-dark {
-            background: linear-gradient(135deg, #1d2233, #10131d);
-            color: #eef2ff;
-            border: 1px solid rgba(151, 116, 255, 0.16);
-            box-shadow: none;
-        }
-
-        .summary {
-            padding: 18px;
-            margin-bottom: 18px;
-        }
-
-        .summary-header {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: center;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .summary-title {
-            font-size: 18px;
-            font-weight: 800;
-        }
-
-        .summary-subtitle {
+        .hint {
             color: var(--muted);
-            font-size: 14px;
+            font-size: 12px;
+            margin-top: 10px;
+            line-height: 1.5;
         }
 
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-            gap: 12px;
+            gap: 14px;
+            margin-bottom: 18px;
         }
 
-        .metric {
-            background:
-                linear-gradient(180deg, rgba(139, 77, 255, 0.08), rgba(255, 255, 255, 0.02));
-            border: 1px solid rgba(151, 116, 255, 0.14);
-            border-radius: 16px;
-            padding: 14px;
+        .summary-card {
+            padding: 16px;
         }
 
-        .metric-label {
+        .summary-label {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .summary-value {
+            margin-top: 8px;
+            font-size: 30px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .summary-sub {
+            margin-top: 10px;
             color: var(--muted);
             font-size: 12px;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: .7px;
-        }
-
-        .metric strong {
-            display: block;
-            margin-top: 8px;
-            font-size: 28px;
         }
 
         .flash {
-            border-radius: 16px;
             padding: 14px 16px;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
             font-weight: 700;
-            border: 1px solid transparent;
         }
 
         .flash.success {
-            background: rgba(126, 234, 87, 0.10);
-            border-color: rgba(126, 234, 87, 0.24);
-            color: #d8ffd0;
+            border-color: rgba(122, 229, 130, 0.26);
+            background: rgba(122, 229, 130, 0.10);
+            color: #dfffe2;
         }
 
         .flash.info {
-            background: rgba(139, 77, 255, 0.12);
-            border-color: rgba(139, 77, 255, 0.26);
-            color: #e6daff;
+            border-color: rgba(107, 165, 255, 0.24);
+            background: rgba(107, 165, 255, 0.09);
+            color: #d8e9ff;
         }
 
         .table-card {
@@ -319,22 +404,22 @@
         }
 
         .table-head {
-            padding: 18px;
-            border-bottom: 1px solid var(--line);
             display: flex;
             justify-content: space-between;
-            gap: 10px;
+            gap: 12px;
             align-items: center;
             flex-wrap: wrap;
+            padding: 18px;
+            border-bottom: 1px solid var(--border);
         }
 
         .table-head h2 {
-            margin: 0;
+            margin: 0 0 6px;
             font-size: 20px;
         }
 
         .table-head p {
-            margin: 6px 0 0;
+            margin: 0;
             color: var(--muted);
             font-size: 14px;
         }
@@ -346,27 +431,28 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1100px;
-        }
-
-        th,
-        td {
-            padding: 14px 16px;
-            border-bottom: 1px solid rgba(151, 116, 255, 0.10);
-            vertical-align: middle;
-            text-align: left;
+            min-width: 1080px;
         }
 
         thead th {
-            color: #cfd6f7;
-            font-size: 12px;
+            text-align: left;
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: .7px;
+            letter-spacing: 1px;
+            color: var(--muted);
+            padding: 14px 16px;
             background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        tbody td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
         }
 
         tbody tr:hover {
-            background: rgba(139, 77, 255, 0.05);
+            background: rgba(107, 165, 255, 0.04);
         }
 
         .member-name {
@@ -375,9 +461,9 @@
         }
 
         .member-id {
+            margin-top: 4px;
             color: var(--muted);
             font-size: 12px;
-            margin-top: 4px;
         }
 
         .role-pill {
@@ -385,28 +471,23 @@
             align-items: center;
             padding: 6px 10px;
             border-radius: 999px;
-            background: rgba(139, 77, 255, 0.14);
-            color: #ece3ff;
-            border: 1px solid rgba(139, 77, 255, 0.22);
-            margin: 4px 6px 0 0;
+            background: rgba(107, 165, 255, 0.10);
+            border: 1px solid rgba(107, 165, 255, 0.16);
+            color: #daeaff;
             font-size: 12px;
             font-weight: 700;
-        }
-
-        .slot-grid {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            margin: 4px 6px 0 0;
         }
 
         .slot-pill {
             position: relative;
+            display: inline-flex;
         }
 
         .slot-pill input {
             position: absolute;
-            opacity: 0;
             inset: 0;
+            opacity: 0;
             cursor: pointer;
         }
 
@@ -414,21 +495,20 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 78px;
+            min-width: 88px;
             padding: 10px 12px;
             border-radius: 12px;
-            border: 1px solid rgba(151, 116, 255, 0.20);
-            background: #0b0e17;
-            color: #dce3ff;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(4, 8, 13, 0.9);
+            color: var(--muted);
             font-weight: 800;
             transition: .18s ease;
         }
 
         .slot-pill input:checked+span {
-            background: linear-gradient(135deg, rgba(126, 234, 87, 0.24), rgba(77, 198, 43, 0.14));
-            border-color: rgba(126, 234, 87, 0.44);
-            color: #eaffdf;
-            box-shadow: inset 0 0 0 1px rgba(126, 234, 87, 0.12);
+            color: #0c170e;
+            background: linear-gradient(135deg, #7ae582, #57d96c);
+            border-color: rgba(122, 229, 130, 0.34);
         }
 
         .status-badge {
@@ -437,40 +517,40 @@
             justify-content: center;
             border-radius: 999px;
             padding: 8px 12px;
-            font-weight: 800;
             font-size: 12px;
+            font-weight: 800;
         }
 
         .status-presente {
-            background: rgba(126, 234, 87, 0.15);
-            color: #dfffd3;
-            border: 1px solid rgba(126, 234, 87, 0.30);
+            background: rgba(122, 229, 130, 0.12);
+            border: 1px solid rgba(122, 229, 130, 0.25);
+            color: #dfffe2;
         }
 
         .status-parziale {
-            background: rgba(255, 209, 102, 0.12);
-            color: #fff0bf;
-            border: 1px solid rgba(255, 209, 102, 0.28);
+            background: rgba(255, 209, 102, 0.10);
+            border: 1px solid rgba(255, 209, 102, 0.22);
+            color: #ffefc2;
         }
 
         .status-assente {
-            background: rgba(255, 107, 129, 0.11);
-            color: #ffd7dd;
-            border: 1px solid rgba(255, 107, 129, 0.24);
+            background: rgba(255, 107, 122, 0.10);
+            border: 1px solid rgba(255, 107, 122, 0.22);
+            color: #ffe1e5;
         }
 
         .savebar {
             position: sticky;
             bottom: 16px;
             margin-top: 18px;
-            background: rgba(9, 10, 16, 0.92);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(151, 116, 255, 0.18);
-            border-radius: 18px;
             padding: 14px 16px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: rgba(8, 11, 17, 0.92);
+            backdrop-filter: blur(18px);
             display: flex;
             justify-content: space-between;
-            gap: 12px;
+            gap: 16px;
             align-items: center;
             box-shadow: var(--shadow);
         }
@@ -478,10 +558,11 @@
         .savebar-text {
             color: var(--muted);
             font-size: 14px;
+            line-height: 1.5;
         }
 
         .savebar-text strong {
-            color: white;
+            color: var(--foreground);
         }
 
         .save-actions {
@@ -491,337 +572,305 @@
         }
 
         .tiny {
-            font-size: 12px;
             color: var(--muted);
+            font-size: 12px;
         }
 
-        @media (max-width: 1100px) {
-            .hero-grid {
-                grid-template-columns: 1fr;
+        @media (max-width: 1080px) {
+            .sidebar {
+                display: none;
             }
 
-            .hero-actions {
-                justify-content: flex-start;
+            .main {
+                margin-left: 0;
+                padding-top: 16px;
             }
 
-            .toolbar {
-                grid-template-columns: 1fr;
+            .mobile-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                margin-bottom: 18px;
+                padding: 14px 16px;
+                background: rgba(13, 17, 26, 0.92);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                box-shadow: var(--shadow);
+            }
+
+            .mobile-links {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
             }
         }
 
-        @media (max-width: 720px) {
-            body {
+        @media (max-width: 760px) {
+            .main {
                 padding: 14px;
             }
 
-            .hero {
-                padding: 20px;
-            }
-
-            .hero-grid {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-
-            .logo-wrap {
-                width: 200px;
-                height: 200px;
-                border-radius: 30px;
-            }
-
-            .logo-wrap img {
-                width: 100%;
-                height: 100%;
-                object-fit: contain;
-                padding: 4px;
-            }
-
-            .hero h1 {
-                font-size: 28px;
-                line-height: 1.08;
-            }
-
-            .hero p {
-                font-size: 15px;
-                line-height: 1.55;
-            }
-
-            .hero-actions {
-                justify-content: stretch;
-                width: 100%;
-            }
-
-            .hero-actions .button {
-                width: 100%;
-                min-width: 0;
-            }
-
-            .toolbar {
-                grid-template-columns: 1fr;
-            }
-
-            .toolbar-group {
+            .page-header {
                 flex-direction: column;
-                align-items: stretch;
             }
 
-            .toolbar-group .field,
-            .toolbar-group button,
-            .toolbar-right,
-            .toolbar-right form,
-            .toolbar-right button {
-                width: 100%;
-            }
-
-            .savebar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
+            .header-actions,
+            .toolbar,
+            .toolbar-group,
+            .savebar,
             .save-actions {
                 width: 100%;
+                flex-direction: column;
+                align-items: stretch;
             }
 
-            .save-actions button,
-            .save-actions a {
+            .button,
+            button {
                 width: 100%;
                 text-align: center;
+            }
+
+            .page-header h1 {
+                font-size: 28px;
             }
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <%- include("partials/nav", { currentSection, date }) %>
-            <div class="hero">
-                <div class="hero-grid">
-                    <div class="logo-wrap">
-                        <img src="/assets/evergreen-logo.png" alt="EverGreen logo" onerror="this.style.display='none'">
-                    </div>
+    <div class="top-strip">
+        <div>EverGreen | COD Mobile | Northflank Web</div>
+        <div>Sec_Level: <strong>Alpha</strong></div>
+    </div>
 
-                    <div>
-                        <div class="eyebrow">EverGreen Competitive Control Panel</div>
-                        <h1>Presenze roster — <%= date %>
-                        </h1>
-                        <p>
-                            Pannello rapido per il team competitivo EverGreen.
-                            Seleziona le fasce su più player e salva tutto con un solo click.
-                        </p>
-                    </div>
-
-                    <div class="hero-actions">
-                        <a class="button button-dark" href="/calendario">Calendario</a>
-                        <% if (webBaseUrl) { %>
-                            <a class="button button-dark" href="<%= webBaseUrl %>/presenze?date=<%= date %>"
-                                target="_blank">Apri URL pubblico</a>
-                            <% } %>
-                                <a class="button button-dark" href="/logout">Logout</a>
-                    </div>
+    <div class="shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="shield">EG</div>
+                <div class="brand-copy">
+                    <strong>EVERGREEN</strong>
+                    <span>Competitive Hub</span>
                 </div>
             </div>
 
+            <div class="nav-section-title">Navigazione Operativa</div>
+            <nav class="nav-links">
+                <a class="nav-link active" href="/presenze?date=<%= date %>">
+                    <span class="nav-icon">PR</span>
+                    <span>Presenze</span>
+                </a>
+                <a class="nav-link" href="/calendario">
+                    <span class="nav-icon">CA</span>
+                    <span>Calendario</span>
+                </a>
+                <a class="nav-link" href="/logout">
+                    <span class="nav-icon">LO</span>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                Sys_Ver: 2.0.26<br />
+                Status: Online
+            </div>
+        </aside>
+
+        <main class="main">
+            <div class="mobile-bar">
+                <div>
+                    <strong style="display:block; letter-spacing: 2px;">EVERGREEN</strong>
+                    <span class="tiny">Competitive Hub</span>
+                </div>
+                <div class="mobile-links">
+                    <a class="button button-secondary" href="/calendario">Calendario</a>
+                    <a class="button button-danger" href="/logout">Logout</a>
+                </div>
+            </div>
+
+            <section class="page-header">
+                <div>
+                    <h1>Registro Presenze</h1>
+                    <p>
+                        Stiamo usando i dati reali del bot e del database Northflank, ma con una prima
+                        interfaccia ispirata al nuovo hub Replit. Questa e` la base su cui possiamo
+                        continuare a migrare il resto del pannello.
+                    </p>
+                    <div class="header-chip">
+                        <span class="dot"></span>
+                        Giorno attivo: <%= date %>
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <a class="button button-secondary" href="/calendario">Apri Calendario</a>
+                    <a class="button button-danger" href="/logout">Logout</a>
+                </div>
+            </section>
+
             <% if (saved) { %>
                 <div class="flash success">✅ Modifiche salvate correttamente.</div>
-                <% } %>
+            <% } %>
 
-                    <% if (syncCount) { %>
-                        <div class="flash info">🔄 Roster sincronizzato. Membri trovati: <strong>
-                                <%= syncCount %>
-                            </strong></div>
-                        <% } %>
+            <% if (syncCount) { %>
+                <div class="flash info">🔄 Roster sincronizzato. Membri trovati: <strong><%= syncCount %></strong></div>
+            <% } %>
 
-                            <div class="panel">
-                                <div class="toolbar">
-                                    <div>
-                                        <form method="get" action="/presenze" class="toolbar-group">
-                                            <div class="field">
-                                                <label for="date">Giorno</label>
-                                                <input id="date" type="date" name="date" value="<%= date %>" />
-                                            </div>
-                                            <button type="submit">Apri giorno</button>
-                                        </form>
-
-                                        <div class="tiny" style="margin-top: 14px;">
-                                            <% if (attendanceChannel) { %>
-                                                Canale Discord configurato
-                                                <% } else { %>
-                                                    Nessun canale Discord configurato per la pubblicazione.
-                                                    <% } %>
-                                        </div>
-                                    </div>
-
-                                    <div class="toolbar-right">
-                                        <form method="post" action="/sync-roster">
-                                            <button class="button-dark" type="submit">Sincronizza roster</button>
-                                        </form>
-                                    </div>
-                                </div>
+            <section class="panel">
+                <div class="toolbar">
+                    <div>
+                        <form method="get" action="/presenze" class="toolbar-group">
+                            <div class="field">
+                                <label for="date">Giorno operativo</label>
+                                <input id="date" type="date" name="date" value="<%= date %>" />
                             </div>
+                            <button type="submit">Apri giorno</button>
+                        </form>
 
-                            <div class="summary">
-                                <div class="summary-header">
-                                    <div>
-                                        <div class="summary-title">Quadro generale giornata</div>
-                                        <div class="summary-subtitle">Visuale rapida del roster competitivo EverGreen
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="hint">
+                            Pannello servito dal web attuale su Northflank. Se cambi la data, continui a lavorare
+                            sugli stessi dati reali del roster e delle presenze.
+                        </div>
+                    </div>
 
-                                <div class="summary-grid">
-                                    <div class="metric">
-                                        <div class="metric-label">Totale roster</div>
-                                        <strong>
-                                            <%= dayView.summary.totalMembers %>
-                                        </strong>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-label">Presenti almeno una fascia</div>
-                                        <strong>
-                                            <%= dayView.summary.anyPresenceCount %>
-                                        </strong>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-label">Full presence</div>
-                                        <strong>
-                                            <%= dayView.summary.fullPresenceCount %>
-                                        </strong>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-label">Assenti</div>
-                                        <strong>
-                                            <%= dayView.summary.absentCount %>
-                                        </strong>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-label">21-22</div>
-                                        <strong>
-                                            <%= dayView.summary.slot21Count %>
-                                        </strong>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-label">22-23</div>
-                                        <strong>
-                                            <%= dayView.summary.slot22Count %>
-                                        </strong>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-label">23-00</div>
-                                        <strong>
-                                            <%= dayView.summary.slot23Count %>
-                                        </strong>
-                                    </div>
-                                </div>
-                            </div>
+                    <div>
+                        <form method="post" action="/sync-roster">
+                            <button class="button button-secondary" type="submit">Sincronizza roster</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
 
-                            <form id="bulk-save-form" method="post" action="/presenze/<%= date %>/save-all">
-                                <div class="table-card">
-                                    <div class="table-head">
-                                        <div>
-                                            <h2>Roster del giorno</h2>
-                                            <p>Gestisci tutte le disponibilità da una schermata unica.</p>
-                                        </div>
-                                        <div class="tiny">Player mostrati: <strong>
-                                                <%= dayView.entries.length %>
-                                            </strong></div>
-                                    </div>
+            <section class="summary-grid">
+                <article class="summary-card">
+                    <div class="summary-label">Totale roster</div>
+                    <div class="summary-value"><%= dayView.summary.totalMembers %></div>
+                    <div class="summary-sub">Player monitorati per il giorno attivo</div>
+                </article>
+                <article class="summary-card">
+                    <div class="summary-label">Presenti almeno una fascia</div>
+                    <div class="summary-value"><%= dayView.summary.anyPresenceCount %></div>
+                    <div class="summary-sub">Disponibili parziali o full</div>
+                </article>
+                <article class="summary-card">
+                    <div class="summary-label">Full presence</div>
+                    <div class="summary-value"><%= dayView.summary.fullPresenceCount %></div>
+                    <div class="summary-sub">Copertura completa 21-23</div>
+                </article>
+                <article class="summary-card">
+                    <div class="summary-label">Assenti</div>
+                    <div class="summary-value"><%= dayView.summary.absentCount %></div>
+                    <div class="summary-sub">Nessuna fascia selezionata</div>
+                </article>
+                <article class="summary-card">
+                    <div class="summary-label">Slot 21-22</div>
+                    <div class="summary-value"><%= dayView.summary.slot21Count %></div>
+                    <div class="summary-sub">Copertura apertura serata</div>
+                </article>
+                <article class="summary-card">
+                    <div class="summary-label">Slot 22-23</div>
+                    <div class="summary-value"><%= dayView.summary.slot22Count %></div>
+                    <div class="summary-sub">Fascia centrale</div>
+                </article>
+                <article class="summary-card">
+                    <div class="summary-label">Slot 23-00</div>
+                    <div class="summary-value"><%= dayView.summary.slot23Count %></div>
+                    <div class="summary-sub">Late session</div>
+                </article>
+            </section>
 
-                                    <div class="table-wrap">
-                                        <table>
-                                            <thead>
-                                                <tr>
-                                                    <th>Membro</th>
-                                                    <th>Ruoli</th>
-                                                    <th>21-22</th>
-                                                    <th>22-23</th>
-                                                    <th>23-00</th>
-                                                    <th>Nota</th>
-                                                    <th>Stato attuale</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <% for (const entry of dayView.entries) { %>
-                                                    <tr id="member-<%= entry.discord_user_id %>">
-                                                        <td>
-                                                            <div class="member-name">
-                                                                <%= entry.label %>
-                                                            </div>
-                                                            <div class="member-id">
-                                                                <%= entry.discord_user_id %>
-                                                            </div>
-                                                        </td>
+            <form id="bulk-save-form" method="post" action="/presenze/<%= date %>/save-all">
+                <section class="table-card">
+                    <div class="table-head">
+                        <div>
+                            <h2>Griglia operativa</h2>
+                            <p>Le presenze sono ancora quelle reali del tuo sistema attuale, ma la visualizzazione
+                                sta iniziando a seguire il design del nuovo hub.</p>
+                        </div>
+                        <div class="tiny">Player mostrati: <strong><%= dayView.entries.length %></strong></div>
+                    </div>
 
-                                                        <td>
-                                                            <% for (const role of entry.tracked_roles) { %>
-                                                                <span class="role-pill">
-                                                                    <%= role.roleName %>
-                                                                </span>
-                                                                <% } %>
-                                                        </td>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Membro</th>
+                                    <th>Ruoli</th>
+                                    <th>21-22</th>
+                                    <th>22-23</th>
+                                    <th>23-00</th>
+                                    <th>Nota</th>
+                                    <th>Stato</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% for (const entry of dayView.entries) { %>
+                                    <tr id="member-<%= entry.discord_user_id %>">
+                                        <td>
+                                            <div class="member-name"><%= entry.label %></div>
+                                            <div class="member-id"><%= entry.discord_user_id %></div>
+                                        </td>
+                                        <td>
+                                            <% for (const role of entry.tracked_roles) { %>
+                                                <span class="role-pill"><%= role.roleName %></span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <label class="slot-pill">
+                                                <input class="track-change" type="checkbox"
+                                                    name="members[<%= entry.discord_user_id %>][slot_21_22]"
+                                                    value="1" <%= Number(entry.slot_21_22) === 1 ? "checked" : "" %> />
+                                                <span>21-22</span>
+                                            </label>
+                                        </td>
+                                        <td>
+                                            <label class="slot-pill">
+                                                <input class="track-change" type="checkbox"
+                                                    name="members[<%= entry.discord_user_id %>][slot_22_23]"
+                                                    value="1" <%= Number(entry.slot_22_23) === 1 ? "checked" : "" %> />
+                                                <span>22-23</span>
+                                            </label>
+                                        </td>
+                                        <td>
+                                            <label class="slot-pill">
+                                                <input class="track-change" type="checkbox"
+                                                    name="members[<%= entry.discord_user_id %>][slot_23_00]"
+                                                    value="1" <%= Number(entry.slot_23_00) === 1 ? "checked" : "" %> />
+                                                <span>23-00</span>
+                                            </label>
+                                        </td>
+                                        <td>
+                                            <input class="track-change" type="text"
+                                                name="members[<%= entry.discord_user_id %>][note]"
+                                                value="<%= entry.notes || '' %>"
+                                                placeholder="Nota facoltativa" />
+                                        </td>
+                                        <td>
+                                            <% const statusClass = entry.status === "Presente"
+                                                ? "status-presente"
+                                                : entry.status === "Parziale"
+                                                    ? "status-parziale"
+                                                    : "status-assente"; %>
+                                            <span class="status-badge <%= statusClass %>"><%= entry.status %></span>
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
 
-                                                        <td>
-                                                            <label class="slot-pill">
-                                                                <input class="track-change" type="checkbox"
-                                                                    name="members[<%= entry.discord_user_id %>][slot_21_22]"
-                                                                    value="1" <%=Number(entry.slot_21_22)===1
-                                                                    ? "checked" : "" %> />
-                                                                <span>21-22</span>
-                                                            </label>
-                                                        </td>
-
-                                                        <td>
-                                                            <label class="slot-pill">
-                                                                <input class="track-change" type="checkbox"
-                                                                    name="members[<%= entry.discord_user_id %>][slot_22_23]"
-                                                                    value="1" <%=Number(entry.slot_22_23)===1
-                                                                    ? "checked" : "" %> />
-                                                                <span>22-23</span>
-                                                            </label>
-                                                        </td>
-
-                                                        <td>
-                                                            <label class="slot-pill">
-                                                                <input class="track-change" type="checkbox"
-                                                                    name="members[<%= entry.discord_user_id %>][slot_23_00]"
-                                                                    value="1" <%=Number(entry.slot_23_00)===1
-                                                                    ? "checked" : "" %> />
-                                                                <span>23-00</span>
-                                                            </label>
-                                                        </td>
-
-                                                        <td>
-                                                            <input class="track-change" type="text"
-                                                                name="members[<%= entry.discord_user_id %>][note]"
-                                                                value="<%= entry.notes || '' %>"
-                                                                placeholder="Nota facoltativa" />
-                                                        </td>
-
-                                                        <td>
-                                                            <% const statusClass=entry.status==="Presente"
-                                                                ? "status-presente" : entry.status==="Parziale"
-                                                                ? "status-parziale" : "status-assente" ; %>
-                                                                <span class="status-badge <%= statusClass %>">
-                                                                    <%= entry.status %>
-                                                                </span>
-                                                        </td>
-                                                    </tr>
-                                                    <% } %>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                <div class="savebar">
-                                    <div class="savebar-text">
-                                        <strong id="dirty-text">Nessuna modifica non salvata</strong><br />
-                                        Se cambi più presenze, ti basta un solo click su <strong>Salva tutto</strong>.
-                                    </div>
-
-                                    <div class="save-actions">
-                                        <button type="submit" class="button-green">Salva tutto</button>
-                                    </div>
-                                </div>
-                            </form>
+                <div class="savebar">
+                    <div class="savebar-text">
+                        <strong id="dirty-text">Nessuna modifica non salvata</strong><br />
+                        Cambia piu` disponibilita` e salva tutto in un solo invio, sempre sul database del bot.
+                    </div>
+                    <div class="save-actions">
+                        <button type="submit">Salva tutto</button>
+                    </div>
+                </div>
+            </form>
+        </main>
     </div>
 
     <script>
