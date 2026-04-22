@@ -53,6 +53,33 @@ function parseItalianDate(dateLine, options = {}) {
         ? referenceDate.year()
         : dayjs().year();
 
+    function inferYear(month, day, explicitYear) {
+        let year = explicitYear || String(currentYear);
+
+        if (year.length === 2) {
+            year = `20${year}`;
+        }
+
+        if (explicitYear || !referenceDate.isValid()) {
+            return year;
+        }
+
+        const candidate = dayjs(
+            `${year}-${month}-${day}`,
+            "YYYY-MM-DD",
+            true
+        );
+
+        // Nei match storici senza anno scritto, se la data risultante finisce
+        // molti giorni nel futuro rispetto al timestamp del messaggio Discord,
+        // significa quasi sempre che il match appartiene all'anno precedente.
+        if (candidate.isValid() && candidate.diff(referenceDate.startOf("day"), "day") > 60) {
+            return String(Number(year) - 1);
+        }
+
+        return year;
+    }
+
     const weekdays = [
         "lunedi",
         "martedi",
@@ -101,11 +128,7 @@ function parseItalianDate(dateLine, options = {}) {
     if (textMatch) {
         const day = textMatch[1].padStart(2, "0");
         const month = months[textMatch[2]];
-        let year = textMatch[3] || String(currentYear);
-
-        if (year.length === 2) {
-            year = `20${year}`;
-        }
+        const year = inferYear(month, day, textMatch[3] || "");
 
         return `${year}-${month}-${day}`;
     }
@@ -115,11 +138,7 @@ function parseItalianDate(dateLine, options = {}) {
     if (slashMatch) {
         const day = slashMatch[1].padStart(2, "0");
         const month = slashMatch[2].padStart(2, "0");
-        let year = slashMatch[3] || String(currentYear);
-
-        if (year.length === 2) {
-            year = `20${year}`;
-        }
+        const year = inferYear(month, day, slashMatch[3] || "");
 
         return `${year}-${month}-${day}`;
     }

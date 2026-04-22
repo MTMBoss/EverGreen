@@ -52,7 +52,7 @@
                                 <div class="hub-member-name"><%= match.team1 %> vs <%= match.team2 %></div>
                                 <div class="hub-member-sub"><%= match.slug %></div>
                             </td>
-                            <td><%= match.match_date || "Senza data" %> <%= match.match_time || "" %></td>
+                            <td><%= match.matchDateLabel || "Senza data" %> <%= match.match_time || "" %></td>
                             <td>
                                 <span class="hub-badge <%= match.status === 'published' ? 'good' : 'warn' %>">
                                     <%= match.status === 'published' ? 'Completo' : 'Bozza' %>

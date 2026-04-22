@@ -53,7 +53,7 @@ function createWebRouter(client) {
         currentSection: "dashboard",
         today,
         dayView,
-        recentMatches,
+        recentMatches: recentMatches.map(presentMatchForView),
         stats: {
           totalMatches: matches.length,
           publishedMatches: publishedMatches.length,
@@ -184,7 +184,7 @@ function createWebRouter(client) {
 
       res.render("matches", {
         pageTitle: "Match Center",
-        matches,
+        matches: matches.map(presentMatchForView),
         currentSection: "scrim",
       });
     })
@@ -210,7 +210,7 @@ function createWebRouter(client) {
 
       res.render("match-detail", {
         pageTitle: `${match.team1} vs ${match.team2}`,
-        match,
+        match: presentMatchForView(match),
         playersByMap,
         currentSection: "scrim",
       });
@@ -349,6 +349,34 @@ function buildCalendarGrid(month, summaryByDate) {
   }
 
   return rows;
+}
+
+function presentMatchForView(match) {
+  return {
+    ...match,
+    matchDateLabel: formatMatchDateLabel(match?.match_date),
+  };
+}
+
+function formatMatchDateLabel(value) {
+  if (!value) return "";
+
+  if (typeof value === "string" && dayjs(value, "YYYY-MM-DD", true).isValid()) {
+    return capitalize(dayjs(value, "YYYY-MM-DD", true).format("dddd D MMMM YYYY"));
+  }
+
+  const parsed = dayjs(value);
+  if (parsed.isValid()) {
+    return capitalize(parsed.format("dddd D MMMM YYYY"));
+  }
+
+  return String(value);
+}
+
+function capitalize(value) {
+  const text = String(value || "");
+  if (!text) return "";
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 async function getMemberAvatarUrls(client, discordUserIds) {
