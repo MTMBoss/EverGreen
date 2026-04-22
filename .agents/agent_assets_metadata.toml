@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "UrmbqU97Oux1gkT4BcBi7"
+uri = "file://artifacts/evergreen-hub/src/assets/banner.png"
+type = "image"
+title = "Esports tactical banner"
+
+[[generated]]
+id = "LJeQyIaH6WiPN8PECCEhm"
+uri = "file://artifacts/evergreen-hub/src/assets/weapon-ak117.png"
+type = "image"
+title = "AK117 Assault Rifle"
+
+[[generated]]
+id = "GweRL70eFKMV9bgzFLxUH"
+uri = "file://artifacts/evergreen-hub/src/assets/weapon-fennec.png"
+type = "image"
+title = "Fennec SMG"
+
+[[generated]]
+id = "b3wyaKumqkrtRZzCFJC_S"
+uri = "file://artifacts/evergreen-hub/src/assets/weapon-locus.png"
+type = "image"
+title = "Locus Sniper"
