@@ -65,7 +65,11 @@ async function completeMatchFromPart2({ parsed, message }) {
       sourceMessageId: message.id,
       sourceChannelId: message.channelId,
     });
-    throw new Error("Nessun match collegabile trovato per questa Parte 2.");
+    const matchLabel = `${draft.team1} vs ${draft.team2}`;
+    const dateLabel = draft.matchDate || "data sconosciuta";
+    throw new Error(
+      `Nessun match collegabile trovato per questa Parte 2: ${matchLabel} (${dateLabel}).`
+    );
   }
 
   const matchDetail = await getMatchBySlug(match.slug);
