@@ -104,6 +104,20 @@ async function handleConfigCommand(interaction, client) {
       )
       .filter(Boolean);
 
+    const skippedPreview = (summary.skippedMessages || [])
+      .slice(0, 5)
+      .map(item =>
+        [
+          item.channelType ? `[${item.channelType}]` : "",
+          item.reason ? `Motivo: ${item.reason}` : "",
+          item.createdAt ? `Data msg: ${item.createdAt}` : "",
+          item.preview ? `Anteprima: ${item.preview}` : "",
+        ]
+          .filter(Boolean)
+          .join(" | ")
+      )
+      .filter(Boolean);
+
     const channelBreakdown = [
       formatImportChannelSummary("Parte 1", part1Summary),
       formatImportChannelSummary("Parte 2", part2Summary),
@@ -125,6 +139,9 @@ async function handleConfigCommand(interaction, client) {
         (channelBreakdown ? `\n\n${channelBreakdown}` : "") +
         (failedPreview.length
           ? `\n\nPrime partite non collegate:\n- ${failedPreview.join("\n- ")}`
+          : "") +
+        (skippedPreview.length
+          ? `\n\nPrimi messaggi saltati:\n- ${skippedPreview.join("\n- ")}`
           : ""),
     });
     return true;

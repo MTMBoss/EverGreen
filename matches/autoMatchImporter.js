@@ -2,6 +2,7 @@ const { ChannelType } = require("discord.js");
 
 const { readConfig } = require("../config/configStore");
 const {
+  extractRawText,
   parseMatchMessage,
 } = require("./matchMessageParser");
 const {
@@ -125,6 +126,7 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
     skipped: 0,
     failed: 0,
     failedMatches: [],
+    skippedMessages: [],
     channels: [],
   };
 
@@ -151,6 +153,8 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
       duplicates: 0,
       skipped: 0,
       failed: 0,
+      skipReasons: {},
+      skippedMessages: [],
       error: "",
     };
 
@@ -187,8 +191,10 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
           duplicates: channel.duplicates,
           skipped: channel.skipped,
           failed: channel.failed || 0,
+          skipReasons: channel.skipReasons || {},
           error: channel.error || "",
         })),
+        skippedMessages: summary.skippedMessages,
       },
       null,
       2
@@ -234,6 +240,15 @@ async function processChannelHistoryInBatches({
           channelStats.duplicates += 1;
         } else {
           channelStats.skipped += 1;
+          channelStats.skipReasons[result.reason] =
+            (channelStats.skipReasons[result.reason] || 0) + 1;
+          collectSkippedMessage({
+            summary,
+            channelStats,
+            source,
+            message,
+            reason: result.reason,
+          });
         }
       } catch (error) {
         channelStats.failed += 1;
@@ -271,6 +286,33 @@ async function processChannelHistoryInBatches({
 
     // Batch piccoli e pausa un po' più lunga per non saturare memoria/cache del processo.
     await new Promise(resolve => setTimeout(resolve, 150));
+  }
+}
+
+function collectSkippedMessage({ summary, channelStats, source, message, reason }) {
+  const preview = extractRawText(message)
+    .split("\n")
+    .map(line => String(line || "").trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(" | ")
+    .slice(0, 220);
+
+  const entry = {
+    channelType: source.type,
+    channelId: source.id,
+    messageId: message.id,
+    reason,
+    createdAt: message.createdAt ? message.createdAt.toISOString() : "",
+    preview,
+  };
+
+  if (channelStats.skippedMessages.length < 10) {
+    channelStats.skippedMessages.push(entry);
+  }
+
+  if (summary.skippedMessages.length < 20) {
+    summary.skippedMessages.push(entry);
   }
 }
 
