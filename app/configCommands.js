@@ -70,6 +70,15 @@ async function handleConfigCommand(interaction, client) {
     const channelPart1 = interaction.options.getChannel("canale_parte1", true);
     const channelPart2 = interaction.options.getChannel("canale_parte2", true);
 
+    if (channelPart1.id === channelPart2.id) {
+      await interaction.editReply({
+        content:
+          "❌ Hai selezionato lo stesso canale per Parte 1 e Parte 2. " +
+          "Servono due canali diversi, altrimenti il bot rilegge la stessa cronologia due volte.",
+      });
+      return true;
+    }
+
     setSourceChannelPart1(channelPart1.id);
     setSourceChannelPart2(channelPart2.id);
 
@@ -105,8 +114,8 @@ async function handleConfigCommand(interaction, client) {
     await interaction.editReply({
       content:
         `✅ Archivio match azzerato e import storico completato\n` +
-        `Canale parte 1: ${channelPart1}\n` +
-        `Canale parte 2: ${channelPart2}\n` +
+        `Canale parte 1: ${channelPart1} (\`${channelPart1.id}\`)\n` +
+        `Canale parte 2: ${channelPart2} (\`${channelPart2.id}\`)\n` +
         `Lettura cronologia: **completa**\n` +
         `Messaggi scansionati: **${summary.scanned}**\n` +
         `Match importati: **${summary.imported}**\n` +

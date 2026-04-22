@@ -106,6 +106,12 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
   const sourceChannelPart1 = options.sourceChannelPart1 || config.sourceChannelPart1 || "";
   const sourceChannelPart2 = options.sourceChannelPart2 || config.sourceChannelPart2 || "";
 
+  console.log("ℹ️ Avvio import storico match:", {
+    sourceChannelPart1,
+    sourceChannelPart2,
+    sameChannel: Boolean(sourceChannelPart1) && sourceChannelPart1 === sourceChannelPart2,
+  });
+
   const channels = [
     { type: "part1", id: sourceChannelPart1 },
     { type: "part2", id: sourceChannelPart2 },
