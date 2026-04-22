@@ -11,6 +11,7 @@ const {
   createMatchDraftFromPart1,
   completeMatchFromPart2,
   buildMatchWebUrl,
+  removeMatchById,
 } = require("./matchService");
 const { findMatchBySourceMessage } = require("./matchRepository");
 
@@ -85,6 +86,44 @@ async function handleAutoMatchSourceMessage(message, client) {
   return true;
 }
 
+async function handleAutoMatchSourceDelete(message) {
+  if (!message?.channelId || !message?.id) return false;
+
+  const config = readConfig();
+  const isSourcePart1 = config.sourceChannelPart1 && message.channelId === config.sourceChannelPart1;
+  const isSourcePart2 = config.sourceChannelPart2 && message.channelId === config.sourceChannelPart2;
+
+  if (!isSourcePart1 && !isSourcePart2) {
+    return false;
+  }
+
+  const match = await findMatchBySourceMessage({
+    part: isSourcePart2 ? 2 : 1,
+    sourceChannelId: message.channelId,
+    sourceMessageId: message.id,
+  });
+
+  if (!match) {
+    return false;
+  }
+
+  if (isSourcePart1) {
+    const hasPart2 = Boolean(match.source_message_id_part2);
+    if (!hasPart2 && match.status === "draft") {
+      await removeMatchById(match.id);
+      console.log(`🗑️ Match bozza rimosso dal web dopo delete sorgente parte 1: ${match.slug}`);
+      return true;
+    }
+
+    console.log(`ℹ️ Delete sorgente parte 1 ignorato per ${match.slug}: match già completato o collegato a parte 2`);
+    return true;
+  }
+
+  console.log(`ℹ️ Delete sorgente parte 2 rilevato per ${match.slug}: nessuna rimozione automatica eseguita`);
+  return true;
+}
+
 module.exports = {
   handleAutoMatchSourceMessage,
+  handleAutoMatchSourceDelete,
 };

@@ -28,7 +28,10 @@ const {
 const { scheduleRosterSync, runRosterSync } = require("../attendance/rosterAutoSync");
 const { startAttendanceWebServer } = require("../web/server");
 const { createMatchTables } = require("../matches/matchRepository");
-const { handleAutoMatchSourceMessage } = require("../matches/autoMatchImporter");
+const {
+  handleAutoMatchSourceMessage,
+  handleAutoMatchSourceDelete,
+} = require("../matches/autoMatchImporter");
 const { startScheduler } = require("../schedule/scheduler");
 const { handleMatchContextCommand } = require("./matchContextCommands");
 const { handleConfigCommand } = require("./configCommands");
@@ -148,6 +151,7 @@ function registerClientEvents(client) {
 
   client.on(Events.MessageDelete, async message => {
     try {
+      await handleAutoMatchSourceDelete(message);
       await handleMessageDelete(message);
     } catch (error) {
       console.error("❌ Errore logger messageDelete:", error);
