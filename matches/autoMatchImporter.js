@@ -2,9 +2,6 @@ const { ChannelType } = require("discord.js");
 
 const { readConfig } = require("../config/configStore");
 const {
-  buildPart1Message,
-  buildPart2Message,
-  getImageAttachments,
   parseMatchMessage,
 } = require("./matchMessageParser");
 const {
@@ -43,16 +40,6 @@ async function handleAutoMatchSourceMessage(message, client) {
     return { handled: true, imported: false, reason: "already_imported", matchId: alreadyImported.id };
   }
 
-  const destinationChannelId = isSourcePart2 ? config.targetChannel2 : config.targetChannel1;
-  const destinationChannel = destinationChannelId
-    ? await client.channels.fetch(destinationChannelId).catch(() => null)
-    : null;
-
-  if (!destinationChannel || destinationChannel.type !== ChannelType.GuildText) {
-    console.log(`⚠️ Auto import match saltato: canale destinazione non configurato per ${isSourcePart2 ? "parte 2" : "parte 1"}`);
-    return { handled: true, imported: false, reason: "missing_destination_channel" };
-  }
-
   if (isSourcePart1) {
     const isPart1 =
       !parsed.resultLine &&
@@ -62,27 +49,18 @@ async function handleAutoMatchSourceMessage(message, client) {
 
     if (!isPart1) return { handled: true, imported: false, reason: "invalid_part1" };
 
-    await destinationChannel.send({
-      content: buildPart1Message(parsed),
-    });
-
     const draft = await createMatchDraftFromPart1({ parsed, message });
     const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, draft.slug);
-    console.log(`✅ Auto import parte 1 completato: ${draft.slug} -> ${webUrl}`);
+    console.log(`✅ Auto lettura parte 1 completata: ${draft.slug} -> ${webUrl}`);
     return { handled: true, imported: true, reason: "part1_imported", slug: draft.slug };
   }
 
   const isPart2 = Boolean(parsed.resultLine);
   if (!isPart2) return { handled: true, imported: false, reason: "invalid_part2" };
 
-  await destinationChannel.send({
-    content: buildPart2Message(parsed),
-    files: getImageAttachments(message).slice(0, 10).map(attachment => attachment.url),
-  });
-
   const completed = await completeMatchFromPart2({ parsed, message });
   const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, completed.slug);
-  console.log(`✅ Auto import parte 2 completato: ${completed.slug} -> ${webUrl}`);
+  console.log(`✅ Auto lettura parte 2 completata: ${completed.slug} -> ${webUrl}`);
   return { handled: true, imported: true, reason: "part2_imported", slug: completed.slug };
 }
 
