@@ -16,7 +16,6 @@ const { findMatchBySourceMessage } = require("./matchRepository");
 async function handleAutoMatchSourceMessage(message, client) {
   if (!message || !client) return { handled: false, imported: false, reason: "missing_context" };
   if (!message.guildId || !message.channelId) return { handled: false, imported: false, reason: "missing_channel" };
-  if (message.author?.bot) return { handled: false, imported: false, reason: "bot_message" };
 
   const config = readConfig();
   const isSourcePart1 = config.sourceChannelPart1 && message.channelId === config.sourceChannelPart1;
@@ -223,9 +222,7 @@ async function processChannelHistoryInBatches({
 
     if (!batch.size) break;
 
-    const messages = [...batch.values()]
-      .filter(message => !message.author?.bot)
-      .reverse();
+    const messages = [...batch.values()].reverse();
 
     for (const message of messages) {
       channelStats.scanned += 1;
