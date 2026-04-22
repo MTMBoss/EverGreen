@@ -18,6 +18,10 @@ const {
 const { syncRosterFromGuild } = require("../attendance/rosterService");
 const { readConfig } = require("../config/configStore");
 const {
+  getMatchList,
+  getMatchDetailBySlug,
+} = require("../matches/matchService");
+const {
   getScheduleAvailabilityForDate,
   makeEmptyDeclaration,
   countDeclaredSlots,
@@ -27,8 +31,38 @@ function createWebRouter(client) {
   const router = express.Router();
 
   router.get("/", requireAdmin, (req, res) => {
-    res.redirect(`/presenze?date=${getTodayIsoDate()}`);
+    res.redirect("/dashboard");
   });
+
+  router.get(
+    "/dashboard",
+    requireAdmin,
+    asyncHandler(async (_req, res) => {
+      const today = getTodayIsoDate();
+      const [dayView, matches] = await Promise.all([
+        getDayView(today),
+        getMatchList(),
+      ]);
+
+      const recentMatches = matches.slice(0, 5);
+      const publishedMatches = matches.filter(match => match.status === "published");
+      const draftMatches = matches.filter(match => match.status === "draft");
+
+      res.render("dashboard", {
+        pageTitle: "EverGreen Dashboard",
+        currentSection: "dashboard",
+        today,
+        dayView,
+        recentMatches,
+        stats: {
+          totalMatches: matches.length,
+          publishedMatches: publishedMatches.length,
+          draftMatches: draftMatches.length,
+          reviewMatches: matches.filter(match => match.needs_review).length,
+        },
+      });
+    })
+  );
 
   router.get("/login", (req, res) => {
     res.render("login", {
@@ -138,6 +172,47 @@ function createWebRouter(client) {
         })),
         saved: req.query.saved === "1",
         currentSection: "roster",
+      });
+    })
+  );
+
+  router.get(
+    "/matches",
+    requireAdmin,
+    asyncHandler(async (_req, res) => {
+      const matches = await getMatchList();
+
+      res.render("matches", {
+        pageTitle: "Match Center",
+        matches,
+        currentSection: "scrim",
+      });
+    })
+  );
+
+  router.get(
+    "/matches/:slug",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const match = await getMatchDetailBySlug(req.params.slug);
+
+      if (!match) {
+        res.status(404).send("Match non trovato.");
+        return;
+      }
+
+      const playersByMap = new Map();
+      for (const player of match.players || []) {
+        const key = player.order_index || 0;
+        if (!playersByMap.has(key)) playersByMap.set(key, []);
+        playersByMap.get(key).push(player);
+      }
+
+      res.render("match-detail", {
+        pageTitle: `${match.team1} vs ${match.team2}`,
+        match,
+        playersByMap,
+        currentSection: "scrim",
       });
     })
   );

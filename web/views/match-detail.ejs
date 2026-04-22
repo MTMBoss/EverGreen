@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+    <link rel="stylesheet" href="/assets/hub.css" />
+</head>
+
+<body class="hub-body">
+    <%- include("partials/nav", { currentSection }) %>
+
+    <section class="hub-page-header">
+        <div>
+            <h1><%= match.team1 %> vs <%= match.team2 %></h1>
+            <p>
+                <% if (match.status === "draft") { %>
+                    Match creato dalla parte 1. La scheda è già visibile sul web e verrà completata quando pubblichi la parte 2.
+                <% } else { %>
+                    Match completato dal flusso Discord + web. Qui trovi risultato, mappe, screenshot e player estratti.
+                <% } %>
+            </p>
+            <div class="hub-chip">
+                <span class="hub-chip-dot"></span>
+                Stato: <%= match.status === "published" ? "completo" : "bozza" %>
+            </div>
+        </div>
+        <div class="hub-actions">
+            <a class="hub-button secondary" href="/matches">Torna ai match</a>
+            <a class="hub-button secondary" href="/dashboard">Dashboard</a>
+        </div>
+    </section>
+
+    <section class="hub-summary-grid">
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Data</div>
+            <div class="hub-summary-value" style="font-size:22px;"><%= match.match_date || "Da definire" %></div>
+            <div class="hub-summary-sub"><%= match.match_time || "Ora non disponibile" %></div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Serie</div>
+            <div class="hub-summary-value"><%= match.team1_series_score ?? "-" %> - <%= match.team2_series_score ?? "-" %></div>
+            <div class="hub-summary-sub"><%= match.result_label || "Risultato in attesa" %></div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Vincitore</div>
+            <div class="hub-summary-value" style="font-size:22px;"><%= match.winner_team || "In attesa" %></div>
+            <div class="hub-summary-sub">Aggiornato dalla parte 2</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Review</div>
+            <div class="hub-summary-value" style="font-size:22px;"><%= match.needs_review ? "SI" : "NO" %></div>
+            <div class="hub-summary-sub"><%= match.needs_review ? "Controllo manuale consigliato" : "Dati allineati" %></div>
+        </article>
+    </section>
+
+    <section class="hub-card" style="margin-bottom:18px;">
+        <div class="hub-table-head" style="padding:0 0 14px; border-bottom:none;">
+            <div>
+                <h2>Mappe</h2>
+                <p>La parte 1 prepara la struttura delle mappe, la parte 2 aggiorna punteggi e dettagli OCR.</p>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px;">
+            <% for (const map of match.maps) { %>
+                <article class="hub-grid-card" style="margin:0; padding:16px;">
+                    <div class="hub-summary-label">Mappa <%= map.order_index %></div>
+                    <div class="hub-member-name" style="margin-top:8px;"><%= map.mode || "Modalità da definire" %></div>
+                    <div class="hub-member-sub"><%= map.map_name || "Mappa da definire" %></div>
+                    <div class="hub-member-sub"><%= map.side_name || "Side non definito" %></div>
+                    <div style="margin-top:12px; font-size:24px; font-weight:900;">
+                        <%= map.team1_score ?? "-" %> - <%= map.team2_score ?? "-" %>
+                    </div>
+                </article>
+            <% } %>
+        </div>
+    </section>
+
+    <section class="hub-card" style="margin-bottom:18px;">
+        <div class="hub-table-head" style="padding:0 0 14px; border-bottom:none;">
+            <div>
+                <h2>Screenshot</h2>
+                <p>Le immagini arrivano dalla parte 2 e aggiornano automaticamente questa scheda.</p>
+            </div>
+        </div>
+        <% const screenshots = (match.assets || []).filter(asset => asset.asset_type === "screenshot"); %>
+        <% if (!screenshots.length) { %>
+            <div class="hub-muted">Nessuno screenshot ancora associato a questo match.</div>
+        <% } else { %>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+                <% for (const asset of screenshots) { %>
+                    <a href="<%= asset.asset_url %>" target="_blank" rel="noreferrer" class="hub-grid-card" style="padding:10px;">
+                        <img src="<%= asset.asset_url %>" alt="Screenshot match"
+                            style="width:100%; height:220px; object-fit:cover; border-radius:14px; display:block;" />
+                    </a>
+                <% } %>
+            </div>
+        <% } %>
+    </section>
+
+    <section class="hub-card hub-table-card">
+        <div class="hub-table-head">
+            <div>
+                <h2>Player estratti</h2>
+                <p>Se l'OCR della parte 2 trova i giocatori, li trovi qui organizzati per mappa.</p>
+            </div>
+        </div>
+        <div class="hub-table-wrap">
+            <table class="hub-table" style="min-width: 960px;">
+                <thead>
+                    <tr>
+                        <th>Mappa</th>
+                        <th>Team</th>
+                        <th>Player</th>
+                        <th>K / D / A</th>
+                        <th>Punti</th>
+                        <th>MVP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (!(match.players || []).length) { %>
+                        <tr>
+                            <td colspan="6" class="hub-muted">Nessun dato player ancora disponibile.</td>
+                        </tr>
+                    <% } %>
+                    <% for (const player of match.players || []) { %>
+                        <tr>
+                            <td>Mappa <%= player.order_index || "-" %></td>
+                            <td><%= player.team_name || "-" %></td>
+                            <td><%= player.player_name || "-" %></td>
+                            <td><%= player.kills ?? "-" %> / <%= player.deaths ?? "-" %> / <%= player.assists ?? "-" %></td>
+                            <td><%= player.points ?? "-" %></td>
+                            <td><%= player.is_mvp ? "MVP" : "-" %></td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    </main>
+</div>
+</body>
+
+</html>

@@ -20,6 +20,7 @@ const {
 const {
   createMatchDraftFromPart1,
   completeMatchFromPart2,
+  buildMatchWebUrl,
 } = require("../matches/matchService");
 
 const WEEK_SEPARATOR_PATH =
@@ -165,7 +166,13 @@ async function handleMatchContextCommand(interaction, client) {
     });
 
     await sendDefaultSeparator(part1Channel);
-    await createMatchDraftFromPart1({ parsed, message });
+    const draftMatch = await createMatchDraftFromPart1({ parsed, message });
+    const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, draftMatch.slug);
+
+    await interaction.editReply({
+      content: `✅ Pubblicato\n🔗 Scheda match: ${webUrl}`,
+    });
+    return true;
   }
 
   if (isPart2) {
@@ -193,9 +200,10 @@ async function handleMatchContextCommand(interaction, client) {
       (completed.extractionSummary
         ? `\nℹ️ ${completed.extractionSummary}`
         : "");
+    const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, completed.slug);
 
     await interaction.editReply({
-      content: `✅ Pubblicato${extractionMessage}`,
+      content: `✅ Pubblicato${extractionMessage}\n🔗 Scheda match aggiornata: ${webUrl}`,
     });
     return true;
   }

@@ -15,6 +15,10 @@
 
         <div class="hub-nav-title">Navigazione Operativa</div>
         <nav class="hub-nav-links">
+            <a class="hub-nav-link <%= currentSection === 'dashboard' ? 'active' : '' %>" href="/dashboard">
+                <span class="hub-nav-icon">DB</span>
+                <span>Dashboard</span>
+            </a>
             <a class="hub-nav-link <%= currentSection === 'presenze' ? 'active' : '' %>"
                 href="/presenze?date=<%= typeof date !== 'undefined' ? date : '' %>">
                 <span class="hub-nav-icon">PR</span>
@@ -27,6 +31,10 @@
             <a class="hub-nav-link <%= currentSection === 'roster' ? 'active' : '' %>" href="/roster">
                 <span class="hub-nav-icon">RO</span>
                 <span>Roster</span>
+            </a>
+            <a class="hub-nav-link <%= currentSection === 'scrim' ? 'active' : '' %>" href="/matches">
+                <span class="hub-nav-icon">SC</span>
+                <span>Scrim</span>
             </a>
             <a class="hub-nav-link" href="/logout">
                 <span class="hub-nav-icon">LO</span>
@@ -47,9 +55,10 @@
                 <span class="hub-muted">Competitive Hub</span>
             </div>
             <div class="hub-actions">
+                <a class="hub-button secondary" href="/dashboard">Dashboard</a>
                 <a class="hub-button secondary" href="/presenze?date=<%= typeof date !== 'undefined' ? date : '' %>">Presenze</a>
-                <a class="hub-button secondary" href="/calendario">Calendario</a>
                 <a class="hub-button secondary" href="/roster">Roster</a>
+                <a class="hub-button secondary" href="/matches">Scrim</a>
                 <a class="hub-button danger" href="/logout">Logout</a>
             </div>
         </div>

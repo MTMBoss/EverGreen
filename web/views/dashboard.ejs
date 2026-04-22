@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+    <link rel="stylesheet" href="/assets/hub.css" />
+</head>
+
+<body class="hub-body">
+    <%- include("partials/nav", { currentSection }) %>
+
+    <section class="hub-page-header">
+        <div>
+            <h1>Dashboard Operativa</h1>
+            <p>
+                Hub centrale del team: presenze di oggi, stato dei match pubblicati e bozze create dalla parte 1
+                in attesa del completamento con la parte 2.
+            </p>
+            <div class="hub-chip">
+                <span class="hub-chip-dot"></span>
+                Giorno attivo: <%= today %>
+            </div>
+        </div>
+
+        <div class="hub-actions">
+            <a class="hub-button secondary" href="/presenze?date=<%= today %>">Vai alle presenze</a>
+            <a class="hub-button secondary" href="/matches">Apri Match Center</a>
+        </div>
+    </section>
+
+    <section class="hub-summary-grid">
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Presenti oggi</div>
+            <div class="hub-summary-value"><%= dayView.summary.anyPresenceCount %></div>
+            <div class="hub-summary-sub">Roster con almeno una fascia confermata</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Full presence</div>
+            <div class="hub-summary-value"><%= dayView.summary.fullPresenceCount %></div>
+            <div class="hub-summary-sub">Copertura completa 21-23</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Match totali</div>
+            <div class="hub-summary-value"><%= stats.totalMatches %></div>
+            <div class="hub-summary-sub">Bozze e pubblicati nel database web</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Match completati</div>
+            <div class="hub-summary-value"><%= stats.publishedMatches %></div>
+            <div class="hub-summary-sub">Con parte 2 già collegata</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Bozze aperte</div>
+            <div class="hub-summary-value"><%= stats.draftMatches %></div>
+            <div class="hub-summary-sub">Creati da parte 1, in attesa di update</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Da rivedere</div>
+            <div class="hub-summary-value"><%= stats.reviewMatches %></div>
+            <div class="hub-summary-sub">OCR o risultati da verificare</div>
+        </article>
+    </section>
+
+    <section class="hub-card hub-table-card">
+        <div class="hub-table-head">
+            <div>
+                <h2>Match recenti</h2>
+                <p>La parte 1 crea subito una scheda web. La parte 2 aggiorna la stessa scheda con risultati e immagini.</p>
+            </div>
+        </div>
+        <div class="hub-table-wrap">
+            <table class="hub-table" style="min-width: 960px;">
+                <thead>
+                    <tr>
+                        <th>Match</th>
+                        <th>Data</th>
+                        <th>Stato</th>
+                        <th>Serie</th>
+                        <th>Review</th>
+                        <th>Apri</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (const match of recentMatches) { %>
+                        <tr>
+                            <td>
+                                <div class="hub-member-name"><%= match.team1 %> vs <%= match.team2 %></div>
+                                <div class="hub-member-sub"><%= match.slug %></div>
+                            </td>
+                            <td><%= match.match_date || "Senza data" %> <%= match.match_time || "" %></td>
+                            <td>
+                                <span class="hub-badge <%= match.status === 'published' ? 'good' : 'warn' %>">
+                                    <%= match.status === 'published' ? 'Completo' : 'Bozza' %>
+                                </span>
+                            </td>
+                            <td><%= match.team1_series_score ?? "-" %> - <%= match.team2_series_score ?? "-" %></td>
+                            <td>
+                                <span class="hub-badge <%= match.needs_review ? 'warn' : 'good' %>">
+                                    <%= match.needs_review ? 'Da rivedere' : 'OK' %>
+                                </span>
+                            </td>
+                            <td><a class="hub-day-link" href="/matches/<%= match.slug %>">Apri match</a></td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    </main>
+</div>
+</body>
+
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+    <link rel="stylesheet" href="/assets/hub.css" />
+</head>
+
+<body class="hub-body">
+    <%- include("partials/nav", { currentSection }) %>
+
+    <section class="hub-page-header">
+        <div>
+            <h1>Scrim & Match Center</h1>
+            <p>
+                Archivio web dei match pubblicati dal bot. La parte 1 crea la bozza, la parte 2 completa la scheda
+                con risultati, mappe e screenshot.
+            </p>
+        </div>
+        <div class="hub-actions">
+            <a class="hub-button secondary" href="/dashboard">Dashboard</a>
+            <a class="hub-button secondary" href="/presenze">Presenze</a>
+        </div>
+    </section>
+
+    <section class="hub-card hub-table-card">
+        <div class="hub-table-head">
+            <div>
+                <h2>Elenco match</h2>
+                <p>Ogni match ha una pagina singola che si aggiorna automaticamente quando arrivi con la parte 2.</p>
+            </div>
+            <div class="hub-muted">Totale: <strong><%= matches.length %></strong></div>
+        </div>
+        <div class="hub-table-wrap">
+            <table class="hub-table">
+                <thead>
+                    <tr>
+                        <th>Match</th>
+                        <th>Data</th>
+                        <th>Stato</th>
+                        <th>Risultato</th>
+                        <th>Review</th>
+                        <th>Apri</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (const match of matches) { %>
+                        <tr>
+                            <td>
+                                <div class="hub-member-name"><%= match.team1 %> vs <%= match.team2 %></div>
+                                <div class="hub-member-sub"><%= match.slug %></div>
+                            </td>
+                            <td><%= match.match_date || "Senza data" %> <%= match.match_time || "" %></td>
+                            <td>
+                                <span class="hub-badge <%= match.status === 'published' ? 'good' : 'warn' %>">
+                                    <%= match.status === 'published' ? 'Completo' : 'Bozza' %>
+                                </span>
+                            </td>
+                            <td>
+                                <% if (match.result_label || match.team1_series_score !== null || match.team2_series_score !== null) { %>
+                                    <%= match.result_label || "" %>
+                                    <%= match.team1_series_score ?? "-" %>-<%= match.team2_series_score ?? "-" %>
+                                <% } else { %>
+                                    <span class="hub-muted">In attesa di parte 2</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <span class="hub-badge <%= match.needs_review ? 'warn' : 'good' %>">
+                                    <%= match.needs_review ? 'Da rivedere' : 'OK' %>
+                                </span>
+                            </td>
+                            <td><a class="hub-day-link" href="/matches/<%= match.slug %>">Apri match</a></td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    </main>
+</div>
+</body>
+
+</html>
