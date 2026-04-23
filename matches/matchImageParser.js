@@ -46,7 +46,7 @@ async function extractMatchDataFromImages(attachments, expectedMaps = [], matchC
         players.push(...visionResult.players);
       }
 
-      if (visionResult.map && visionResult.players.length > 0) {
+      if (visionResult.map) {
         continue;
       }
 
@@ -565,9 +565,9 @@ function normalizeVisionExtraction(parsed, { orderIndex, expectedMap, matchConte
         orderIndex,
         team1Score,
         team2Score,
-        mode: rawMap.mode || "",
-        map: rawMap.map_name || rawMap.map || "",
-        side: rawMap.side_name || rawMap.side || "",
+        mode: rawMap.mode || expectedMap?.mode || "",
+        map: rawMap.map_name || rawMap.map || expectedMap?.map_name || expectedMap?.map || "",
+        side: rawMap.side_name || rawMap.side || expectedMap?.side_name || expectedMap?.side || "",
       }
     : null;
 

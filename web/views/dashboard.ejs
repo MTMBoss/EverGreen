@@ -57,6 +57,11 @@
             <div class="hub-summary-sub">Creati da parte 1, in attesa di update</div>
         </article>
         <article class="hub-grid-card">
+            <div class="hub-summary-label">Cancellate</div>
+            <div class="hub-summary-value"><%= stats.cancelledMatches %></div>
+            <div class="hub-summary-sub">Scrim chiuse manualmente dal pannello</div>
+        </article>
+        <article class="hub-grid-card">
             <div class="hub-summary-label">Da rivedere</div>
             <div class="hub-summary-value"><%= stats.reviewMatches %></div>
             <div class="hub-summary-sub">OCR o risultati da verificare</div>
@@ -91,8 +96,8 @@
                             </td>
                             <td><%= match.matchDateLabel || "Senza data" %> <%= match.match_time || "" %></td>
                             <td>
-                                <span class="hub-badge <%= match.status === 'published' ? 'good' : 'warn' %>">
-                                    <%= match.status === 'published' ? 'Completo' : 'Bozza' %>
+                                <span class="hub-badge <%= match.statusTone %>">
+                                    <%= match.statusLabel %>
                                 </span>
                             </td>
                             <td><%= match.team1_series_score ?? "-" %> - <%= match.team2_series_score ?? "-" %></td>

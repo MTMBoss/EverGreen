@@ -548,6 +548,19 @@ async function updateMatchMaps(matchId, maps) {
   }
 }
 
+async function setMatchStatus(matchId, status) {
+  await pool.query(
+    `
+    UPDATE matches
+    SET
+      status = $2,
+      updated_at = NOW()
+    WHERE id = $1
+    `,
+    [matchId, status]
+  );
+}
+
 async function deleteMatchById(matchId) {
   await pool.query(`DELETE FROM matches WHERE id = $1`, [matchId]);
 }
@@ -570,6 +583,7 @@ module.exports = {
   listMatches,
   updateMatchSummary,
   updateMatchMaps,
+  setMatchStatus,
   deleteMatchById,
   deleteAllMatches,
 };

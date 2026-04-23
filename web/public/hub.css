@@ -500,6 +500,25 @@ input[type="password"].hub-input {
   color: #ffe1e5;
 }
 
+.hub-screenshot-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.hub-screenshot-card {
+  padding: 10px;
+}
+
+.hub-screenshot-order {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .hub-mini-pill {
   gap: 6px;
   padding: 7px 10px;

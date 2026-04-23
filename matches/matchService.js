@@ -10,6 +10,7 @@ const {
   listMatches,
   updateMatchSummary,
   updateMatchMaps,
+  setMatchStatus,
   deleteMatchById,
   deleteAllMatches,
 } = require("./matchRepository");
@@ -182,6 +183,10 @@ async function updateMatchManualData(matchId, payload) {
   await updateMatchMaps(matchId, payload.maps || []);
 }
 
+async function setMatchStatusValue(matchId, status) {
+  await setMatchStatus(matchId, status);
+}
+
 async function removeMatchById(matchId) {
   await deleteMatchById(matchId);
 }
@@ -197,6 +202,7 @@ module.exports = {
   getMatchDetailBySlug,
   getMatchList,
   updateMatchManualData,
+  setMatchStatusValue,
   removeMatchById,
   removeAllMatches,
 };

@@ -20,6 +20,7 @@ const { readConfig } = require("../config/configStore");
 const {
   getMatchList,
   getMatchDetailBySlug,
+  setMatchStatusValue,
 } = require("../matches/matchService");
 const {
   getScheduleAvailabilityForDate,
@@ -58,6 +59,7 @@ function createWebRouter(client) {
           totalMatches: matches.length,
           publishedMatches: publishedMatches.length,
           draftMatches: draftMatches.length,
+          cancelledMatches: matches.filter(match => match.status === "cancelled").length,
           reviewMatches: matches.filter(match => match.needs_review).length,
         },
       });
@@ -212,8 +214,36 @@ function createWebRouter(client) {
         pageTitle: `${match.team1} vs ${match.team2}`,
         match: presentMatchForView(match),
         playersByMap,
+        saved: req.query.saved === "1",
         currentSection: "scrim",
       });
+    })
+  );
+
+  router.post(
+    "/matches/:slug/status",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const match = await getMatchDetailBySlug(req.params.slug);
+
+      if (!match) {
+        res.status(404).send("Match non trovato.");
+        return;
+      }
+
+      const action = String(req.body.action || "").trim().toLowerCase();
+      let nextStatus = match.status || "draft";
+
+      if (action === "cancel") {
+        nextStatus = "cancelled";
+      } else if (action === "restore") {
+        nextStatus = inferRestoredMatchStatus(match);
+      } else {
+        throw new Error("Azione stato match non valida.");
+      }
+
+      await setMatchStatusValue(match.id, nextStatus);
+      res.redirect(`/matches/${match.slug}?saved=1`);
     })
   );
 
@@ -313,7 +343,17 @@ function requireAdmin(req, res, next) {
   const cookieToken = req.cookies?.attendance_admin_token || "";
   const queryToken = String(req.query.token || "").trim();
 
-  if (expected && (cookieToken === expected || queryToken === expected)) {
+  if (expected && queryToken === expected) {
+    res.cookie("attendance_admin_token", expected, {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 30,
+      path: "/",
+    });
+    return next();
+  }
+
+  if (expected && cookieToken === expected) {
     return next();
   }
 
@@ -355,7 +395,43 @@ function presentMatchForView(match) {
   return {
     ...match,
     matchDateLabel: formatMatchDateLabel(match?.match_date),
+    ...getMatchStatusMeta(match?.status),
   };
+}
+
+function getMatchStatusMeta(status) {
+  if (status === "published") {
+    return {
+      statusLabel: "Completo",
+      statusTone: "good",
+      isCancelled: false,
+    };
+  }
+
+  if (status === "cancelled") {
+    return {
+      statusLabel: "Cancellata",
+      statusTone: "bad",
+      isCancelled: true,
+    };
+  }
+
+  return {
+    statusLabel: "Bozza",
+    statusTone: "warn",
+    isCancelled: false,
+  };
+}
+
+function inferRestoredMatchStatus(match) {
+  const hasPart2Evidence =
+    Boolean(match?.source_message_id_part2) ||
+    Boolean(match?.result_label) ||
+    match?.team1_series_score !== null ||
+    match?.team2_series_score !== null ||
+    Array.isArray(match?.assets) && match.assets.length > 0;
+
+  return hasPart2Evidence ? "published" : "draft";
 }
 
 function formatMatchDateLabel(value) {

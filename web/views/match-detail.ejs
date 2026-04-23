@@ -15,7 +15,11 @@
         <div>
             <h1><%= match.team1 %> vs <%= match.team2 %></h1>
             <p>
-                <% if (match.status === "draft") { %>
+                <% if (saved) { %>
+                    Stato match aggiornato correttamente dal pannello.
+                <% } else if (match.status === "cancelled") { %>
+                    Scrim marcata come cancellata manualmente. La scheda resta consultabile ma non viene considerata un match attivo.
+                <% } else if (match.status === "draft") { %>
                     Match creato dalla parte 1. La scheda è già visibile sul web e verrà completata quando pubblichi la parte 2.
                 <% } else { %>
                     Match completato dal flusso Discord + web. Qui trovi risultato, mappe, screenshot e player estratti.
@@ -23,10 +27,21 @@
             </p>
             <div class="hub-chip">
                 <span class="hub-chip-dot"></span>
-                Stato: <%= match.status === "published" ? "completo" : "bozza" %>
+                Stato: <%= match.statusLabel.toLowerCase() %>
             </div>
         </div>
         <div class="hub-actions">
+            <% if (match.status === "cancelled") { %>
+                <form method="post" action="/matches/<%= match.slug %>/status" style="display:inline;">
+                    <input type="hidden" name="action" value="restore" />
+                    <button class="hub-button secondary" type="submit">Ripristina stato automatico</button>
+                </form>
+            <% } else { %>
+                <form method="post" action="/matches/<%= match.slug %>/status" style="display:inline;">
+                    <input type="hidden" name="action" value="cancel" />
+                    <button class="hub-button danger" type="submit">Segna scrim cancellata</button>
+                </form>
+            <% } %>
             <a class="hub-button secondary" href="/matches">Torna ai match</a>
             <a class="hub-button secondary" href="/dashboard">Dashboard</a>
         </div>
@@ -88,11 +103,12 @@
         <% if (!screenshots.length) { %>
             <div class="hub-muted">Nessuno screenshot ancora associato a questo match.</div>
         <% } else { %>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+            <div class="hub-screenshot-list">
                 <% for (const asset of screenshots) { %>
-                    <a href="<%= asset.asset_url %>" target="_blank" rel="noreferrer" class="hub-grid-card" style="padding:10px;">
+                    <a href="<%= asset.asset_url %>" target="_blank" rel="noreferrer" class="hub-grid-card hub-screenshot-card">
+                        <div class="hub-screenshot-order">Screenshot <%= asset.sort_order || 0 %></div>
                         <img src="<%= asset.asset_url %>" alt="Screenshot match"
-                            style="width:100%; height:220px; object-fit:cover; border-radius:14px; display:block;" />
+                            style="width:100%; height:220px; object-fit:cover; border-radius:14px; display:block;" loading="lazy" />
                     </a>
                 <% } %>
             </div>

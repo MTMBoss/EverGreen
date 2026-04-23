@@ -54,12 +54,14 @@
                             </td>
                             <td><%= match.matchDateLabel || "Senza data" %> <%= match.match_time || "" %></td>
                             <td>
-                                <span class="hub-badge <%= match.status === 'published' ? 'good' : 'warn' %>">
-                                    <%= match.status === 'published' ? 'Completo' : 'Bozza' %>
+                                <span class="hub-badge <%= match.statusTone %>">
+                                    <%= match.statusLabel %>
                                 </span>
                             </td>
                             <td>
-                                <% if (match.result_label || match.team1_series_score !== null || match.team2_series_score !== null) { %>
+                                <% if (match.isCancelled) { %>
+                                    <span class="hub-muted">Scrim cancellata</span>
+                                <% } else if (match.result_label || match.team1_series_score !== null || match.team2_series_score !== null) { %>
                                     <%= match.result_label || "" %>
                                     <%= match.team1_series_score ?? "-" %>-<%= match.team2_series_score ?? "-" %>
                                 <% } else { %>
