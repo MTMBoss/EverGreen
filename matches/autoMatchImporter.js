@@ -113,20 +113,22 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
   });
 
   const channels = [
-    { type: "part1", id: sourceChannelPart1 },
-    { type: "part2", id: sourceChannelPart2 },
+    { type: "part1", id: sourceChannelPart1, before: options.part1Before || "" },
+    { type: "part2", id: sourceChannelPart2, before: options.part2Before || "" },
   ].filter(item => item.id);
+  const maxMessagesPerChannel = Number(options.maxMessagesPerChannel || 40);
 
   const summary = {
     limitPerChannel: null,
     scanned: 0,
     imported: 0,
     duplicates: 0,
-    skipped: 0,
-    failed: 0,
-    failedMatches: [],
-    skippedMessages: [],
-    channels: [],
+      skipped: 0,
+      failed: 0,
+      failedMatches: [],
+      skippedMessages: [],
+      progress: {},
+      channels: [],
   };
 
   for (const source of channels) {
@@ -163,6 +165,7 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
       client,
       channelStats,
       summary,
+      maxMessagesPerChannel,
     });
 
     summary.scanned += channelStats.scanned;
@@ -171,6 +174,10 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
     summary.skipped += channelStats.skipped;
     summary.failed += channelStats.failed;
     summary.channels.push(channelStats);
+    summary.progress[source.type] = {
+      before: channelStats.nextBefore || "",
+      completed: Boolean(channelStats.completed),
+    };
   }
 
   console.log(
@@ -209,20 +216,34 @@ async function processChannelHistoryInBatches({
   client,
   channelStats,
   summary,
+  maxMessagesPerChannel,
 }) {
-  let before;
+  let before = source.before || "";
+  let processedInRun = 0;
 
   while (true) {
+    if (processedInRun >= maxMessagesPerChannel) {
+      channelStats.nextBefore = before || "";
+      channelStats.completed = false;
+      break;
+    }
+
     const batchSize = 25;
+    const currentLimit = Math.min(batchSize, maxMessagesPerChannel - processedInRun);
     const batch = await channel.messages.fetch(
       before
-        ? { limit: batchSize, before, cache: false }
-        : { limit: batchSize, cache: false }
+        ? { limit: currentLimit, before, cache: false }
+        : { limit: currentLimit, cache: false }
     );
 
-    if (!batch.size) break;
+    if (!batch.size) {
+      channelStats.nextBefore = "";
+      channelStats.completed = true;
+      break;
+    }
 
     const messages = [...batch.values()].reverse();
+    processedInRun += messages.length;
 
     for (const message of messages) {
       channelStats.scanned += 1;
@@ -274,12 +295,17 @@ async function processChannelHistoryInBatches({
 
     const rawMessages = [...batch.values()];
     before = rawMessages[rawMessages.length - 1].id;
+    channelStats.nextBefore = before;
 
     if (channel.messages?.cache?.size) {
       channel.messages.cache.clear();
     }
 
-    if (batch.size < batchSize) break;
+    if (batch.size < currentLimit) {
+      channelStats.nextBefore = "";
+      channelStats.completed = true;
+      break;
+    }
 
     // Batch piccoli e pausa un po' più lunga per non saturare memoria/cache del processo.
     await new Promise(resolve => setTimeout(resolve, 150));

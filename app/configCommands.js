@@ -3,6 +3,7 @@ const {
   setTargetChannel1,
   setTargetChannel2,
   setPngChannel,
+  setMatchImportState,
   setSourceChannelPart1,
   setSourceChannelPart2,
   setScheduleChannels,
@@ -82,12 +83,39 @@ async function handleConfigCommand(interaction, client) {
     setSourceChannelPart1(channelPart1.id);
     setSourceChannelPart2(channelPart2.id);
 
-    await removeAllMatches();
+    const config = readConfig();
+    const previousState = config.matchImportState || {};
+    const sameImportSession =
+      previousState.sourceChannelPart1 === channelPart1.id &&
+      previousState.sourceChannelPart2 === channelPart2.id &&
+      !previousState.completed;
+
+    if (!sameImportSession) {
+      await removeAllMatches();
+      setMatchImportState({
+        sourceChannelPart1: channelPart1.id,
+        sourceChannelPart2: channelPart2.id,
+        part1Before: "",
+        part2Before: "",
+        completed: false,
+      });
+    }
 
     const summary = await importMatchHistoryFromConfiguredSources(client, {
       sourceChannelPart1: channelPart1.id,
       sourceChannelPart2: channelPart2.id,
+      part1Before: sameImportSession ? previousState.part1Before || "" : "",
+      part2Before: sameImportSession ? previousState.part2Before || "" : "",
+      maxMessagesPerChannel: 40,
     });
+    const nextState = {
+      sourceChannelPart1: channelPart1.id,
+      sourceChannelPart2: channelPart2.id,
+      part1Before: summary.progress?.part1?.before || "",
+      part2Before: summary.progress?.part2?.before || "",
+      completed: Boolean(summary.progress?.part1?.completed) && Boolean(summary.progress?.part2?.completed),
+    };
+    setMatchImportState(nextState);
     const part1Summary = summary.channels.find(item => item.type === "part1") || null;
     const part2Summary = summary.channels.find(item => item.type === "part2") || null;
 
@@ -127,15 +155,17 @@ async function handleConfigCommand(interaction, client) {
 
     await interaction.editReply({
       content:
-        `✅ Archivio match azzerato e import storico completato\n` +
+        `${sameImportSession ? "✅ Import storico ripreso" : "✅ Archivio match azzerato e import storico avviato"}\n` +
         `Canale parte 1: ${channelPart1} (\`${channelPart1.id}\`)\n` +
         `Canale parte 2: ${channelPart2} (\`${channelPart2.id}\`)\n` +
-        `Lettura cronologia: **completa**\n` +
+        `Lettura cronologia: **${nextState.completed ? "completa" : "parziale, rilancia il comando per continuare"}**\n` +
         `Messaggi scansionati: **${summary.scanned}**\n` +
         `Match importati: **${summary.imported}**\n` +
         `Già presenti: **${summary.duplicates}**\n` +
         `Saltati: **${summary.skipped}**\n` +
-        `Errori: **${summary.failed}**` +
+        `Errori: **${summary.failed}**\n` +
+        `Cursor parte 1: **${nextState.part1Before ? "in corso" : "fine raggiunta"}**\n` +
+        `Cursor parte 2: **${nextState.part2Before ? "in corso" : "fine raggiunta"}**` +
         (channelBreakdown ? `\n\n${channelBreakdown}` : "") +
         (failedPreview.length
           ? `\n\nPrime partite non collegate:\n- ${failedPreview.join("\n- ")}`

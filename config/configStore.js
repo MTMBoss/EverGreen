@@ -29,6 +29,13 @@ const DEFAULT_CONFIG = {
     : [],
   attendanceWebBaseUrl: process.env.ATTENDANCE_WEB_BASE_URL || "",
   commandDeploymentHash: "",
+  matchImportState: {
+    sourceChannelPart1: "",
+    sourceChannelPart2: "",
+    part1Before: "",
+    part2Before: "",
+    completed: false,
+  },
 
   currentSchedule: null,
   publicationState: {},
@@ -63,6 +70,17 @@ function normalizeConfigValue(key, value) {
     case "attendanceWebBaseUrl":
     case "commandDeploymentHash":
       return typeof value === "string" ? value : "";
+
+    case "matchImportState":
+      return value && typeof value === "object" && !Array.isArray(value)
+        ? {
+            sourceChannelPart1: String(value.sourceChannelPart1 || ""),
+            sourceChannelPart2: String(value.sourceChannelPart2 || ""),
+            part1Before: String(value.part1Before || ""),
+            part2Before: String(value.part2Before || ""),
+            completed: Boolean(value.completed),
+          }
+        : cloneConfig(DEFAULT_CONFIG).matchImportState;
 
     case "scheduleChannels":
     case "attendanceRoleIds":
@@ -330,6 +348,12 @@ function setCommandDeploymentHash(hash) {
   });
 }
 
+function setMatchImportState(state) {
+  return updateConfig(config => {
+    config.matchImportState = normalizeConfigValue("matchImportState", state);
+  });
+}
+
 module.exports = {
   initializeConfigStore,
   readConfig,
@@ -351,4 +375,5 @@ module.exports = {
   setAttendanceRoleIds,
   setAttendanceWebBaseUrl,
   setCommandDeploymentHash,
+  setMatchImportState,
 };
