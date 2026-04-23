@@ -8,6 +8,7 @@
     "deploy": "node deploy-commands.js",
     "start:bot": "node index.js",
     "matches:export-review": "node scripts/export-match-review.js",
+    "matches:autofill-review": "node scripts/autofill-match-review.js",
     "matches:import-review": "node scripts/import-match-review.js",
     "push": "git add . && git commit -m \"update\" && git push",
     "test": "echo \"Error: no test specified\" && exit 1"
