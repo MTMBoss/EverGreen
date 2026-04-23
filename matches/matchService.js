@@ -19,10 +19,6 @@ const {
 } = require("./matchUtils");
 const { isImageAttachment } = require("./matchMessageParser");
 
-const {
-  extractMatchDataFromImages,
-} = require("./matchImageParser");
-
 function buildMatchWebUrl(baseUrl, slug) {
   if (!baseUrl) return `/matches/${slug}`;
   return `${String(baseUrl).replace(/\/+$/, "")}/matches/${slug}`;
@@ -118,6 +114,10 @@ async function completeMatchFromPart2({ parsed, message }) {
 
   if (imageAttachments.length > 0) {
     try {
+      const {
+        extractMatchDataFromImages,
+      } = require("./matchImageParser");
+
       extracted = await extractMatchDataFromImages(
         imageAttachments,
         matchDetail?.maps || [],

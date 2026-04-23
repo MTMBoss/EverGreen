@@ -15,7 +15,6 @@ const {
 
 const { getTodayIsoDate } = require("./attendanceService");
 const { getAttendanceLeaderboard } = require("./attendanceLeaderboardService");
-const { renderAttendanceLeaderboardImage } = require("./attendanceLeaderboardRenderer");
 
 const SELECT_ID = "attendance_lb_select";
 const BUTTON_PREFIX = "attendance_lb_btn";
@@ -52,6 +51,7 @@ function setStoredLeaderboardConfig(patch) {
 
 async function buildLeaderboardMessage(type = "settimana") {
     const leaderboard = await getAttendanceLeaderboard(type);
+    const { renderAttendanceLeaderboardImage } = require("./attendanceLeaderboardRenderer");
     const imageBuffer = await renderAttendanceLeaderboardImage(leaderboard);
 
     const attachment = new AttachmentBuilder(imageBuffer, {

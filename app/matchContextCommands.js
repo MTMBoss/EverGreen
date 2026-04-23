@@ -9,7 +9,6 @@ const {
   getSeparatorActions,
   commitSeparatorState,
 } = require("../matches/publicationTracker");
-const { renderMatchImage } = require("../matches/matchImageRenderer");
 const {
   buildPart1Message,
   buildPart2Draft,
@@ -114,6 +113,7 @@ async function handleMatchContextCommand(interaction, client) {
 
     await ensureDateSeparators(pngChannel, parsed.dateLine);
 
+    const { renderMatchImage } = require("../matches/matchImageRenderer");
     const imageBuffer = await renderMatchImage(parsed);
 
     await pngChannel.send({
