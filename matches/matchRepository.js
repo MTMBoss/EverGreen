@@ -21,11 +21,17 @@ async function createMatchTables() {
       source_channel_id_part2 TEXT NOT NULL DEFAULT '',
       source_message_id_part2 TEXT NOT NULL DEFAULT '',
       notes TEXT NOT NULL DEFAULT '',
+      analysis_debug_json TEXT NOT NULL DEFAULT '',
       analysis_version INTEGER NOT NULL DEFAULT 0,
       last_analyzed_at TIMESTAMPTZ NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE matches
+    ADD COLUMN IF NOT EXISTS analysis_debug_json TEXT NOT NULL DEFAULT ''
   `);
 
   await pool.query(`
@@ -679,6 +685,19 @@ async function setMatchAnalysisVersion(matchId, version) {
   );
 }
 
+async function updateMatchAnalysisDebug(matchId, debugJson) {
+  await pool.query(
+    `
+    UPDATE matches
+    SET
+      analysis_debug_json = $2,
+      updated_at = NOW()
+    WHERE id = $1
+    `,
+    [matchId, String(debugJson || "")]
+  );
+}
+
 async function deleteMatchById(matchId) {
   await pool.query(`DELETE FROM matches WHERE id = $1`, [matchId]);
 }
@@ -704,6 +723,7 @@ module.exports = {
   updateMatchSummary,
   updateMatchMaps,
   setMatchStatus,
+  updateMatchAnalysisDebug,
   setMatchAnalysisVersion,
   deleteMatchById,
   deleteAllMatches,

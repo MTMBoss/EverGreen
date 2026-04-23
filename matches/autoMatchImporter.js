@@ -10,6 +10,9 @@ const {
   parseMatchMessage,
 } = require("./matchMessageParser");
 const {
+  parseMatchDraftFromParsedMessage,
+} = require("./matchUtils");
+const {
   createMatchDraftFromPart1,
   completeMatchFromPart2,
   buildMatchWebUrl,
@@ -24,6 +27,8 @@ const MATCH_IMPORT_TICK_MS = Number(
 const MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL = Number(
   process.env.MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL || 15
 );
+const MATCH_IMPORT_SINGLE_LATEST_ONLY =
+  String(process.env.MATCH_IMPORT_SINGLE_LATEST_ONLY || "true").toLowerCase() !== "false";
 
 let historyImportTimer = null;
 let historyImportRunning = false;
@@ -235,6 +240,172 @@ async function importMatchHistoryFromConfiguredSources(client, options = {}) {
   return summary;
 }
 
+async function importLatestMatchFromConfiguredSources(client, options = {}) {
+  const config = readConfig();
+  const configuredChannels = getConfiguredMatchSourceChannels(config);
+  const sourceChannelPart1 = options.sourceChannelPart1 || configuredChannels.sourceChannelPart1 || "";
+  const sourceChannelPart2 = options.sourceChannelPart2 || configuredChannels.sourceChannelPart2 || "";
+
+  console.log("ℹ️ Avvio import single latest match:", {
+    sourceChannelPart1,
+    sourceChannelPart2,
+    sameChannel: Boolean(sourceChannelPart1) && sourceChannelPart1 === sourceChannelPart2,
+  });
+
+  const summary = {
+    scanned: 0,
+    imported: 0,
+    duplicates: 0,
+    skipped: 0,
+    failed: 0,
+    progress: {
+      part1: { before: "", completed: true },
+      part2: { before: "", completed: true },
+    },
+    channels: [],
+  };
+
+  const part1Channel = await client.channels.fetch(sourceChannelPart1).catch(() => null);
+  const part2Channel = await client.channels.fetch(sourceChannelPart2).catch(() => null);
+
+  if (!part1Channel || part1Channel.type !== ChannelType.GuildText) {
+    throw new Error("Canale Parte 1 non trovato per import single latest.");
+  }
+
+  if (!part2Channel || part2Channel.type !== ChannelType.GuildText) {
+    throw new Error("Canale Parte 2 non trovato per import single latest.");
+  }
+
+  const latestPart1 = await findLatestValidSourceMessage(part1Channel, "part1");
+
+  if (!latestPart1) {
+    console.log("ℹ️ Nessun match Parte 1 valido trovato nel canale sorgente.");
+    return summary;
+  }
+
+  summary.scanned += latestPart1.scanned;
+
+  const part1Result = await handleAutoMatchSourceMessage(latestPart1.message, client);
+  if (part1Result.imported) {
+    summary.imported += 1;
+  } else if (part1Result.reason === "already_imported") {
+    summary.duplicates += 1;
+  } else {
+    summary.skipped += 1;
+  }
+
+  const latestDraft = parseMatchDraftFromParsedMessage(latestPart1.parsed, {
+    referenceDate: latestPart1.message.createdTimestamp || latestPart1.message.createdAt || null,
+  });
+
+  const latestPart2 = await findLatestMatchingPart2Message(part2Channel, latestDraft);
+  if (latestPart2) {
+    summary.scanned += latestPart2.scanned;
+    const part2Result = await handleAutoMatchSourceMessage(latestPart2.message, client);
+    if (part2Result.imported) {
+      summary.imported += 1;
+    } else if (part2Result.reason === "already_imported") {
+      summary.duplicates += 1;
+    } else {
+      summary.skipped += 1;
+    }
+  }
+
+  console.log("ℹ️ Single latest match import completato:", {
+    title: latestPart1.parsed?.title || "",
+    dateLine: latestPart1.parsed?.dateLine || "",
+    imported: summary.imported,
+    duplicates: summary.duplicates,
+    skipped: summary.skipped,
+    foundPart2: Boolean(latestPart2),
+  });
+
+  return summary;
+}
+
+async function findLatestValidSourceMessage(channel, partType) {
+  let before = "";
+  let scanned = 0;
+
+  while (scanned < 100) {
+    const batch = await channel.messages.fetch(
+      before ? { limit: 25, before, cache: false } : { limit: 25, cache: false }
+    );
+
+    if (!batch.size) return null;
+
+    const messages = [...batch.values()];
+
+    for (const message of messages) {
+      scanned += 1;
+      const parsed = parseMatchMessage(message);
+
+      if (!parsed.title || !parsed.dateLine) continue;
+
+      const isPart1 =
+        !parsed.resultLine &&
+        Boolean(parsed.title) &&
+        Boolean(parsed.dateLine) &&
+        (Boolean(parsed.timeLine) || parsed.mapLines.length > 0);
+
+      const isPart2 = Boolean(parsed.resultLine);
+
+      if ((partType === "part1" && isPart1) || (partType === "part2" && isPart2)) {
+        return { message, parsed, scanned };
+      }
+    }
+
+    before = messages[messages.length - 1].id;
+  }
+
+  return null;
+}
+
+async function findLatestMatchingPart2Message(channel, draftMatch) {
+  let before = "";
+  let scanned = 0;
+
+  while (scanned < 150) {
+    const batch = await channel.messages.fetch(
+      before ? { limit: 25, before, cache: false } : { limit: 25, cache: false }
+    );
+
+    if (!batch.size) return null;
+
+    const messages = [...batch.values()];
+
+    for (const message of messages) {
+      scanned += 1;
+      const parsed = parseMatchMessage(message);
+      if (!parsed.title || !parsed.dateLine || !parsed.resultLine) continue;
+
+      const parsedDraft = parseMatchDraftFromParsedMessage(parsed, {
+        referenceDate: message.createdTimestamp || message.createdAt || null,
+      });
+
+      if (isSameMatchIdentity(draftMatch, parsedDraft)) {
+        return { message, parsed, scanned };
+      }
+    }
+
+    before = messages[messages.length - 1].id;
+  }
+
+  return null;
+}
+
+function isSameMatchIdentity(a, b) {
+  if (!a || !b) return false;
+
+  const sameTeams =
+    String(a.team1 || "").trim().toLowerCase() === String(b.team1 || "").trim().toLowerCase() &&
+    String(a.team2 || "").trim().toLowerCase() === String(b.team2 || "").trim().toLowerCase();
+
+  const sameDate = String(a.matchDate || "") === String(b.matchDate || "");
+
+  return sameTeams && sameDate;
+}
+
 async function processChannelHistoryInBatches({
   channel,
   source,
@@ -430,23 +601,29 @@ async function runAutoMatchImportTick(client) {
         }
       : currentState;
 
-    const summary = await importMatchHistoryFromConfiguredSources(client, {
-      sourceChannelPart1,
-      sourceChannelPart2,
-      part1Before: effectiveState.part1Before || "",
-      part2Before: effectiveState.part2Before || "",
-      maxMessagesPerChannel: MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL,
-    });
+    const summary = MATCH_IMPORT_SINGLE_LATEST_ONLY
+      ? await importLatestMatchFromConfiguredSources(client, {
+          sourceChannelPart1,
+          sourceChannelPart2,
+        })
+      : await importMatchHistoryFromConfiguredSources(client, {
+          sourceChannelPart1,
+          sourceChannelPart2,
+          part1Before: effectiveState.part1Before || "",
+          part2Before: effectiveState.part2Before || "",
+          maxMessagesPerChannel: MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL,
+        });
 
     const nextState = {
       version: MATCH_IMPORT_STATE_VERSION,
       sourceChannelPart1,
       sourceChannelPart2,
-      part1Before: summary.progress?.part1?.before || "",
-      part2Before: summary.progress?.part2?.before || "",
-      completed:
-        Boolean(summary.progress?.part1?.completed) &&
-        Boolean(summary.progress?.part2?.completed),
+      part1Before: MATCH_IMPORT_SINGLE_LATEST_ONLY ? "" : summary.progress?.part1?.before || "",
+      part2Before: MATCH_IMPORT_SINGLE_LATEST_ONLY ? "" : summary.progress?.part2?.before || "",
+      completed: MATCH_IMPORT_SINGLE_LATEST_ONLY
+        ? true
+        : Boolean(summary.progress?.part1?.completed) &&
+          Boolean(summary.progress?.part2?.completed),
     };
 
     setMatchImportState(nextState);
@@ -475,5 +652,6 @@ module.exports = {
   handleAutoMatchSourceMessage,
   handleAutoMatchSourceDelete,
   importMatchHistoryFromConfiguredSources,
+  importLatestMatchFromConfiguredSources,
   startAutoMatchImportWorker,
 };

@@ -164,6 +164,20 @@
         </div>
     </section>
 
+    <section class="hub-card" style="margin-bottom:18px;">
+        <div class="hub-table-head" style="padding:0 0 14px; border-bottom:none;">
+            <div>
+                <h2>Debug Parser JSON</h2>
+                <p>Output grezzo salvato dal parser immagini per questo match.</p>
+            </div>
+        </div>
+        <% if (!match.analysis_debug_json) { %>
+            <div class="hub-muted">Nessun debug parser salvato ancora per questo match.</div>
+        <% } else { %>
+            <pre style="margin:0; padding:16px; border-radius:16px; overflow:auto; background:#07130d; color:#d9f7e6; border:1px solid rgba(67, 160, 92, 0.18); white-space:pre-wrap; word-break:break-word;"><%= match.analysis_debug_json %></pre>
+        <% } %>
+    </section>
+
     </main>
 </div>
 </body>

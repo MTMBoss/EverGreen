@@ -4,7 +4,7 @@ const path = require("path");
 const { pool, ensureDbReady } = require("../attendance/db");
 
 const LEGACY_CONFIG_PATH = path.join(__dirname, "..", "config.json");
-const MATCH_IMPORT_STATE_VERSION = 2;
+const MATCH_IMPORT_STATE_VERSION = 3;
 
 const DEFAULT_CONFIG = {
   attendanceLeaderboardChannel: process.env.ATTENDANCE_LEADERBOARD_CHANNEL || "",

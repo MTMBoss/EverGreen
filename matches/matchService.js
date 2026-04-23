@@ -13,6 +13,7 @@ const {
   updateMatchSummary,
   updateMatchMaps,
   setMatchStatus,
+  updateMatchAnalysisDebug,
   setMatchAnalysisVersion,
   deleteMatchById,
   deleteAllMatches,
@@ -28,6 +29,21 @@ const MATCH_IMAGE_ANALYSIS_VERSION = 4;
 function buildMatchWebUrl(baseUrl, slug) {
   if (!baseUrl) return `/matches/${slug}`;
   return `${String(baseUrl).replace(/\/+$/, "")}/matches/${slug}`;
+}
+
+function buildAnalysisDebugJson(payload) {
+  try {
+    return JSON.stringify(payload, null, 2);
+  } catch (error) {
+    return JSON.stringify(
+      {
+        error: "debug_json_serialize_failed",
+        message: error.message || String(error),
+      },
+      null,
+      2
+    );
+  }
 }
 
 async function createMatchDraftFromPart1({ parsed, message }) {
@@ -158,6 +174,23 @@ async function completeMatchFromPart2({ parsed, message }) {
     await replaceMatchPlayers(match.id, extracted.players);
   }
 
+  const debugJson = buildAnalysisDebugJson({
+    phase: "part2_completion",
+    slug: match.slug,
+    parsedMessage: parsed,
+    screenshots: imageAttachments.map(asset => ({
+      url: asset.url,
+      sortOrder: asset.sortOrder,
+      sourceMessageId: asset.sourceMessageId,
+      name: asset.name,
+      contentType: asset.contentType,
+    })),
+    extracted,
+  });
+
+  await updateMatchAnalysisDebug(match.id, debugJson);
+  console.log(`🧪 Parser JSON ${match.slug}: ${debugJson}`);
+
   await markMatchPublished(match.id, Boolean(extracted.needsReview));
   await setMatchAnalysisVersion(match.id, MATCH_IMAGE_ANALYSIS_VERSION);
 
@@ -234,6 +267,20 @@ async function reanalyzeStoredMatchImages(matchId) {
       needsReview: Boolean(extracted.needsReview),
     });
 
+    const debugJson = buildAnalysisDebugJson({
+      phase: "stored_match_reanalysis",
+      slug: match.slug,
+      screenshots: screenshots.map(asset => ({
+        url: asset.url,
+        sortOrder: asset.sortOrder,
+        sourceMessageId: asset.sourceMessageId,
+      })),
+      extracted,
+    });
+
+    await updateMatchAnalysisDebug(match.id, debugJson);
+    console.log(`🧪 Parser JSON ${match.slug}: ${debugJson}`);
+
     await setMatchAnalysisVersion(match.id, MATCH_IMAGE_ANALYSIS_VERSION);
 
     return {
@@ -253,6 +300,14 @@ async function reanalyzeStoredMatchImages(matchId) {
       team2SeriesScore: match.team2_series_score,
       needsReview: true,
     });
+    await updateMatchAnalysisDebug(
+      match.id,
+      buildAnalysisDebugJson({
+        phase: "stored_match_reanalysis_error",
+        slug: match.slug,
+        error: error.message || String(error),
+      })
+    );
     await setMatchAnalysisVersion(match.id, MATCH_IMAGE_ANALYSIS_VERSION);
     throw error;
   }
