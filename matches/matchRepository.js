@@ -63,9 +63,15 @@ async function createMatchTables() {
       deaths INTEGER NULL,
       assists INTEGER NULL,
       points INTEGER NULL,
+      time_played TEXT NOT NULL DEFAULT '',
       impact INTEGER NULL,
       is_mvp BOOLEAN NOT NULL DEFAULT FALSE
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE match_players
+    ADD COLUMN IF NOT EXISTS time_played TEXT NOT NULL DEFAULT ''
   `);
 
   await pool.query(`
@@ -393,6 +399,7 @@ async function replaceMatchPlayers(matchId, players) {
         deaths,
         assists,
         points,
+        time_played,
         impact,
         is_mvp
       )
@@ -405,7 +412,7 @@ async function replaceMatchPlayers(matchId, players) {
             AND order_index = $2
           LIMIT 1
         ),
-        $3,$4,$5,$6,$7,$8,$9,$10
+        $3,$4,$5,$6,$7,$8,$9,$10,$11
       )
       `,
       [
@@ -417,6 +424,7 @@ async function replaceMatchPlayers(matchId, players) {
         player.deaths ?? null,
         player.assists ?? null,
         player.points ?? null,
+        player.timePlayed || "",
         player.impact ?? null,
         Boolean(player.isMvp),
       ]

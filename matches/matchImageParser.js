@@ -39,16 +39,8 @@ async function extractMatchDataFromImages(attachments, expectedMaps = [], matchC
         });
       }
 
-      if (visionResult.map) {
-        maps.push(visionResult.map);
-      }
-
       if (Array.isArray(visionResult.players) && visionResult.players.length > 0) {
         players.push(...visionResult.players);
-      }
-
-      if (visionResult.map) {
-        continue;
       }
 
       worker = await ensureOcrWorker(worker);
@@ -143,22 +135,34 @@ async function extractMatchDataFromImages(attachments, expectedMaps = [], matchC
         }
       }
 
-      if (bestScore) {
-        maps.push({
-          orderIndex: index + 1,
-          team1Score: bestScore.team1Score,
-          team2Score: bestScore.team2Score,
-          mode: "",
-          map: "",
-          side: "",
-        });
+      const selectedMap = mergeExtractedMapCandidates({
+        orderIndex: index + 1,
+        visionMap: visionResult.map,
+        ocrScore: bestScore,
+        expectedMap,
+      });
+
+      if (selectedMap) {
+        maps.push(selectedMap);
       }
 
       debug.push({
         image: index + 1,
         expectedMode,
-        selectedSource: bestSource,
-        selectedScore: bestScore,
+        selectedSource: selectedMap
+          ? bestScore
+            ? bestSource
+            : "vision"
+          : "none",
+        selectedScore: selectedMap
+          ? `${selectedMap.team1Score}:${selectedMap.team2Score}`
+          : null,
+        visionScore: visionResult.map
+          ? `${visionResult.map.team1Score}:${visionResult.map.team2Score}`
+          : "none",
+        ocrScore: bestScore
+          ? `${bestScore.team1Score}:${bestScore.team2Score}`
+          : "none",
       });
     }
   } finally {
@@ -416,7 +420,105 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
   }
 
   try {
-    const model = process.env.OPENAI_MATCH_VISION_MODEL || "gpt-4.1-mini";
+    const model = process.env.OPENAI_MATCH_VISION_MODEL || "gpt-4.1";
+    const visionContext = await buildVisionImageContext({
+      sourceBuffer,
+      attachment,
+      model,
+    });
+
+    const headerPass = await extractVisionHeaderPass({
+      model,
+      visionContext,
+      expectedMap,
+      matchContext,
+    });
+
+    const leftPass = await extractVisionTeamPass({
+      model,
+      visionContext,
+      expectedMap,
+      matchContext,
+      side: "left",
+    });
+
+    const rightPass = await extractVisionTeamPass({
+      model,
+      visionContext,
+      expectedMap,
+      matchContext,
+      side: "right",
+    });
+
+    let normalized = normalizeVisionExtraction(
+      {
+        header: headerPass.header || {},
+        summary_stats: headerPass.summary_stats || {},
+        left_team: leftPass.team_rows || [],
+        right_team: rightPass.team_rows || [],
+      },
+      {
+        orderIndex,
+        expectedMap,
+        matchContext,
+        outputPreview: [
+          headerPass.outputPreview || "",
+          leftPass.outputPreview || "",
+          rightPass.outputPreview || "",
+        ]
+          .filter(Boolean)
+          .join(" | ")
+          .slice(0, 500),
+      }
+    );
+
+    let fallbackResult = null;
+    if (!normalized.map || normalized.players.length === 0) {
+      fallbackResult = await extractWithVisionCombinedPass({
+        attachment,
+        sourceBuffer,
+        expectedMap,
+        matchContext,
+        orderIndex,
+        model,
+      });
+      normalized = mergeVisionExtractionResults(normalized, fallbackResult);
+    }
+
+    return {
+      ...normalized,
+      debug: {
+        ...(normalized.debug || {}),
+        sectionPasses: {
+          header: summarizeVisionSectionPass(headerPass),
+          left: summarizeVisionTeamPass(leftPass),
+          right: summarizeVisionTeamPass(rightPass),
+          fallbackUsed: Boolean(fallbackResult),
+        },
+        fallback: fallbackResult?.debug || null,
+      },
+    };
+  } catch (error) {
+    return {
+      map: null,
+      players: [],
+      debug: {
+        error: "vision_request_failed",
+        preview: error.message,
+      },
+    };
+  }
+}
+
+async function extractWithVisionCombinedPass({
+  attachment,
+  sourceBuffer,
+  expectedMap,
+  matchContext,
+  orderIndex,
+  model,
+}) {
+  try {
     const outputTextMaxPreview = 500;
     const visionImages = await buildVisionImageInputs({
       sourceBuffer,
@@ -424,74 +526,42 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
       model,
     });
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        max_output_tokens: Number(process.env.OPENAI_MATCH_VISION_MAX_TOKENS || 2600),
-        input: [
-          {
-            role: "system",
-            content: buildVisionSystemPrompt(),
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: buildVisionUserPrompt({ expectedMap, matchContext }),
-              },
-              ...visionImages,
-            ],
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "codm_match_screen_extraction",
-            strict: true,
-            schema: buildVisionSchema(),
-          },
-        },
-      }),
+    const payload = await requestStructuredVision({
+      model,
+      schemaName: "codm_match_screen_extraction",
+      schema: buildVisionSchema(),
+      userPrompt: buildVisionUserPrompt({ expectedMap, matchContext }),
+      imageInputs: visionImages,
+      maxTokens: Number(process.env.OPENAI_MATCH_VISION_MAX_TOKENS || 2600),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (payload.error) {
       return {
         map: null,
         players: [],
         debug: {
-          error: `vision_http_${response.status}`,
-          preview: errorText.slice(0, 300),
+          error: payload.error,
+          preview: String(payload.outputPreview || "").slice(0, 300),
         },
       };
     }
 
-    const payload = await response.json();
-    const outputText = extractResponseOutputText(payload);
-    const parsed = extractStructuredVisionPayload(payload);
-
-    if (!parsed) {
+    if (!payload.parsed) {
       return {
         map: null,
         players: [],
         debug: {
           error: "vision_json_parse_failed",
-          preview: outputText.slice(0, outputTextMaxPreview),
+          preview: String(payload.outputPreview || "").slice(0, outputTextMaxPreview),
         },
       };
     }
 
-    return normalizeVisionExtraction(parsed, {
+    return normalizeVisionExtraction(payload.parsed, {
       orderIndex,
       expectedMap,
       matchContext,
-      outputPreview: outputText.slice(0, 300),
+      outputPreview: String(payload.outputPreview || "").slice(0, 300),
     });
   } catch (error) {
     return {
@@ -505,6 +575,138 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
   }
 }
 
+async function extractVisionHeaderPass({
+  model,
+  visionContext,
+  expectedMap,
+  matchContext,
+}) {
+  const payload = await requestStructuredVision({
+    model,
+    schemaName: "codm_match_header_extraction",
+    schema: buildVisionHeaderSchema(),
+    userPrompt: buildVisionHeaderPrompt({ expectedMap, matchContext }),
+    imageInputs: [
+      visionContext.fullImageInput,
+      visionContext.headerImageInput,
+    ].filter(Boolean),
+    maxTokens: Number(process.env.OPENAI_MATCH_VISION_HEADER_TOKENS || 900),
+  });
+
+  if (payload.error || !payload.parsed) {
+    return {
+      header: {},
+      summary_stats: {},
+      outputPreview: payload.outputPreview || payload.error || "",
+      error: payload.error || "header_parse_failed",
+    };
+  }
+
+  return {
+    header: payload.parsed.header || {},
+    summary_stats: payload.parsed.summary_stats || {},
+    outputPreview: payload.outputPreview || "",
+  };
+}
+
+async function extractVisionTeamPass({
+  model,
+  visionContext,
+  expectedMap,
+  matchContext,
+  side,
+}) {
+  const teamName = side === "left" ? matchContext.team1 || "" : matchContext.team2 || "";
+  const tableInput = side === "left" ? visionContext.leftTeamImageInput : visionContext.rightTeamImageInput;
+  const rowInputs = side === "left" ? visionContext.leftRowImageInputs : visionContext.rightRowImageInputs;
+
+  const payload = await requestStructuredVision({
+    model,
+    schemaName: `codm_match_${side}_team_extraction`,
+    schema: buildVisionTeamRowsSchema(),
+    userPrompt: buildVisionTeamPrompt({ expectedMap, teamName, side }),
+    imageInputs: [
+      visionContext.fullImageInput,
+      tableInput,
+      ...(rowInputs || []),
+    ].filter(Boolean),
+    maxTokens: Number(process.env.OPENAI_MATCH_VISION_TEAM_TOKENS || 1800),
+  });
+
+  if (payload.error || !payload.parsed) {
+    return {
+      team_rows: [],
+      outputPreview: payload.outputPreview || payload.error || "",
+      error: payload.error || `${side}_team_parse_failed`,
+    };
+  }
+
+  return {
+    team_rows: sanitizeVisionTeamRows(payload.parsed.team_rows),
+    outputPreview: payload.outputPreview || "",
+  };
+}
+
+async function requestStructuredVision({
+  model,
+  schemaName,
+  schema,
+  userPrompt,
+  imageInputs,
+  maxTokens,
+}) {
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      max_output_tokens: maxTokens,
+      input: [
+        {
+          role: "system",
+          content: buildVisionSystemPrompt(),
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: userPrompt,
+            },
+            ...(imageInputs || []),
+          ],
+        },
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: schemaName,
+          strict: true,
+          schema,
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    return {
+      parsed: null,
+      outputPreview: await response.text(),
+      error: `vision_http_${response.status}`,
+    };
+  }
+
+  const body = await response.json();
+  return {
+    parsed: extractStructuredVisionPayload(body),
+    outputPreview: extractResponseOutputText(body),
+    error: "",
+  };
+}
+
 function buildVisionSystemPrompt() {
   return [
     "You extract structured data from Call of Duty Mobile post-match screenshots.",
@@ -513,6 +715,31 @@ function buildVisionSystemPrompt() {
     "Read the image row-by-row and side-by-side.",
     "If a field is not clearly visible, return null or an empty string depending on the schema.",
     "Never invent players, scores, or statistics.",
+  ].join("\n");
+}
+
+function buildVisionHeaderPrompt({ expectedMap, matchContext }) {
+  const team1 = matchContext.team1 || "TEAM_1";
+  const team2 = matchContext.team2 || "TEAM_2";
+  const expectedMode = expectedMap?.mode || "";
+  const expectedMapName = expectedMap?.map_name || expectedMap?.map || "";
+
+  return [
+    "Analyze only the match header and top-right summary from this COD Mobile post-match screenshot.",
+    `The left team is ${team1}.`,
+    `The right team is ${team2}.`,
+    `Expected mode hint: ${expectedMode || "unknown"}.`,
+    `Expected map hint: ${expectedMapName || "unknown"}.`,
+    "Image 1 is the full screenshot for context.",
+    "Image 2 is a zoomed crop of the top header area.",
+    "Return only:",
+    "- result_label",
+    "- team1_score and team2_score from the header",
+    "- mode",
+    "- map_name",
+    "- raw_timestamp",
+    "- top-right summary stats",
+    "Do not return player rows in this pass.",
   ].join("\n");
 }
 
@@ -547,6 +774,79 @@ function buildVisionUserPrompt({ expectedMap, matchContext }) {
     "- do not leave left_team or right_team empty if player rows are visible in the crops.",
     "- HP usually ends with one side at 250, Search at 9, Control at 3. Use that only as a weak hint.",
   ].join("\n");
+}
+
+function buildVisionTeamPrompt({ expectedMap, teamName, side }) {
+  const expectedMode = expectedMap?.mode || "";
+  const expectedMapName = expectedMap?.map_name || expectedMap?.map || "";
+
+  return [
+    `Analyze only the ${side} team roster table from this COD Mobile post-match screenshot.`,
+    `This team should be: ${teamName || "unknown team"}.`,
+    `Expected mode hint: ${expectedMode || "unknown"}.`,
+    `Expected map hint: ${expectedMapName || "unknown"}.`,
+    "Image 1 is the full screenshot for context.",
+    "Image 2 is the full team table crop.",
+    "The remaining images are row crops ordered from rank 1 to rank 5.",
+    "Return exactly 5 rows in team_rows.",
+    "Each output row must correspond to the same visual row index.",
+    "Extract:",
+    "- rank",
+    "- player_name",
+    "- score from the PUNTEGGIO column",
+    "- kills, deaths, assists from U/M/A",
+    "- time from TEMPO",
+    "- impact from IMPATTO",
+    "- is_mvp",
+    "If a field is unreadable, return null or empty string.",
+    "Do not invent player names.",
+  ].join("\n");
+}
+
+function buildVisionHeaderSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["header", "summary_stats"],
+    properties: {
+      header: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "result_label",
+          "team1_score",
+          "team2_score",
+          "mode",
+          "map_name",
+          "raw_timestamp",
+        ],
+        properties: {
+          result_label: { type: "string" },
+          team1_score: nullableIntegerSchema(),
+          team2_score: nullableIntegerSchema(),
+          mode: { type: "string" },
+          map_name: { type: "string" },
+          raw_timestamp: { type: "string" },
+        },
+      },
+      summary_stats: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "pe_ottenuti",
+          "rapporto_um",
+          "precisione_pct",
+          "headshot_pct",
+        ],
+        properties: {
+          pe_ottenuti: nullableIntegerSchema(),
+          rapporto_um: nullableNumberSchema(),
+          precisione_pct: nullableNumberSchema(),
+          headshot_pct: nullableNumberSchema(),
+        },
+      },
+    },
+  };
 }
 
 function buildVisionSchema() {
@@ -593,6 +893,17 @@ function buildVisionSchema() {
       },
       left_team: teamRowsSchema(),
       right_team: teamRowsSchema(),
+    },
+  };
+}
+
+function buildVisionTeamRowsSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["team_rows"],
+    properties: {
+      team_rows: teamRowsSchema(),
     },
   };
 }
@@ -683,6 +994,55 @@ function getVisionDetailLevel(model) {
   return "high";
 }
 
+async function buildVisionImageContext({ sourceBuffer, attachment, model }) {
+  const metadata = await sharp(sourceBuffer).metadata();
+  const width = metadata.width || 0;
+  const height = metadata.height || 0;
+  const detail = getVisionDetailLevel(model);
+
+  const fullImageInput = {
+    type: "input_image",
+    image_url: attachment.url,
+    detail,
+  };
+
+  if (!width || !height) {
+    return {
+      fullImageInput,
+      headerImageInput: null,
+      leftTeamImageInput: null,
+      rightTeamImageInput: null,
+      leftRowImageInputs: [],
+      rightRowImageInputs: [],
+    };
+  }
+
+  const [headerCrop, leftTeamCrop, rightTeamCrop] = buildVisionCropSpecs(width, height);
+  const leftRowCrops = buildVisionTeamRowCropSpecs(leftTeamCrop);
+  const rightRowCrops = buildVisionTeamRowCropSpecs(rightTeamCrop);
+
+  return {
+    fullImageInput,
+    headerImageInput: {
+      type: "input_image",
+      image_url: await buildCropDataUrl(sourceBuffer, headerCrop),
+      detail: "high",
+    },
+    leftTeamImageInput: {
+      type: "input_image",
+      image_url: await buildCropDataUrl(sourceBuffer, leftTeamCrop),
+      detail: "high",
+    },
+    rightTeamImageInput: {
+      type: "input_image",
+      image_url: await buildCropDataUrl(sourceBuffer, rightTeamCrop),
+      detail: "high",
+    },
+    leftRowImageInputs: await buildVisionRowImageInputs(sourceBuffer, leftRowCrops),
+    rightRowImageInputs: await buildVisionRowImageInputs(sourceBuffer, rightRowCrops),
+  };
+}
+
 async function buildVisionImageInputs({ sourceBuffer, attachment, model }) {
   const metadata = await sharp(sourceBuffer).metadata();
   const width = metadata.width || 0;
@@ -744,6 +1104,44 @@ function buildVisionCropSpecs(width, height) {
   ];
 }
 
+function buildVisionTeamRowCropSpecs(teamCrop) {
+  const headerHeight = Math.floor(teamCrop.height * 0.125);
+  const bodyTop = teamCrop.top + headerHeight;
+  const bodyHeight = Math.max(1, teamCrop.height - headerHeight);
+  const rowHeight = Math.max(1, Math.floor(bodyHeight / 5));
+
+  return Array.from({ length: 5 }, (_, index) => {
+    const top = Math.max(teamCrop.top, bodyTop + index * rowHeight - 6);
+    const bottom = Math.min(
+      teamCrop.top + teamCrop.height,
+      bodyTop + (index + 1) * rowHeight + 6
+    );
+
+    return {
+      name: `${teamCrop.name}_row_${index + 1}`,
+      left: teamCrop.left,
+      top,
+      width: teamCrop.width,
+      height: Math.max(1, bottom - top),
+      resizeWidth: 1900,
+    };
+  });
+}
+
+async function buildVisionRowImageInputs(sourceBuffer, crops) {
+  const inputs = [];
+
+  for (const crop of crops || []) {
+    inputs.push({
+      type: "input_image",
+      image_url: await buildCropDataUrl(sourceBuffer, crop),
+      detail: "high",
+    });
+  }
+
+  return inputs;
+}
+
 async function buildCropDataUrl(sourceBuffer, crop) {
   const buffer = await sharp(sourceBuffer)
     .rotate()
@@ -782,6 +1180,25 @@ function tryParseVisionJson(text) {
   } catch {
     return null;
   }
+}
+
+function sanitizeVisionTeamRows(rows) {
+  const source = Array.isArray(rows) ? rows : [];
+
+  return Array.from({ length: 5 }, (_, index) => {
+    const row = source[index] || {};
+    return {
+      rank: toNullableInteger(row.rank) ?? index + 1,
+      player_name: String(row.player_name || "").trim(),
+      score: toNullableInteger(row.score),
+      kills: toNullableInteger(row.kills),
+      deaths: toNullableInteger(row.deaths),
+      assists: toNullableInteger(row.assists),
+      time: String(row.time || "").trim(),
+      impact: toNullableInteger(row.impact),
+      is_mvp: Boolean(row.is_mvp),
+    };
+  });
 }
 
 function normalizeVisionExtraction(parsed, { orderIndex, expectedMap, matchContext, outputPreview }) {
@@ -853,6 +1270,56 @@ function normalizeVisionExtraction(parsed, { orderIndex, expectedMap, matchConte
   };
 }
 
+function mergeVisionExtractionResults(primary, fallback) {
+  const primaryPlayers = Array.isArray(primary?.players) ? primary.players : [];
+  const fallbackPlayers = Array.isArray(fallback?.players) ? fallback.players : [];
+
+  return {
+    map: primary?.map || fallback?.map || null,
+    players:
+      primaryPlayers.length >= fallbackPlayers.length
+        ? primaryPlayers
+        : fallbackPlayers,
+    debug: {
+      ...(primary?.debug || {}),
+      merge: {
+        primaryPlayers: primaryPlayers.length,
+        fallbackPlayers: fallbackPlayers.length,
+        selectedPlayers:
+          primaryPlayers.length >= fallbackPlayers.length
+            ? primaryPlayers.length
+            : fallbackPlayers.length,
+        primaryMap: primary?.map
+          ? `${primary.map.team1Score}:${primary.map.team2Score}`
+          : "none",
+        fallbackMap: fallback?.map
+          ? `${fallback.map.team1Score}:${fallback.map.team2Score}`
+          : "none",
+      },
+    },
+  };
+}
+
+function summarizeVisionSectionPass(section) {
+  return {
+    error: section?.error || "",
+    outputPreview: String(section?.outputPreview || "").slice(0, 180),
+    hasHeader: Boolean(section?.header && Object.keys(section.header).length),
+  };
+}
+
+function summarizeVisionTeamPass(section) {
+  const rows = Array.isArray(section?.team_rows) ? section.team_rows : [];
+  const namedRows = rows.filter(row => String(row?.player_name || "").trim()).length;
+
+  return {
+    error: section?.error || "",
+    rowCount: rows.length,
+    namedRows,
+    outputPreview: String(section?.outputPreview || "").slice(0, 180),
+  };
+}
+
 function normalizeVisionPlayer(player, { orderIndex, team1, team2 }) {
   const side = String(player?.side || "").trim().toLowerCase();
   const teamName = side === "left" ? team1 : side === "right" ? team2 : "";
@@ -870,6 +1337,7 @@ function normalizeVisionPlayer(player, { orderIndex, team1, team2 }) {
     deaths: toNullableInteger(player?.deaths),
     assists: toNullableInteger(player?.assists),
     points: toNullableInteger(player?.score ?? player?.points),
+    timePlayed: normalizeClockValue(player?.time),
     impact: toNullableInteger(player?.impact),
     isMvp: Boolean(player?.is_mvp),
   };
@@ -898,6 +1366,11 @@ function normalizePlayerName(value) {
     .trim();
 }
 
+function normalizeClockValue(value) {
+  const clean = String(value || "").trim();
+  return /^\d{1,2}:\d{2}$/.test(clean) ? clean : "";
+}
+
 function dedupePlayers(players) {
   const output = [];
   const seen = new Set();
@@ -910,6 +1383,33 @@ function dedupePlayers(players) {
   }
 
   return output;
+}
+
+function mergeExtractedMapCandidates({ orderIndex, visionMap, ocrScore, expectedMap }) {
+  const base = {
+    orderIndex,
+    mode: visionMap?.mode || expectedMap?.mode || "",
+    map: visionMap?.map || expectedMap?.map_name || expectedMap?.map || "",
+    side: visionMap?.side || expectedMap?.side_name || expectedMap?.side || "",
+  };
+
+  if (ocrScore) {
+    return {
+      ...base,
+      team1Score: ocrScore.team1Score,
+      team2Score: ocrScore.team2Score,
+    };
+  }
+
+  if (visionMap) {
+    return {
+      ...base,
+      team1Score: visionMap.team1Score,
+      team2Score: visionMap.team2Score,
+    };
+  }
+
+  return null;
 }
 
 async function extractScoreFromBoxes({ buffer, boxes, worker, expectedMode }) {

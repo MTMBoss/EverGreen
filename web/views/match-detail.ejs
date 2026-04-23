@@ -136,13 +136,15 @@
                         <th>Player</th>
                         <th>K / D / A</th>
                         <th>Punti</th>
+                        <th>Tempo</th>
+                        <th>Impatto</th>
                         <th>MVP</th>
                     </tr>
                 </thead>
                 <tbody>
                     <% if (!(match.players || []).length) { %>
                         <tr>
-                            <td colspan="6" class="hub-muted">Nessun dato player ancora disponibile.</td>
+                            <td colspan="8" class="hub-muted">Nessun dato player ancora disponibile.</td>
                         </tr>
                     <% } %>
                     <% for (const player of match.players || []) { %>
@@ -152,6 +154,8 @@
                             <td><%= player.player_name || "-" %></td>
                             <td><%= player.kills ?? "-" %> / <%= player.deaths ?? "-" %> / <%= player.assists ?? "-" %></td>
                             <td><%= player.points ?? "-" %></td>
+                            <td><%= player.time_played || "-" %></td>
+                            <td><%= player.impact ?? "-" %></td>
                             <td><%= player.is_mvp ? "MVP" : "-" %></td>
                         </tr>
                     <% } %>
