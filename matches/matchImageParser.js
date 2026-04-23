@@ -14,6 +14,7 @@ async function extractMatchDataFromImages(attachments, expectedMaps = [], matchC
   const maps = [];
   const players = [];
   const debug = [];
+  const visionSkippedReasons = [];
   let worker = null;
 
   try {
@@ -37,6 +38,10 @@ async function extractMatchDataFromImages(attachments, expectedMaps = [], matchC
           provider: "vision",
           ...visionResult.debug,
         });
+
+        if (visionResult.debug.skipped) {
+          visionSkippedReasons.push(String(visionResult.debug.skipped));
+        }
       }
 
       if (Array.isArray(visionResult.players) && visionResult.players.length > 0) {
@@ -175,7 +180,7 @@ async function extractMatchDataFromImages(attachments, expectedMaps = [], matchC
     maps: dedupeMapsByOrder(maps),
     players,
     needsReview: true,
-    extractionSummary: buildSummary(maps, attachments.length, players.length),
+    extractionSummary: buildSummary(maps, attachments.length, players.length, visionSkippedReasons),
     debug,
   };
 }
@@ -418,7 +423,14 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
   const provider = resolveVisionProvider();
 
   if (!getOllamaBaseUrl()) {
-    return { map: null, players: [], debug: { skipped: "OLLAMA_BASE_URL missing" } };
+    return {
+      map: null,
+      players: [],
+      debug: {
+        provider,
+        skipped: "OLLAMA_BASE_URL missing",
+      },
+    };
   }
 
   try {
@@ -1835,13 +1847,19 @@ function dedupeMapsByOrder(maps) {
   return out;
 }
 
-function buildSummary(maps, totalImages, totalPlayers = 0) {
-  return (
+function buildSummary(maps, totalImages, totalPlayers = 0, visionSkippedReasons = []) {
+  const uniqueSkippedReasons = [...new Set((visionSkippedReasons || []).filter(Boolean))];
+  const base =
     `Analisi immagini eseguita su ${totalImages} screenshot. ` +
     `Score mappa riconosciuti: ${maps.length}. ` +
     `Player riconosciuti: ${totalPlayers}. ` +
-    `Review manuale consigliata.`
-  );
+    `Review manuale consigliata.`;
+
+  if (!uniqueSkippedReasons.length) {
+    return base;
+  }
+
+  return `${base} Vision parser non disponibile: ${uniqueSkippedReasons.join(", ")}.`;
 }
 
 module.exports = {
