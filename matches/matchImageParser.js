@@ -415,12 +415,22 @@ function normalizeOcrText(text) {
 }
 
 async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, matchContext, orderIndex }) {
-  if (!process.env.OPENAI_API_KEY) {
+  const provider = resolveVisionProvider();
+
+  if (provider === "ocr") {
+    return { map: null, players: [], debug: { skipped: "vision_provider_disabled" } };
+  }
+
+  if (provider === "openai" && !process.env.OPENAI_API_KEY) {
     return { map: null, players: [], debug: { skipped: "OPENAI_API_KEY missing" } };
   }
 
+  if (provider === "ollama" && !getOllamaBaseUrl()) {
+    return { map: null, players: [], debug: { skipped: "OLLAMA_BASE_URL missing" } };
+  }
+
   try {
-    const model = process.env.OPENAI_MATCH_VISION_MODEL || "gpt-4.1";
+    const model = getVisionModel(provider);
     const visionContext = await buildVisionImageContext({
       sourceBuffer,
       attachment,
@@ -428,6 +438,7 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
     });
 
     const headerPass = await extractVisionHeaderPass({
+      provider,
       model,
       visionContext,
       expectedMap,
@@ -435,6 +446,7 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
     });
 
     const leftPass = await extractVisionTeamPass({
+      provider,
       model,
       visionContext,
       expectedMap,
@@ -443,6 +455,7 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
     });
 
     const rightPass = await extractVisionTeamPass({
+      provider,
       model,
       visionContext,
       expectedMap,
@@ -475,6 +488,7 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
     let fallbackResult = null;
     if (!normalized.map || normalized.players.length === 0) {
       fallbackResult = await extractWithVisionCombinedPass({
+        provider,
         attachment,
         sourceBuffer,
         expectedMap,
@@ -489,6 +503,8 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
       ...normalized,
       debug: {
         ...(normalized.debug || {}),
+        provider,
+        model,
         sectionPasses: {
           header: summarizeVisionSectionPass(headerPass),
           left: summarizeVisionTeamPass(leftPass),
@@ -503,6 +519,7 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
       map: null,
       players: [],
       debug: {
+        provider,
         error: "vision_request_failed",
         preview: error.message,
       },
@@ -511,6 +528,7 @@ async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, m
 }
 
 async function extractWithVisionCombinedPass({
+  provider,
   attachment,
   sourceBuffer,
   expectedMap,
@@ -521,12 +539,14 @@ async function extractWithVisionCombinedPass({
   try {
     const outputTextMaxPreview = 500;
     const visionImages = await buildVisionImageInputs({
+      provider,
       sourceBuffer,
       attachment,
       model,
     });
 
     const payload = await requestStructuredVision({
+      provider,
       model,
       schemaName: "codm_match_screen_extraction",
       schema: buildVisionSchema(),
@@ -576,20 +596,22 @@ async function extractWithVisionCombinedPass({
 }
 
 async function extractVisionHeaderPass({
+  provider,
   model,
   visionContext,
   expectedMap,
   matchContext,
 }) {
   const payload = await requestStructuredVision({
+    provider,
     model,
     schemaName: "codm_match_header_extraction",
     schema: buildVisionHeaderSchema(),
     userPrompt: buildVisionHeaderPrompt({ expectedMap, matchContext }),
-    imageInputs: [
+    imageInputs: getVisionImageInputsForProvider(provider, [
       visionContext.fullImageInput,
       visionContext.headerImageInput,
-    ].filter(Boolean),
+    ]),
     maxTokens: Number(process.env.OPENAI_MATCH_VISION_HEADER_TOKENS || 900),
   });
 
@@ -610,6 +632,7 @@ async function extractVisionHeaderPass({
 }
 
 async function extractVisionTeamPass({
+  provider,
   model,
   visionContext,
   expectedMap,
@@ -621,15 +644,16 @@ async function extractVisionTeamPass({
   const rowInputs = side === "left" ? visionContext.leftRowImageInputs : visionContext.rightRowImageInputs;
 
   const payload = await requestStructuredVision({
+    provider,
     model,
     schemaName: `codm_match_${side}_team_extraction`,
     schema: buildVisionTeamRowsSchema(),
     userPrompt: buildVisionTeamPrompt({ expectedMap, teamName, side }),
-    imageInputs: [
+    imageInputs: getVisionImageInputsForProvider(provider, [
       visionContext.fullImageInput,
       tableInput,
       ...(rowInputs || []),
-    ].filter(Boolean),
+    ]),
     maxTokens: Number(process.env.OPENAI_MATCH_VISION_TEAM_TOKENS || 1800),
   });
 
@@ -648,6 +672,35 @@ async function extractVisionTeamPass({
 }
 
 async function requestStructuredVision({
+  provider,
+  model,
+  schemaName,
+  schema,
+  userPrompt,
+  imageInputs,
+  maxTokens,
+}) {
+  if (provider === "ollama") {
+    return requestOllamaStructuredVision({
+      model,
+      schema,
+      userPrompt,
+      imageInputs,
+      maxTokens,
+    });
+  }
+
+  return requestOpenAiStructuredVision({
+    model,
+    schemaName,
+    schema,
+    userPrompt,
+    imageInputs,
+    maxTokens,
+  });
+}
+
+async function requestOpenAiStructuredVision({
   model,
   schemaName,
   schema,
@@ -703,6 +756,64 @@ async function requestStructuredVision({
   return {
     parsed: extractStructuredVisionPayload(body),
     outputPreview: extractResponseOutputText(body),
+    error: "",
+  };
+}
+
+async function requestOllamaStructuredVision({
+  model,
+  schema,
+  userPrompt,
+  imageInputs,
+  maxTokens,
+}) {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  if (process.env.OLLAMA_API_KEY) {
+    headers.Authorization = `Bearer ${process.env.OLLAMA_API_KEY}`;
+  }
+
+  const response = await fetch(`${getOllamaBaseUrl()}/api/chat`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model,
+      stream: false,
+      format: schema,
+      options: {
+        temperature: 0,
+        num_predict: maxTokens,
+      },
+      messages: [
+        {
+          role: "system",
+          content: buildVisionSystemPrompt(),
+        },
+        {
+          role: "user",
+          content: `${userPrompt}\n\nReturn only JSON matching this schema:\n${JSON.stringify(schema)}`,
+          images: Array.isArray(imageInputs) ? imageInputs.filter(Boolean) : [],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    return {
+      parsed: null,
+      outputPreview: await response.text(),
+      error: `vision_http_${response.status}`,
+    };
+  }
+
+  const body = await response.json();
+  const outputPreview = extractOllamaResponseText(body);
+
+  return {
+    parsed: tryParseVisionJson(outputPreview),
+    outputPreview,
     error: "",
   };
 }
@@ -983,6 +1094,57 @@ function extractResponseOutputText(payload) {
   return chunks.join("\n");
 }
 
+function extractOllamaResponseText(payload) {
+  return String(payload?.message?.content || "").trim();
+}
+
+function resolveVisionProvider() {
+  const configured = String(
+    process.env.MATCH_IMAGE_VISION_PROVIDER ||
+      process.env.MATCH_VISION_PROVIDER ||
+      "auto"
+  )
+    .trim()
+    .toLowerCase();
+
+  if (configured === "openai" || configured === "ollama" || configured === "ocr") {
+    return configured;
+  }
+
+  if (getOllamaBaseUrl()) {
+    return "ollama";
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    return "openai";
+  }
+
+  return "ocr";
+}
+
+function getVisionModel(provider) {
+  if (provider === "ollama") {
+    return process.env.OLLAMA_MATCH_VISION_MODEL || "glm-ocr:latest";
+  }
+
+  return process.env.OPENAI_MATCH_VISION_MODEL || "gpt-4.1";
+}
+
+function getOllamaBaseUrl() {
+  const raw = String(process.env.OLLAMA_BASE_URL || process.env.OLLAMA_HOST || "").trim();
+  return raw ? raw.replace(/\/+$/, "") : "";
+}
+
+function getVisionImageInputsForProvider(provider, inputs) {
+  const filtered = (inputs || []).filter(Boolean);
+
+  if (provider === "ollama") {
+    return filtered.map(input => input.ollamaBase64 || "").filter(Boolean);
+  }
+
+  return filtered.map(input => input.openAiInput || null).filter(Boolean);
+}
+
 function getVisionDetailLevel(model) {
   const configured = String(process.env.OPENAI_MATCH_VISION_DETAIL || "").trim().toLowerCase();
   if (configured) return configured;
@@ -1000,11 +1162,11 @@ async function buildVisionImageContext({ sourceBuffer, attachment, model }) {
   const height = metadata.height || 0;
   const detail = getVisionDetailLevel(model);
 
-  const fullImageInput = {
-    type: "input_image",
-    image_url: attachment.url,
+  const fullImageInput = buildVisionImageInput({
+    openAiUrl: attachment.url,
+    ollamaBase64: sourceBuffer.toString("base64"),
     detail,
-  };
+  });
 
   if (!width || !height) {
     return {
@@ -1023,56 +1185,39 @@ async function buildVisionImageContext({ sourceBuffer, attachment, model }) {
 
   return {
     fullImageInput,
-    headerImageInput: {
-      type: "input_image",
-      image_url: await buildCropDataUrl(sourceBuffer, headerCrop),
-      detail: "high",
-    },
-    leftTeamImageInput: {
-      type: "input_image",
-      image_url: await buildCropDataUrl(sourceBuffer, leftTeamCrop),
-      detail: "high",
-    },
-    rightTeamImageInput: {
-      type: "input_image",
-      image_url: await buildCropDataUrl(sourceBuffer, rightTeamCrop),
-      detail: "high",
-    },
+    headerImageInput: await buildVisionCropInput(sourceBuffer, headerCrop),
+    leftTeamImageInput: await buildVisionCropInput(sourceBuffer, leftTeamCrop),
+    rightTeamImageInput: await buildVisionCropInput(sourceBuffer, rightTeamCrop),
     leftRowImageInputs: await buildVisionRowImageInputs(sourceBuffer, leftRowCrops),
     rightRowImageInputs: await buildVisionRowImageInputs(sourceBuffer, rightRowCrops),
   };
 }
 
-async function buildVisionImageInputs({ sourceBuffer, attachment, model }) {
+async function buildVisionImageInputs({ provider, sourceBuffer, attachment, model }) {
   const metadata = await sharp(sourceBuffer).metadata();
   const width = metadata.width || 0;
   const height = metadata.height || 0;
   const detail = getVisionDetailLevel(model);
 
   const inputs = [
-    {
-      type: "input_image",
-      image_url: attachment.url,
+    buildVisionImageInput({
+      openAiUrl: attachment.url,
+      ollamaBase64: sourceBuffer.toString("base64"),
       detail,
-    },
+    }),
   ];
 
   if (!width || !height) {
-    return inputs;
+    return getVisionImageInputsForProvider(provider, inputs);
   }
 
   const cropSpecs = buildVisionCropSpecs(width, height);
 
   for (const crop of cropSpecs) {
-    const imageUrl = await buildCropDataUrl(sourceBuffer, crop);
-    inputs.push({
-      type: "input_image",
-      image_url: imageUrl,
-      detail: "high",
-    });
+    inputs.push(await buildVisionCropInput(sourceBuffer, crop));
   }
 
-  return inputs;
+  return getVisionImageInputsForProvider(provider, inputs);
 }
 
 function buildVisionCropSpecs(width, height) {
@@ -1132,14 +1277,30 @@ async function buildVisionRowImageInputs(sourceBuffer, crops) {
   const inputs = [];
 
   for (const crop of crops || []) {
-    inputs.push({
-      type: "input_image",
-      image_url: await buildCropDataUrl(sourceBuffer, crop),
-      detail: "high",
-    });
+    inputs.push(await buildVisionCropInput(sourceBuffer, crop));
   }
 
   return inputs;
+}
+
+async function buildVisionCropInput(sourceBuffer, crop) {
+  const imageUrl = await buildCropDataUrl(sourceBuffer, crop);
+  return buildVisionImageInput({
+    openAiUrl: imageUrl,
+    ollamaBase64: extractBase64FromDataUrl(imageUrl),
+    detail: "high",
+  });
+}
+
+function buildVisionImageInput({ openAiUrl, ollamaBase64, detail }) {
+  return {
+    openAiInput: {
+      type: "input_image",
+      image_url: openAiUrl,
+      detail,
+    },
+    ollamaBase64,
+  };
 }
 
 async function buildCropDataUrl(sourceBuffer, crop) {
@@ -1159,6 +1320,13 @@ async function buildCropDataUrl(sourceBuffer, crop) {
     .toBuffer();
 
   return `data:image/png;base64,${buffer.toString("base64")}`;
+}
+
+function extractBase64FromDataUrl(dataUrl) {
+  const raw = String(dataUrl || "");
+  const marker = "base64,";
+  const index = raw.indexOf(marker);
+  return index === -1 ? raw : raw.slice(index + marker.length);
 }
 
 function tryParseVisionJson(text) {
