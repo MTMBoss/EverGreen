@@ -16,12 +16,13 @@ const {
   setMemberInGameName,
 } = require("../attendance/attendanceService");
 const { syncRosterFromGuild } = require("../attendance/rosterService");
-const { readConfig } = require("../config/configStore");
+const { readConfig, setMatchImportState } = require("../config/configStore");
 const {
   getMatchList,
   getMatchDetailBySlug,
   reanalyzeStoredMatchImages,
   setMatchStatusValue,
+  removeAllMatches,
 } = require("../matches/matchService");
 const {
   getScheduleAvailabilityForDate,
@@ -188,6 +189,7 @@ function createWebRouter(client) {
       res.render("matches", {
         pageTitle: "Match Center",
         matches: matches.map(presentMatchForView),
+        rebuilt: _req.query.rebuilt === "1",
         currentSection: "scrim",
       });
     })
@@ -219,6 +221,26 @@ function createWebRouter(client) {
         saved: req.query.saved === "1",
         currentSection: "scrim",
       });
+    })
+  );
+
+  router.post(
+    "/matches/rebuild",
+    requireAdmin,
+    asyncHandler(async (_req, res) => {
+      const config = readConfig();
+
+      await removeAllMatches();
+      setMatchImportState({
+        version: 0,
+        sourceChannelPart1: config.targetChannel1 || "",
+        sourceChannelPart2: config.targetChannel2 || "",
+        part1Before: "",
+        part2Before: "",
+        completed: false,
+      });
+
+      res.redirect("/matches?rebuilt=1");
     })
   );
 

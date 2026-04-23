@@ -18,10 +18,18 @@
                 Archivio web dei match pubblicati dal bot. La parte 1 crea la bozza, la parte 2 completa la scheda
                 con risultati, mappe e screenshot.
             </p>
+            <% if (rebuilt) { %>
+                <div class="hub-notice success" style="margin-top: 14px;">
+                    Archivio match azzerato. Il worker ripartira automaticamente dai canali Parte 1 e Parte 2 gia configurati.
+                </div>
+            <% } %>
         </div>
         <div class="hub-actions">
             <a class="hub-button secondary" href="/dashboard">Dashboard</a>
             <a class="hub-button secondary" href="/presenze">Presenze</a>
+            <form method="post" action="/matches/rebuild" onsubmit="return confirm('Vuoi cancellare tutti i match salvati e rifare la lettura completa delle chat?');">
+                <button class="hub-button danger" type="submit">Rebuild Match</button>
+            </form>
         </div>
     </section>
 
