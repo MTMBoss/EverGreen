@@ -77,6 +77,11 @@ async function handleAutoMatchSourceMessage(message, client) {
 
     if (!isPart1) return { handled: true, imported: false, reason: "invalid_part1" };
 
+    if (MATCH_IMPORT_SINGLE_LATEST_ONLY) {
+      // In modalita debug teniamo nel DB una sola scrim: l'ultima Parte 1 ricevuta.
+      await removeAllMatches();
+    }
+
     const draft = await createMatchDraftFromPart1({ parsed, message });
     const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, draft.slug);
     console.log(`✅ Auto lettura parte 1 completata: ${draft.slug} -> ${webUrl}`);

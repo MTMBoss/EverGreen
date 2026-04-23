@@ -46,6 +46,50 @@ function buildAnalysisDebugJson(payload) {
   }
 }
 
+function buildExtractionLogSummary(match, extracted, parsed) {
+  return {
+    slug: match.slug,
+    titolo: `${match.team1} vs ${match.team2}`,
+    data: match.match_date,
+    serie: {
+      team1: match.team1_series_score,
+      team2: match.team2_series_score,
+      resultLabel: match.result_label || "",
+    },
+    parsedMessage: {
+      title: parsed?.title || "",
+      dateLine: parsed?.dateLine || "",
+      resultLine: parsed?.resultLine || "",
+    },
+    maps: Array.isArray(extracted?.maps)
+      ? extracted.maps.map(map => ({
+          orderIndex: map.orderIndex,
+          mode: map.mode || "",
+          map: map.map || map.mapName || "",
+          side: map.side || map.sideName || "",
+          team1Score: map.team1Score,
+          team2Score: map.team2Score,
+        }))
+      : [],
+    players: Array.isArray(extracted?.players)
+      ? extracted.players.map(player => ({
+          orderIndex: player.orderIndex,
+          teamName: player.teamName,
+          playerName: player.playerName,
+          kills: player.kills,
+          deaths: player.deaths,
+          assists: player.assists,
+          points: player.points,
+          timePlayed: player.timePlayed,
+          impact: player.impact,
+          isMvp: Boolean(player.isMvp),
+        }))
+      : [],
+    extractionSummary: extracted?.extractionSummary || "",
+    needsReview: Boolean(extracted?.needsReview),
+  };
+}
+
 async function createMatchDraftFromPart1({ parsed, message }) {
   const draft = parseMatchDraftFromParsedMessage(parsed, {
     referenceDate: message?.createdTimestamp || message?.createdAt || null,
@@ -189,6 +233,10 @@ async function completeMatchFromPart2({ parsed, message }) {
   });
 
   await updateMatchAnalysisDebug(match.id, debugJson);
+  console.log(
+    `🧪 Parser estrazione finale ${match.slug}:`,
+    JSON.stringify(buildExtractionLogSummary(match, extracted, parsed), null, 2)
+  );
   console.log(`🧪 Parser JSON ${match.slug}: ${debugJson}`);
 
   await markMatchPublished(match.id, Boolean(extracted.needsReview));
@@ -279,6 +327,10 @@ async function reanalyzeStoredMatchImages(matchId) {
     });
 
     await updateMatchAnalysisDebug(match.id, debugJson);
+    console.log(
+      `🧪 Parser estrazione finale ${match.slug}:`,
+      JSON.stringify(buildExtractionLogSummary(match, extracted, null), null, 2)
+    );
     console.log(`🧪 Parser JSON ${match.slug}: ${debugJson}`);
 
     await setMatchAnalysisVersion(match.id, MATCH_IMAGE_ANALYSIS_VERSION);
