@@ -417,15 +417,7 @@ function normalizeOcrText(text) {
 async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, matchContext, orderIndex }) {
   const provider = resolveVisionProvider();
 
-  if (provider === "ocr") {
-    return { map: null, players: [], debug: { skipped: "vision_provider_disabled" } };
-  }
-
-  if (provider === "openai" && !process.env.OPENAI_API_KEY) {
-    return { map: null, players: [], debug: { skipped: "OPENAI_API_KEY missing" } };
-  }
-
-  if (provider === "ollama" && !getOllamaBaseUrl()) {
+  if (!getOllamaBaseUrl()) {
     return { map: null, players: [], debug: { skipped: "OLLAMA_BASE_URL missing" } };
   }
 
@@ -672,92 +664,19 @@ async function extractVisionTeamPass({
 }
 
 async function requestStructuredVision({
-  provider,
   model,
-  schemaName,
   schema,
   userPrompt,
   imageInputs,
   maxTokens,
 }) {
-  if (provider === "ollama") {
-    return requestOllamaStructuredVision({
-      model,
-      schema,
-      userPrompt,
-      imageInputs,
-      maxTokens,
-    });
-  }
-
-  return requestOpenAiStructuredVision({
+  return requestOllamaStructuredVision({
     model,
-    schemaName,
     schema,
     userPrompt,
     imageInputs,
     maxTokens,
   });
-}
-
-async function requestOpenAiStructuredVision({
-  model,
-  schemaName,
-  schema,
-  userPrompt,
-  imageInputs,
-  maxTokens,
-}) {
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model,
-      max_output_tokens: maxTokens,
-      input: [
-        {
-          role: "system",
-          content: buildVisionSystemPrompt(),
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: userPrompt,
-            },
-            ...(imageInputs || []),
-          ],
-        },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: schemaName,
-          strict: true,
-          schema,
-        },
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    return {
-      parsed: null,
-      outputPreview: await response.text(),
-      error: `vision_http_${response.status}`,
-    };
-  }
-
-  const body = await response.json();
-  return {
-    parsed: extractStructuredVisionPayload(body),
-    outputPreview: extractResponseOutputText(body),
-    error: "",
-  };
 }
 
 async function requestOllamaStructuredVision({
@@ -1099,35 +1018,11 @@ function extractOllamaResponseText(payload) {
 }
 
 function resolveVisionProvider() {
-  const configured = String(
-    process.env.MATCH_IMAGE_VISION_PROVIDER ||
-      process.env.MATCH_VISION_PROVIDER ||
-      "auto"
-  )
-    .trim()
-    .toLowerCase();
-
-  if (configured === "openai" || configured === "ollama" || configured === "ocr") {
-    return configured;
-  }
-
-  if (getOllamaBaseUrl()) {
-    return "ollama";
-  }
-
-  if (process.env.OPENAI_API_KEY) {
-    return "openai";
-  }
-
-  return "ocr";
+  return "ollama";
 }
 
 function getVisionModel(provider) {
-  if (provider === "ollama") {
-    return process.env.OLLAMA_MATCH_VISION_MODEL || "glm-ocr:latest";
-  }
-
-  return process.env.OPENAI_MATCH_VISION_MODEL || "gpt-4.1";
+  return process.env.OLLAMA_MATCH_VISION_MODEL || "glm-ocr:latest";
 }
 
 function getOllamaBaseUrl() {
