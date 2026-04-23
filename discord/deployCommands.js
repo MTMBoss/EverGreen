@@ -122,52 +122,6 @@ const commands = [
     .toJSON(),
 
   new SlashCommandBuilder()
-    .setName("set-canale-sorgente-parte1")
-    .setDescription("Imposta il canale sorgente da cui leggere automaticamente le parti 1")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addChannelOption(option =>
-      option
-        .setName("canale")
-        .setDescription("Canale testuale sorgente parte 1")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("set-canale-sorgente-parte2")
-    .setDescription("Imposta il canale sorgente da cui leggere automaticamente le parti 2")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addChannelOption(option =>
-      option
-        .setName("canale")
-        .setDescription("Canale testuale sorgente parte 2")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("import-match-storici")
-    .setDescription("Legge tutta la cronologia di due canali match e importa le scrim nel web")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addChannelOption(option =>
-      option
-        .setName("canale_parte1")
-        .setDescription("Canale sorgente che contiene le parti 1")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    )
-    .addChannelOption(option =>
-      option
-        .setName("canale_parte2")
-        .setDescription("Canale sorgente che contiene le parti 2")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
     .setName("set-canali-schedule")
     .setDescription("Imposta 1 o 2 canali per lo schedule settimanale")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)

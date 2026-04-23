@@ -4,6 +4,7 @@ const path = require("path");
 const { pool, ensureDbReady } = require("../attendance/db");
 
 const LEGACY_CONFIG_PATH = path.join(__dirname, "..", "config.json");
+const MATCH_IMPORT_STATE_VERSION = 2;
 
 const DEFAULT_CONFIG = {
   attendanceLeaderboardChannel: process.env.ATTENDANCE_LEADERBOARD_CHANNEL || "",
@@ -30,6 +31,7 @@ const DEFAULT_CONFIG = {
   attendanceWebBaseUrl: process.env.ATTENDANCE_WEB_BASE_URL || "",
   commandDeploymentHash: "",
   matchImportState: {
+    version: MATCH_IMPORT_STATE_VERSION,
     sourceChannelPart1: "",
     sourceChannelPart2: "",
     part1Before: "",
@@ -74,6 +76,10 @@ function normalizeConfigValue(key, value) {
     case "matchImportState":
       return value && typeof value === "object" && !Array.isArray(value)
         ? {
+            version:
+              Number(value.version || 0) > 0
+                ? Number(value.version)
+                : MATCH_IMPORT_STATE_VERSION,
             sourceChannelPart1: String(value.sourceChannelPart1 || ""),
             sourceChannelPart2: String(value.sourceChannelPart2 || ""),
             part1Before: String(value.part1Before || ""),
@@ -355,6 +361,7 @@ function setMatchImportState(state) {
 }
 
 module.exports = {
+  MATCH_IMPORT_STATE_VERSION,
   initializeConfigStore,
   readConfig,
   writeConfig,

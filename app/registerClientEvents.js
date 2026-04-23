@@ -31,6 +31,7 @@ const { createMatchTables } = require("../matches/matchRepository");
 const {
   handleAutoMatchSourceMessage,
   handleAutoMatchSourceDelete,
+  startAutoMatchImportWorker,
 } = require("../matches/autoMatchImporter");
 const { startScheduler } = require("../schedule/scheduler");
 const { handleMatchContextCommand } = require("./matchContextCommands");
@@ -44,6 +45,7 @@ function registerClientEvents(client) {
     startAttendanceRosterSyncScheduler(client);
     startAttendanceWebServer(client);
     await createMatchTables();
+    startAutoMatchImportWorker(client);
     startAttendanceLeaderboardScheduler(client);
 
     queueMicrotask(async () => {

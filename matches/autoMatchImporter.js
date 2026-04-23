@@ -1,6 +1,10 @@
 const { ChannelType } = require("discord.js");
 
-const { readConfig } = require("../config/configStore");
+const {
+  MATCH_IMPORT_STATE_VERSION,
+  readConfig,
+  setMatchImportState,
+} = require("../config/configStore");
 const {
   extractRawText,
   parseMatchMessage,
@@ -9,17 +13,36 @@ const {
   createMatchDraftFromPart1,
   completeMatchFromPart2,
   buildMatchWebUrl,
+  removeAllMatches,
   removeMatchById,
 } = require("./matchService");
 const { findMatchBySourceMessage } = require("./matchRepository");
+
+const MATCH_IMPORT_TICK_MS = Number(
+  process.env.MATCH_IMPORT_TICK_MS || 15 * 1000
+);
+const MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL = Number(
+  process.env.MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL || 15
+);
+
+let historyImportTimer = null;
+let historyImportRunning = false;
+
+function getConfiguredMatchSourceChannels(config = readConfig()) {
+  return {
+    sourceChannelPart1: config.targetChannel1 || "",
+    sourceChannelPart2: config.targetChannel2 || "",
+  };
+}
 
 async function handleAutoMatchSourceMessage(message, client) {
   if (!message || !client) return { handled: false, imported: false, reason: "missing_context" };
   if (!message.guildId || !message.channelId) return { handled: false, imported: false, reason: "missing_channel" };
 
   const config = readConfig();
-  const isSourcePart1 = config.sourceChannelPart1 && message.channelId === config.sourceChannelPart1;
-  const isSourcePart2 = config.sourceChannelPart2 && message.channelId === config.sourceChannelPart2;
+  const { sourceChannelPart1, sourceChannelPart2 } = getConfiguredMatchSourceChannels(config);
+  const isSourcePart1 = sourceChannelPart1 && message.channelId === sourceChannelPart1;
+  const isSourcePart2 = sourceChannelPart2 && message.channelId === sourceChannelPart2;
 
   if (!isSourcePart1 && !isSourcePart2) {
     return { handled: false, imported: false, reason: "not_source_channel" };
@@ -68,8 +91,9 @@ async function handleAutoMatchSourceDelete(message) {
   if (!message?.channelId || !message?.id) return false;
 
   const config = readConfig();
-  const isSourcePart1 = config.sourceChannelPart1 && message.channelId === config.sourceChannelPart1;
-  const isSourcePart2 = config.sourceChannelPart2 && message.channelId === config.sourceChannelPart2;
+  const { sourceChannelPart1, sourceChannelPart2 } = getConfiguredMatchSourceChannels(config);
+  const isSourcePart1 = sourceChannelPart1 && message.channelId === sourceChannelPart1;
+  const isSourcePart2 = sourceChannelPart2 && message.channelId === sourceChannelPart2;
 
   if (!isSourcePart1 && !isSourcePart2) {
     return false;
@@ -103,8 +127,9 @@ async function handleAutoMatchSourceDelete(message) {
 
 async function importMatchHistoryFromConfiguredSources(client, options = {}) {
   const config = readConfig();
-  const sourceChannelPart1 = options.sourceChannelPart1 || config.sourceChannelPart1 || "";
-  const sourceChannelPart2 = options.sourceChannelPart2 || config.sourceChannelPart2 || "";
+  const configuredChannels = getConfiguredMatchSourceChannels(config);
+  const sourceChannelPart1 = options.sourceChannelPart1 || configuredChannels.sourceChannelPart1 || "";
+  const sourceChannelPart2 = options.sourceChannelPart2 || configuredChannels.sourceChannelPart2 || "";
 
   console.log("ℹ️ Avvio import storico match:", {
     sourceChannelPart1,
@@ -339,8 +364,116 @@ function collectSkippedMessage({ summary, channelStats, source, message, reason 
   }
 }
 
+function startAutoMatchImportWorker(client) {
+  if (historyImportTimer) return;
+  scheduleNextHistoryImportTick(client, 10 * 1000);
+}
+
+function scheduleNextHistoryImportTick(client, delayMs = MATCH_IMPORT_TICK_MS) {
+  if (historyImportTimer) {
+    clearTimeout(historyImportTimer);
+  }
+
+  historyImportTimer = setTimeout(async () => {
+    historyImportTimer = null;
+    await runAutoMatchImportTick(client);
+  }, delayMs);
+
+  historyImportTimer.unref?.();
+}
+
+async function runAutoMatchImportTick(client) {
+  if (historyImportRunning) {
+    scheduleNextHistoryImportTick(client, MATCH_IMPORT_TICK_MS);
+    return;
+  }
+
+  historyImportRunning = true;
+
+  try {
+    const config = readConfig();
+    const { sourceChannelPart1, sourceChannelPart2 } = getConfiguredMatchSourceChannels(config);
+
+    if (!sourceChannelPart1 || !sourceChannelPart2) {
+      console.log("ℹ️ Import match automatico in attesa: canali Parte 1/Parte 2 non configurati");
+      return;
+    }
+
+    const currentState = config.matchImportState || {};
+    const requiresRebuild =
+      currentState.version !== MATCH_IMPORT_STATE_VERSION ||
+      currentState.sourceChannelPart1 !== sourceChannelPart1 ||
+      currentState.sourceChannelPart2 !== sourceChannelPart2;
+
+    if (requiresRebuild) {
+      console.log("ℹ️ Import match automatico: nuova sessione di rebuild avviata");
+      await removeAllMatches();
+      setMatchImportState({
+        version: MATCH_IMPORT_STATE_VERSION,
+        sourceChannelPart1,
+        sourceChannelPart2,
+        part1Before: "",
+        part2Before: "",
+        completed: false,
+      });
+    } else if (currentState.completed) {
+      return;
+    }
+
+    const effectiveState = requiresRebuild
+      ? {
+          sourceChannelPart1,
+          sourceChannelPart2,
+          part1Before: "",
+          part2Before: "",
+          completed: false,
+        }
+      : currentState;
+
+    const summary = await importMatchHistoryFromConfiguredSources(client, {
+      sourceChannelPart1,
+      sourceChannelPart2,
+      part1Before: effectiveState.part1Before || "",
+      part2Before: effectiveState.part2Before || "",
+      maxMessagesPerChannel: MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL,
+    });
+
+    const nextState = {
+      version: MATCH_IMPORT_STATE_VERSION,
+      sourceChannelPart1,
+      sourceChannelPart2,
+      part1Before: summary.progress?.part1?.before || "",
+      part2Before: summary.progress?.part2?.before || "",
+      completed:
+        Boolean(summary.progress?.part1?.completed) &&
+        Boolean(summary.progress?.part2?.completed),
+    };
+
+    setMatchImportState(nextState);
+
+    console.log("ℹ️ Tick import match automatico completato:", {
+      scanned: summary.scanned,
+      imported: summary.imported,
+      skipped: summary.skipped,
+      failed: summary.failed,
+      completed: nextState.completed,
+      part1Before: nextState.part1Before || "done",
+      part2Before: nextState.part2Before || "done",
+    });
+  } catch (error) {
+    console.error("❌ Errore import match automatico:", error);
+  } finally {
+    historyImportRunning = false;
+    scheduleNextHistoryImportTick(
+      client,
+      readConfig().matchImportState?.completed ? 5 * 60 * 1000 : MATCH_IMPORT_TICK_MS
+    );
+  }
+}
+
 module.exports = {
   handleAutoMatchSourceMessage,
   handleAutoMatchSourceDelete,
   importMatchHistoryFromConfiguredSources,
+  startAutoMatchImportWorker,
 };
