@@ -379,6 +379,11 @@ async function updateMatchManualData(matchId, payload) {
   });
 
   await updateMatchMaps(matchId, payload.maps || []);
+  await replaceMatchPlayers(matchId, payload.players || []);
+
+  if (payload.status) {
+    await setMatchStatus(matchId, payload.status);
+  }
 }
 
 async function setMatchStatusValue(matchId, status) {
