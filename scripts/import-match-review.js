@@ -1,10 +1,17 @@
+require("dotenv").config();
+
 const fs = require("fs");
 const path = require("path");
 
 const { ensureDbReady } = require("../attendance/db");
-const { createMatchTables } = require("../matches/matchRepository");
 const {
-  getMatchDetailBySlug,
+  createMatchTables,
+  createDraftMatch,
+  attachPart2ToMatch,
+  replaceMatchAssets,
+  getMatchBySlug,
+} = require("../matches/matchRepository");
+const {
   updateMatchManualData,
 } = require("../matches/matchService");
 
@@ -20,6 +27,15 @@ function normalizeInteger(value) {
 
 function normalizeBoolean(value) {
   return Boolean(value);
+}
+
+function normalizeDate(value) {
+  if (!value) return null;
+  const stringValue = String(value).trim();
+  if (!stringValue) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(stringValue)) return stringValue;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(stringValue)) return stringValue.slice(0, 10);
+  return stringValue;
 }
 
 function normalizeMaps(maps) {
@@ -54,6 +70,76 @@ function normalizePlayers(players) {
     : [];
 }
 
+function normalizeScreenshots(screenshots) {
+  return Array.isArray(screenshots)
+    ? screenshots
+        .map((asset, index) => ({
+          url: String(asset.url || ""),
+          sortOrder: normalizeInteger(asset.sortOrder) ?? index + 1,
+          sourceMessageId: String(asset.sourceMessageId || ""),
+        }))
+        .filter(asset => asset.url)
+    : [];
+}
+
+function pickReviewMaps(entry, review) {
+  const reviewMaps = normalizeMaps(review.maps);
+  if (reviewMaps.length > 0) return reviewMaps;
+  return normalizeMaps(entry.maps);
+}
+
+async function ensureMatchExists(entry, review) {
+  let match = await getMatchBySlug(entry.slug);
+  if (match) return match;
+
+  await createDraftMatch({
+    slug: String(entry.slug || ""),
+    team1: String(entry.team1 || ""),
+    team2: String(entry.team2 || ""),
+    matchDate: normalizeDate(entry.matchDate),
+    matchTime: String(entry.matchTime || ""),
+    resultLabel: "",
+    winnerTeam: "",
+    team1SeriesScore: null,
+    team2SeriesScore: null,
+    maps: pickReviewMaps(entry, review),
+    sourceGuildId: String(
+      entry.source?.part1?.guildId ||
+        entry.source?.part2?.guildId ||
+        ""
+    ),
+    sourceChannelIdPart1: String(entry.source?.part1?.channelId || ""),
+    sourceMessageIdPart1: String(entry.source?.part1?.messageId || ""),
+    notes: String(entry.notes || "Creato da import review manuale"),
+  });
+
+  match = await getMatchBySlug(entry.slug);
+  if (!match) {
+    throw new Error(`Impossibile creare il match ${entry.slug}`);
+  }
+
+  return match;
+}
+
+async function syncMatchSourcesAndAssets(match, entry) {
+  if (entry.source?.part2?.channelId || entry.source?.part2?.messageId) {
+    await attachPart2ToMatch(match.id, {
+      sourceChannelIdPart2: String(entry.source?.part2?.channelId || ""),
+      sourceMessageIdPart2: String(entry.source?.part2?.messageId || ""),
+      resultLabel: "",
+      winnerTeam: "",
+      team1SeriesScore: null,
+      team2SeriesScore: null,
+      needsReview: true,
+    });
+  }
+
+  const screenshots = normalizeScreenshots(entry.screenshots);
+  if (screenshots.length > 0) {
+    await replaceMatchAssets(match.id, screenshots);
+  }
+}
+
 async function main() {
   if (!fs.existsSync(INPUT_PATH)) {
     throw new Error(`File non trovato: ${INPUT_PATH}`);
@@ -76,21 +162,25 @@ async function main() {
       continue;
     }
 
-    const match = await getMatchDetailBySlug(entry.slug);
-    if (!match) {
-      console.warn(`⚠️ Match non trovato, salto: ${entry.slug}`);
-      skipped += 1;
-      continue;
-    }
+    const match = await ensureMatchExists(entry, review);
+    await syncMatchSourcesAndAssets(match, entry);
 
     await updateMatchManualData(match.id, {
-      status: String(review.status || match.status || "published"),
-      resultLabel: String(review.resultLabel || ""),
-      winnerTeam: String(review.winnerTeam || ""),
-      team1SeriesScore: normalizeInteger(review.team1SeriesScore),
-      team2SeriesScore: normalizeInteger(review.team2SeriesScore),
+      status: String(review.status || entry.status || match.status || "published"),
+      resultLabel: String(
+        review.resultLabel || entry.series?.resultLabel || ""
+      ),
+      winnerTeam: String(
+        review.winnerTeam || entry.series?.winnerTeam || ""
+      ),
+      team1SeriesScore: normalizeInteger(
+        review.team1SeriesScore ?? entry.series?.team1SeriesScore
+      ),
+      team2SeriesScore: normalizeInteger(
+        review.team2SeriesScore ?? entry.series?.team2SeriesScore
+      ),
       needsReview: normalizeBoolean(review.needsReview),
-      maps: normalizeMaps(review.maps),
+      maps: pickReviewMaps(entry, review),
       players: normalizePlayers(review.players),
     });
 
