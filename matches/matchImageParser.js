@@ -21,10 +21,11 @@ async function extractMatchDataFromImages(attachments, expectedMaps = [], matchC
       const attachment = attachments[index];
       const expectedMap = expectedMaps[index] || null;
       const expectedMode = normalizeMode(expectedMap?.mode || "");
-      let sourceBuffer = null;
+      const sourceBuffer = await downloadImageBuffer(attachment.url);
 
       const visionResult = await extractWithVisionModel({
         attachment,
+        sourceBuffer,
         expectedMap,
         matchContext,
         orderIndex: index + 1,
@@ -50,7 +51,6 @@ async function extractMatchDataFromImages(attachments, expectedMaps = [], matchC
         continue;
       }
 
-      sourceBuffer = await downloadImageBuffer(attachment.url);
       worker = await ensureOcrWorker(worker);
 
       const metadata = await sharp(sourceBuffer).metadata();
@@ -410,7 +410,7 @@ function normalizeOcrText(text) {
     .trim();
 }
 
-async function extractWithVisionModel({ attachment, expectedMap, matchContext, orderIndex }) {
+async function extractWithVisionModel({ attachment, sourceBuffer, expectedMap, matchContext, orderIndex }) {
   if (!process.env.OPENAI_API_KEY) {
     return { map: null, players: [], debug: { skipped: "OPENAI_API_KEY missing" } };
   }
@@ -418,6 +418,11 @@ async function extractWithVisionModel({ attachment, expectedMap, matchContext, o
   try {
     const model = process.env.OPENAI_MATCH_VISION_MODEL || "gpt-4.1-mini";
     const outputTextMaxPreview = 500;
+    const visionImages = await buildVisionImageInputs({
+      sourceBuffer,
+      attachment,
+      model,
+    });
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -440,11 +445,7 @@ async function extractWithVisionModel({ attachment, expectedMap, matchContext, o
                 type: "input_text",
                 text: buildVisionUserPrompt({ expectedMap, matchContext }),
               },
-              {
-                type: "input_image",
-                image_url: attachment.url,
-                detail: getVisionDetailLevel(model),
-              },
+              ...visionImages,
             ],
           },
         ],
@@ -527,6 +528,11 @@ function buildVisionUserPrompt({ expectedMap, matchContext }) {
     `The right scoreboard side is team2: ${team2}.`,
     `Expected mode hint: ${expectedMode || "unknown"}.`,
     `Expected map hint: ${expectedMapName || "unknown"}.`,
+    "Images are provided in this order:",
+    "1. full screenshot",
+    "2. header crop",
+    "3. left team table crop",
+    "4. right team table crop",
     "Read these blocks separately:",
     "1. Header top-left: result label, map score, mode, map name, timestamp.",
     "2. Summary top-right: PE ottenuti, Rapporto U/M, Precisione, Colpo alla testa.",
@@ -535,8 +541,10 @@ function buildVisionUserPrompt({ expectedMap, matchContext }) {
     "Important rules:",
     "- team1_score and team2_score are the final MAP score in the header, not player points.",
     "- score inside player rows is the PUNTEGGIO column.",
+    "- always return exactly 5 rows for left_team and 5 rows for right_team when the table is visible.",
+    "- if a row is partially unreadable, keep the row position and fill unknown fields with null or empty string.",
     "- keep stylized player names as seen in the image when possible.",
-    "- if a row is unreadable, keep rank and use null/empty values instead of hallucinating.",
+    "- do not leave left_team or right_team empty if player rows are visible in the crops.",
     "- HP usually ends with one side at 250, Search at 9, Control at 3. Use that only as a weak hint.",
   ].join("\n");
 }
@@ -592,6 +600,8 @@ function buildVisionSchema() {
 function teamRowsSchema() {
   return {
     type: "array",
+    minItems: 5,
+    maxItems: 5,
     items: {
       type: "object",
       additionalProperties: false,
@@ -673,6 +683,86 @@ function getVisionDetailLevel(model) {
   return "high";
 }
 
+async function buildVisionImageInputs({ sourceBuffer, attachment, model }) {
+  const metadata = await sharp(sourceBuffer).metadata();
+  const width = metadata.width || 0;
+  const height = metadata.height || 0;
+  const detail = getVisionDetailLevel(model);
+
+  const inputs = [
+    {
+      type: "input_image",
+      image_url: attachment.url,
+      detail,
+    },
+  ];
+
+  if (!width || !height) {
+    return inputs;
+  }
+
+  const cropSpecs = buildVisionCropSpecs(width, height);
+
+  for (const crop of cropSpecs) {
+    const imageUrl = await buildCropDataUrl(sourceBuffer, crop);
+    inputs.push({
+      type: "input_image",
+      image_url: imageUrl,
+      detail: "high",
+    });
+  }
+
+  return inputs;
+}
+
+function buildVisionCropSpecs(width, height) {
+  return [
+    {
+      name: "header",
+      left: Math.floor(width * 0.0),
+      top: Math.floor(height * 0.0),
+      width: Math.floor(width * 0.68),
+      height: Math.floor(height * 0.28),
+      resizeWidth: 1800,
+    },
+    {
+      name: "left_team",
+      left: Math.floor(width * 0.0),
+      top: Math.floor(height * 0.24),
+      width: Math.floor(width * 0.50),
+      height: Math.floor(height * 0.62),
+      resizeWidth: 1900,
+    },
+    {
+      name: "right_team",
+      left: Math.floor(width * 0.50),
+      top: Math.floor(height * 0.24),
+      width: Math.floor(width * 0.50),
+      height: Math.floor(height * 0.62),
+      resizeWidth: 1900,
+    },
+  ];
+}
+
+async function buildCropDataUrl(sourceBuffer, crop) {
+  const buffer = await sharp(sourceBuffer)
+    .rotate()
+    .extract({
+      left: Math.max(0, crop.left),
+      top: Math.max(0, crop.top),
+      width: Math.max(1, crop.width),
+      height: Math.max(1, crop.height),
+    })
+    .resize({
+      width: crop.resizeWidth || undefined,
+      withoutEnlargement: false,
+    })
+    .png()
+    .toBuffer();
+
+  return `data:image/png;base64,${buffer.toString("base64")}`;
+}
+
 function tryParseVisionJson(text) {
   const raw = String(text || "").trim();
   if (!raw) return null;
@@ -752,6 +842,10 @@ function normalizeVisionExtraction(parsed, { orderIndex, expectedMap, matchConte
         rapportoUm: toNullableNumber(rawSummary.rapporto_um),
         precisionePct: toNullableNumber(rawSummary.precisione_pct),
         headshotPct: toNullableNumber(rawSummary.headshot_pct),
+      },
+      rawCounts: {
+        leftTeamRows: Array.isArray(parsed?.left_team) ? parsed.left_team.length : 0,
+        rightTeamRows: Array.isArray(parsed?.right_team) ? parsed.right_team.length : 0,
       },
       parsedPlayers: players.length,
       parsedMap: map ? `${map.team1Score}:${map.team2Score}` : "none",

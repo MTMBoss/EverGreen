@@ -23,7 +23,7 @@ const {
 } = require("./matchUtils");
 const { isImageAttachment } = require("./matchMessageParser");
 
-const MATCH_IMAGE_ANALYSIS_VERSION = 2;
+const MATCH_IMAGE_ANALYSIS_VERSION = 3;
 
 function buildMatchWebUrl(baseUrl, slug) {
   if (!baseUrl) return `/matches/${slug}`;
