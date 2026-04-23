@@ -6,11 +6,14 @@ const {
   replaceMatchMapScores,
   replaceMatchPlayers,
   markMatchPublished,
+  getMatchById,
   getMatchBySlug,
   listMatches,
+  listMatchesNeedingImageReanalysis,
   updateMatchSummary,
   updateMatchMaps,
   setMatchStatus,
+  setMatchAnalysisVersion,
   deleteMatchById,
   deleteAllMatches,
 } = require("./matchRepository");
@@ -19,6 +22,8 @@ const {
   parseMatchDraftFromParsedMessage,
 } = require("./matchUtils");
 const { isImageAttachment } = require("./matchMessageParser");
+
+const MATCH_IMAGE_ANALYSIS_VERSION = 2;
 
 function buildMatchWebUrl(baseUrl, slug) {
   if (!baseUrl) return `/matches/${slug}`;
@@ -154,6 +159,7 @@ async function completeMatchFromPart2({ parsed, message }) {
   }
 
   await markMatchPublished(match.id, Boolean(extracted.needsReview));
+  await setMatchAnalysisVersion(match.id, MATCH_IMAGE_ANALYSIS_VERSION);
 
   return {
     matchId: match.id,
@@ -169,6 +175,91 @@ async function getMatchDetailBySlug(slug) {
 
 async function getMatchList() {
   return listMatches();
+}
+
+async function reanalyzeStoredMatchImages(matchId) {
+  const match = await getMatchById(matchId);
+
+  if (!match) {
+    throw new Error("Match non trovato per la rianalisi.");
+  }
+
+  const screenshots = (match.assets || [])
+    .filter(asset => asset.asset_type === "screenshot")
+    .map(asset => ({
+      url: asset.asset_url,
+      sortOrder: asset.sort_order || 0,
+      sourceMessageId: asset.source_message_id || "",
+      name: "",
+      contentType: "",
+    }));
+
+  if (!screenshots.length) {
+    await setMatchAnalysisVersion(match.id, MATCH_IMAGE_ANALYSIS_VERSION);
+    return {
+      matchId: match.id,
+      slug: match.slug,
+      skipped: true,
+      reason: "no_screenshots",
+      extractedMaps: 0,
+      extractedPlayers: 0,
+    };
+  }
+
+  try {
+    const {
+      extractMatchDataFromImages,
+    } = require("./matchImageParser");
+
+    const extracted = await extractMatchDataFromImages(
+      screenshots,
+      match.maps || [],
+      {
+        team1: match.team1,
+        team2: match.team2,
+      }
+    );
+
+    if (Array.isArray(extracted.maps) && extracted.maps.length > 0) {
+      await replaceMatchMapScores(match.id, extracted.maps);
+    }
+
+    await replaceMatchPlayers(match.id, extracted.players || []);
+
+    await updateMatchSummary(match.id, {
+      resultLabel: match.result_label || "",
+      winnerTeam: match.winner_team || "",
+      team1SeriesScore: match.team1_series_score,
+      team2SeriesScore: match.team2_series_score,
+      needsReview: Boolean(extracted.needsReview),
+    });
+
+    await setMatchAnalysisVersion(match.id, MATCH_IMAGE_ANALYSIS_VERSION);
+
+    return {
+      matchId: match.id,
+      slug: match.slug,
+      skipped: false,
+      reason: "",
+      extractedMaps: Array.isArray(extracted.maps) ? extracted.maps.length : 0,
+      extractedPlayers: Array.isArray(extracted.players) ? extracted.players.length : 0,
+      extractionSummary: extracted.extractionSummary || "",
+    };
+  } catch (error) {
+    await updateMatchSummary(match.id, {
+      resultLabel: match.result_label || "",
+      winnerTeam: match.winner_team || "",
+      team1SeriesScore: match.team1_series_score,
+      team2SeriesScore: match.team2_series_score,
+      needsReview: true,
+    });
+    await setMatchAnalysisVersion(match.id, MATCH_IMAGE_ANALYSIS_VERSION);
+    throw error;
+  }
+}
+
+async function getMatchesNeedingImageReanalysis(limit = 1) {
+  return listMatchesNeedingImageReanalysis(MATCH_IMAGE_ANALYSIS_VERSION, limit);
 }
 
 async function updateMatchManualData(matchId, payload) {
@@ -196,11 +287,14 @@ async function removeAllMatches() {
 }
 
 module.exports = {
+  MATCH_IMAGE_ANALYSIS_VERSION,
   buildMatchWebUrl,
   createMatchDraftFromPart1,
   completeMatchFromPart2,
   getMatchDetailBySlug,
   getMatchList,
+  reanalyzeStoredMatchImages,
+  getMatchesNeedingImageReanalysis,
   updateMatchManualData,
   setMatchStatusValue,
   removeMatchById,

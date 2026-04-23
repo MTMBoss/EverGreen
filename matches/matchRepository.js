@@ -21,9 +21,21 @@ async function createMatchTables() {
       source_channel_id_part2 TEXT NOT NULL DEFAULT '',
       source_message_id_part2 TEXT NOT NULL DEFAULT '',
       notes TEXT NOT NULL DEFAULT '',
+      analysis_version INTEGER NOT NULL DEFAULT 0,
+      last_analyzed_at TIMESTAMPTZ NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE matches
+    ADD COLUMN IF NOT EXISTS analysis_version INTEGER NOT NULL DEFAULT 0
+  `);
+
+  await pool.query(`
+    ALTER TABLE matches
+    ADD COLUMN IF NOT EXISTS last_analyzed_at TIMESTAMPTZ NULL
   `);
 
   await pool.query(`
@@ -76,6 +88,11 @@ async function createMatchTables() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_matches_status
     ON matches (status)
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_matches_analysis_version
+    ON matches (analysis_version, match_date DESC, id DESC)
   `);
 
   await pool.query(`
@@ -471,6 +488,56 @@ async function getMatchBySlug(slug) {
   };
 }
 
+async function getMatchById(matchId) {
+  const matchResult = await pool.query(
+    `SELECT * FROM matches WHERE id = $1 LIMIT 1`,
+    [matchId]
+  );
+
+  const match = matchResult.rows[0];
+  if (!match) return null;
+
+  const mapsResult = await pool.query(
+    `
+    SELECT *
+    FROM match_maps
+    WHERE match_id = $1
+    ORDER BY order_index ASC
+    `,
+    [match.id]
+  );
+
+  const playersResult = await pool.query(
+    `
+    SELECT
+      p.*,
+      m.order_index
+    FROM match_players p
+    LEFT JOIN match_maps m ON m.id = p.match_map_id
+    WHERE p.match_id = $1
+    ORDER BY m.order_index ASC NULLS LAST, p.team_name ASC, p.points DESC NULLS LAST, p.player_name ASC
+    `,
+    [match.id]
+  );
+
+  const assetsResult = await pool.query(
+    `
+    SELECT *
+    FROM match_assets
+    WHERE match_id = $1
+    ORDER BY sort_order ASC, id ASC
+    `,
+    [match.id]
+  );
+
+  return {
+    ...match,
+    maps: mapsResult.rows,
+    players: playersResult.rows,
+    assets: assetsResult.rows,
+  };
+}
+
 async function listMatches() {
   const result = await pool.query(
     `
@@ -487,11 +554,40 @@ async function listMatches() {
       team2_series_score,
       status,
       needs_review,
+      analysis_version,
+      last_analyzed_at,
       created_at,
       updated_at
     FROM matches
     ORDER BY match_date DESC NULLS LAST, created_at DESC
     `
+  );
+
+  return result.rows;
+}
+
+async function listMatchesNeedingImageReanalysis(targetVersion, limit = 1) {
+  const result = await pool.query(
+    `
+    SELECT
+      m.id,
+      m.slug,
+      m.match_date,
+      m.match_time,
+      m.analysis_version
+    FROM matches m
+    WHERE m.status <> 'cancelled'
+      AND COALESCE(m.analysis_version, 0) < $1
+      AND EXISTS (
+        SELECT 1
+        FROM match_assets a
+        WHERE a.match_id = m.id
+          AND a.asset_type = 'screenshot'
+      )
+    ORDER BY m.match_date DESC NULLS LAST, m.id DESC
+    LIMIT $2
+    `,
+    [targetVersion, limit]
   );
 
   return result.rows;
@@ -561,6 +657,20 @@ async function setMatchStatus(matchId, status) {
   );
 }
 
+async function setMatchAnalysisVersion(matchId, version) {
+  await pool.query(
+    `
+    UPDATE matches
+    SET
+      analysis_version = $2,
+      last_analyzed_at = NOW(),
+      updated_at = NOW()
+    WHERE id = $1
+    `,
+    [matchId, version]
+  );
+}
+
 async function deleteMatchById(matchId) {
   await pool.query(`DELETE FROM matches WHERE id = $1`, [matchId]);
 }
@@ -579,11 +689,14 @@ module.exports = {
   replaceMatchMapScores,
   replaceMatchPlayers,
   markMatchPublished,
+  getMatchById,
   getMatchBySlug,
   listMatches,
+  listMatchesNeedingImageReanalysis,
   updateMatchSummary,
   updateMatchMaps,
   setMatchStatus,
+  setMatchAnalysisVersion,
   deleteMatchById,
   deleteAllMatches,
 };

@@ -33,6 +33,9 @@ const {
   handleAutoMatchSourceDelete,
   startAutoMatchImportWorker,
 } = require("../matches/autoMatchImporter");
+const {
+  startMatchImageReanalysisWorker,
+} = require("../matches/matchImageReanalysisWorker");
 const { startScheduler } = require("../schedule/scheduler");
 const { handleMatchContextCommand } = require("./matchContextCommands");
 const { handleConfigCommand } = require("./configCommands");
@@ -46,6 +49,7 @@ function registerClientEvents(client) {
     startAttendanceWebServer(client);
     await createMatchTables();
     startAutoMatchImportWorker(client);
+    startMatchImageReanalysisWorker();
     startAttendanceLeaderboardScheduler(client);
 
     queueMicrotask(async () => {

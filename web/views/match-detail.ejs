@@ -15,7 +15,9 @@
         <div>
             <h1><%= match.team1 %> vs <%= match.team2 %></h1>
             <p>
-                <% if (saved) { %>
+                <% if (reanalyzed) { %>
+                    Immagini del match rianalizzate correttamente con il parser attuale.
+                <% } else if (saved) { %>
                     Stato match aggiornato correttamente dal pannello.
                 <% } else if (match.status === "cancelled") { %>
                     Scrim marcata come cancellata manualmente. La scheda resta consultabile ma non viene considerata un match attivo.
@@ -31,6 +33,9 @@
             </div>
         </div>
         <div class="hub-actions">
+            <form method="post" action="/matches/<%= match.slug %>/reanalyze" style="display:inline;">
+                <button class="hub-button secondary" type="submit">Rianalizza immagini</button>
+            </form>
             <% if (match.status === "cancelled") { %>
                 <form method="post" action="/matches/<%= match.slug %>/status" style="display:inline;">
                     <input type="hidden" name="action" value="restore" />

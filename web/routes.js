@@ -20,6 +20,7 @@ const { readConfig } = require("../config/configStore");
 const {
   getMatchList,
   getMatchDetailBySlug,
+  reanalyzeStoredMatchImages,
   setMatchStatusValue,
 } = require("../matches/matchService");
 const {
@@ -214,9 +215,26 @@ function createWebRouter(client) {
         pageTitle: `${match.team1} vs ${match.team2}`,
         match: presentMatchForView(match),
         playersByMap,
+        reanalyzed: req.query.reanalyzed === "1",
         saved: req.query.saved === "1",
         currentSection: "scrim",
       });
+    })
+  );
+
+  router.post(
+    "/matches/:slug/reanalyze",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const match = await getMatchDetailBySlug(req.params.slug);
+
+      if (!match) {
+        res.status(404).send("Match non trovato.");
+        return;
+      }
+
+      await reanalyzeStoredMatchImages(match.id);
+      res.redirect(`/matches/${match.slug}?reanalyzed=1`);
     })
   );
 
