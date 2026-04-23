@@ -416,6 +416,9 @@ async function extractWithVisionModel({ attachment, expectedMap, matchContext, o
   }
 
   try {
+    const model = process.env.OPENAI_MATCH_VISION_MODEL || "gpt-4.1-mini";
+    const outputTextMaxPreview = 500;
+
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -423,24 +426,36 @@ async function extractWithVisionModel({ attachment, expectedMap, matchContext, o
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MATCH_VISION_MODEL || "gpt-4.1-mini",
-        max_output_tokens: Number(process.env.OPENAI_MATCH_VISION_MAX_TOKENS || 1600),
+        model,
+        max_output_tokens: Number(process.env.OPENAI_MATCH_VISION_MAX_TOKENS || 2600),
         input: [
+          {
+            role: "system",
+            content: buildVisionSystemPrompt(),
+          },
           {
             role: "user",
             content: [
               {
                 type: "input_text",
-                text: buildVisionPrompt({ expectedMap, matchContext }),
+                text: buildVisionUserPrompt({ expectedMap, matchContext }),
               },
               {
                 type: "input_image",
                 image_url: attachment.url,
-                detail: "high",
+                detail: getVisionDetailLevel(model),
               },
             ],
           },
         ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "codm_match_screen_extraction",
+            strict: true,
+            schema: buildVisionSchema(),
+          },
+        },
       }),
     });
 
@@ -457,8 +472,8 @@ async function extractWithVisionModel({ attachment, expectedMap, matchContext, o
     }
 
     const payload = await response.json();
-    const outputText = String(payload.output_text || "");
-    const parsed = tryParseVisionJson(outputText);
+    const outputText = extractResponseOutputText(payload);
+    const parsed = extractStructuredVisionPayload(payload);
 
     if (!parsed) {
       return {
@@ -466,7 +481,7 @@ async function extractWithVisionModel({ attachment, expectedMap, matchContext, o
         players: [],
         debug: {
           error: "vision_json_parse_failed",
-          preview: outputText.slice(0, 300),
+          preview: outputText.slice(0, outputTextMaxPreview),
         },
       };
     }
@@ -489,48 +504,173 @@ async function extractWithVisionModel({ attachment, expectedMap, matchContext, o
   }
 }
 
-function buildVisionPrompt({ expectedMap, matchContext }) {
+function buildVisionSystemPrompt() {
+  return [
+    "You extract structured data from Call of Duty Mobile post-match screenshots.",
+    "Return only valid structured data matching the provided schema.",
+    "Prefer accuracy over completeness.",
+    "Read the image row-by-row and side-by-side.",
+    "If a field is not clearly visible, return null or an empty string depending on the schema.",
+    "Never invent players, scores, or statistics.",
+  ].join("\n");
+}
+
+function buildVisionUserPrompt({ expectedMap, matchContext }) {
   const team1 = matchContext.team1 || "TEAM_1";
   const team2 = matchContext.team2 || "TEAM_2";
   const expectedMode = expectedMap?.mode || "";
   const expectedMapName = expectedMap?.map_name || expectedMap?.map || "";
 
   return [
-    "Analyze this Call of Duty Mobile post-match screenshot and return JSON only.",
+    "Analyze this Call of Duty Mobile post-match screenshot.",
     `The left scoreboard side is team1: ${team1}.`,
     `The right scoreboard side is team2: ${team2}.`,
     `Expected mode hint: ${expectedMode || "unknown"}.`,
     `Expected map hint: ${expectedMapName || "unknown"}.`,
-    "Extract as much reliable information as possible.",
-    "Return exactly this JSON shape:",
-    JSON.stringify({
-      map: {
-        mode: "",
-        map_name: "",
-        result_label: "",
-        team1_score: null,
-        team2_score: null,
-      },
-      players: [
-        {
-          side: "left",
-          player_name: "",
-          kills: null,
-          deaths: null,
-          assists: null,
-          points: null,
-          impact: null,
-          is_mvp: false,
-        },
-      ],
-    }),
-    "Rules:",
-    "- JSON only, no markdown.",
-    "- If a value is not visible, use null or empty string.",
-    "- side must be left or right.",
-    "- team1_score/team2_score must be the actual final map score, not points.",
-    "- For HP one side should usually be 250, for Search one side 9, for Control one side 3.",
+    "Read these blocks separately:",
+    "1. Header top-left: result label, map score, mode, map name, timestamp.",
+    "2. Summary top-right: PE ottenuti, Rapporto U/M, Precisione, Colpo alla testa.",
+    "3. Left team table: five rows from rank 1 to 5.",
+    "4. Right team table: five rows from rank 1 to 5.",
+    "Important rules:",
+    "- team1_score and team2_score are the final MAP score in the header, not player points.",
+    "- score inside player rows is the PUNTEGGIO column.",
+    "- keep stylized player names as seen in the image when possible.",
+    "- if a row is unreadable, keep rank and use null/empty values instead of hallucinating.",
+    "- HP usually ends with one side at 250, Search at 9, Control at 3. Use that only as a weak hint.",
   ].join("\n");
+}
+
+function buildVisionSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["header", "summary_stats", "left_team", "right_team"],
+    properties: {
+      header: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "result_label",
+          "team1_score",
+          "team2_score",
+          "mode",
+          "map_name",
+          "raw_timestamp",
+        ],
+        properties: {
+          result_label: { type: "string" },
+          team1_score: nullableIntegerSchema(),
+          team2_score: nullableIntegerSchema(),
+          mode: { type: "string" },
+          map_name: { type: "string" },
+          raw_timestamp: { type: "string" },
+        },
+      },
+      summary_stats: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "pe_ottenuti",
+          "rapporto_um",
+          "precisione_pct",
+          "headshot_pct",
+        ],
+        properties: {
+          pe_ottenuti: nullableIntegerSchema(),
+          rapporto_um: nullableNumberSchema(),
+          precisione_pct: nullableNumberSchema(),
+          headshot_pct: nullableNumberSchema(),
+        },
+      },
+      left_team: teamRowsSchema(),
+      right_team: teamRowsSchema(),
+    },
+  };
+}
+
+function teamRowsSchema() {
+  return {
+    type: "array",
+    items: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "rank",
+        "player_name",
+        "score",
+        "kills",
+        "deaths",
+        "assists",
+        "time",
+        "impact",
+        "is_mvp",
+      ],
+      properties: {
+        rank: nullableIntegerSchema(),
+        player_name: { type: "string" },
+        score: nullableIntegerSchema(),
+        kills: nullableIntegerSchema(),
+        deaths: nullableIntegerSchema(),
+        assists: nullableIntegerSchema(),
+        time: { type: "string" },
+        impact: nullableIntegerSchema(),
+        is_mvp: { type: "boolean" },
+      },
+    },
+  };
+}
+
+function nullableIntegerSchema() {
+  return {
+    anyOf: [{ type: "integer" }, { type: "null" }],
+  };
+}
+
+function nullableNumberSchema() {
+  return {
+    anyOf: [{ type: "number" }, { type: "null" }],
+  };
+}
+
+function extractStructuredVisionPayload(payload) {
+  if (payload && typeof payload.output_parsed === "object" && payload.output_parsed) {
+    return payload.output_parsed;
+  }
+
+  const outputText = extractResponseOutputText(payload);
+  return tryParseVisionJson(outputText);
+}
+
+function extractResponseOutputText(payload) {
+  if (typeof payload?.output_text === "string" && payload.output_text.trim()) {
+    return payload.output_text;
+  }
+
+  const chunks = [];
+  for (const item of payload?.output || []) {
+    for (const content of item?.content || []) {
+      if (typeof content?.text === "string" && content.text.trim()) {
+        chunks.push(content.text);
+      }
+      if (typeof content?.output_text === "string" && content.output_text.trim()) {
+        chunks.push(content.output_text);
+      }
+    }
+  }
+
+  return chunks.join("\n");
+}
+
+function getVisionDetailLevel(model) {
+  const configured = String(process.env.OPENAI_MATCH_VISION_DETAIL || "").trim().toLowerCase();
+  if (configured) return configured;
+
+  if (/^gpt-5\.4/i.test(String(model || ""))) {
+    return "original";
+  }
+
+  return "high";
 }
 
 function tryParseVisionJson(text) {
@@ -555,37 +695,64 @@ function tryParseVisionJson(text) {
 }
 
 function normalizeVisionExtraction(parsed, { orderIndex, expectedMap, matchContext, outputPreview }) {
-  const rawMap = parsed?.map || {};
-  const normalizedMode = normalizeMode(rawMap.mode || expectedMap?.mode || "");
-  const team1Score = toNullableInteger(rawMap.team1_score);
-  const team2Score = toNullableInteger(rawMap.team2_score);
+  const rawHeader = parsed?.header || parsed?.map || {};
+  const rawSummary = parsed?.summary_stats || {};
+  const normalizedMode = normalizeMode(rawHeader.mode || expectedMap?.mode || "");
+  const team1Score = toNullableInteger(rawHeader.team1_score);
+  const team2Score = toNullableInteger(rawHeader.team2_score);
 
   const map = isPlausibleScore(team1Score, team2Score, normalizedMode)
     ? {
         orderIndex,
         team1Score,
         team2Score,
-        mode: rawMap.mode || expectedMap?.mode || "",
-        map: rawMap.map_name || rawMap.map || expectedMap?.map_name || expectedMap?.map || "",
-        side: rawMap.side_name || rawMap.side || expectedMap?.side_name || expectedMap?.side || "",
+        mode: rawHeader.mode || expectedMap?.mode || "",
+        map: rawHeader.map_name || rawHeader.map || expectedMap?.map_name || expectedMap?.map || "",
+        side: rawHeader.side_name || rawHeader.side || expectedMap?.side_name || expectedMap?.side || "",
       }
     : null;
 
-  const players = Array.isArray(parsed?.players)
-    ? parsed.players
-        .map(player => normalizeVisionPlayer(player, {
-          orderIndex,
-          team1: matchContext.team1 || "",
-          team2: matchContext.team2 || "",
-        }))
-        .filter(Boolean)
-    : [];
+  const combinedPlayers = [];
+
+  if (Array.isArray(parsed?.left_team)) {
+    combinedPlayers.push(...parsed.left_team.map(player => ({ ...player, side: "left" })));
+  }
+
+  if (Array.isArray(parsed?.right_team)) {
+    combinedPlayers.push(...parsed.right_team.map(player => ({ ...player, side: "right" })));
+  }
+
+  if (!combinedPlayers.length && Array.isArray(parsed?.players)) {
+    combinedPlayers.push(...parsed.players);
+  }
+
+  const players = dedupePlayers(
+    combinedPlayers
+      .map(player => normalizeVisionPlayer(player, {
+        orderIndex,
+        team1: matchContext.team1 || "",
+        team2: matchContext.team2 || "",
+      }))
+      .filter(Boolean)
+  );
 
   return {
     map,
     players,
     debug: {
       outputPreview,
+      header: {
+        resultLabel: rawHeader.result_label || "",
+        mode: rawHeader.mode || "",
+        mapName: rawHeader.map_name || rawHeader.map || "",
+        rawTimestamp: rawHeader.raw_timestamp || "",
+      },
+      summary: {
+        peOttenuti: toNullableInteger(rawSummary.pe_ottenuti),
+        rapportoUm: toNullableNumber(rawSummary.rapporto_um),
+        precisionePct: toNullableNumber(rawSummary.precisione_pct),
+        headshotPct: toNullableNumber(rawSummary.headshot_pct),
+      },
       parsedPlayers: players.length,
       parsedMap: map ? `${map.team1Score}:${map.team2Score}` : "none",
     },
@@ -595,7 +762,9 @@ function normalizeVisionExtraction(parsed, { orderIndex, expectedMap, matchConte
 function normalizeVisionPlayer(player, { orderIndex, team1, team2 }) {
   const side = String(player?.side || "").trim().toLowerCase();
   const teamName = side === "left" ? team1 : side === "right" ? team2 : "";
-  const playerName = String(player?.player_name || "").trim();
+  const playerName = normalizePlayerName(
+    player?.player_name || player?.name || ""
+  );
 
   if (!teamName || !playerName) return null;
 
@@ -606,7 +775,7 @@ function normalizeVisionPlayer(player, { orderIndex, team1, team2 }) {
     kills: toNullableInteger(player?.kills),
     deaths: toNullableInteger(player?.deaths),
     assists: toNullableInteger(player?.assists),
-    points: toNullableInteger(player?.points),
+    points: toNullableInteger(player?.score ?? player?.points),
     impact: toNullableInteger(player?.impact),
     isMvp: Boolean(player?.is_mvp),
   };
@@ -614,8 +783,39 @@ function normalizeVisionPlayer(player, { orderIndex, team1, team2 }) {
 
 function toNullableInteger(value) {
   if (value === null || value === undefined || value === "") return null;
-  const parsed = Number(value);
+  const parsed = Number(String(value).replace(/,/g, "."));
   return Number.isInteger(parsed) ? parsed : null;
+}
+
+function toNullableNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(
+    String(value)
+      .replace(/%/g, "")
+      .replace(/,/g, ".")
+      .trim()
+  );
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizePlayerName(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function dedupePlayers(players) {
+  const output = [];
+  const seen = new Set();
+
+  for (const player of players || []) {
+    const key = `${player.orderIndex}|${player.teamName}|${player.playerName}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(player);
+  }
+
+  return output;
 }
 
 async function extractScoreFromBoxes({ buffer, boxes, worker, expectedMode }) {
@@ -980,7 +1180,7 @@ function dedupeMapsByOrder(maps) {
 
 function buildSummary(maps, totalImages, totalPlayers = 0) {
   return (
-    `OCR eseguito su ${totalImages} screenshot. ` +
+    `Analisi immagini eseguita su ${totalImages} screenshot. ` +
     `Score mappa riconosciuti: ${maps.length}. ` +
     `Player riconosciuti: ${totalPlayers}. ` +
     `Review manuale consigliata.`
