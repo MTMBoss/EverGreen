@@ -14,6 +14,12 @@ const INPUT_PATH =
 const slugArg = process.argv.find(arg => arg.startsWith("--slug="));
 const targetSlug = slugArg ? String(slugArg.split("=")[1] || "").trim() : "";
 const shouldApply = process.argv.includes("--apply");
+const limitArg = process.argv.find(arg => arg.startsWith("--limit="));
+const offsetArg = process.argv.find(arg => arg.startsWith("--offset="));
+const resumeOnly = process.argv.includes("--resume");
+
+const limit = limitArg ? Math.max(1, Number(limitArg.split("=")[1] || 0)) : 0;
+const offset = offsetArg ? Math.max(0, Number(offsetArg.split("=")[1] || 0)) : 0;
 
 const NAME_WHITELIST =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/";
@@ -595,16 +601,47 @@ async function main() {
   }
 
   const payload = JSON.parse(fs.readFileSync(INPUT_PATH, "utf8"));
-  const matches = Array.isArray(payload.matches) ? payload.matches : [];
+  let matches = Array.isArray(payload.matches) ? payload.matches : [];
   let processed = 0;
+  let scanned = 0;
+
+  if (targetSlug) {
+    matches = matches.filter(entry => entry.slug === targetSlug);
+  }
+
+  if (resumeOnly) {
+    matches = matches.filter(entry => {
+      const review = entry.manual_review || {};
+      const hasMaps = Array.isArray(review.maps) && review.maps.some(
+        map => map.team1Score !== null || map.team2Score !== null
+      );
+      const hasPlayers = Array.isArray(review.players) && review.players.length > 0;
+      return !hasMaps && !hasPlayers;
+    });
+  }
+
+  if (offset > 0) {
+    matches = matches.slice(offset);
+  }
+
+  if (limit > 0) {
+    matches = matches.slice(0, limit);
+  }
+
+  console.log(
+    `ℹ️ Avvio autofill review: selezionati ${matches.length} match` +
+      (targetSlug ? ` (slug: ${targetSlug})` : "") +
+      (resumeOnly ? " [resume]" : "") +
+      (limit > 0 ? ` [limit ${limit}]` : "") +
+      (offset > 0 ? ` [offset ${offset}]` : "")
+  );
 
   for (const entry of matches) {
-    if (targetSlug && entry.slug !== targetSlug) {
-      continue;
-    }
-
+    scanned += 1;
+    console.log(`ℹ️ Autofill in corso [${scanned}/${matches.length}]: ${entry.slug}`);
     entry.manual_review = await autofillMatch(entry);
     processed += 1;
+    fs.writeFileSync(INPUT_PATH, JSON.stringify(payload, null, 2));
     console.log(`✅ Autofill completato: ${entry.slug}`);
   }
 
