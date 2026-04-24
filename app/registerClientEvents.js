@@ -34,6 +34,9 @@ const {
   startAutoMatchImportWorker,
 } = require("../matches/autoMatchImporter");
 const {
+  MATCH_IMAGE_ANALYSIS_ENABLED,
+} = require("../matches/matchService");
+const {
   startMatchImageReanalysisWorker,
 } = require("../matches/matchImageReanalysisWorker");
 const { startScheduler } = require("../schedule/scheduler");
@@ -49,7 +52,11 @@ function registerClientEvents(client) {
     startAttendanceWebServer(client);
     await createMatchTables();
     startAutoMatchImportWorker(client);
-    startMatchImageReanalysisWorker();
+    if (MATCH_IMAGE_ANALYSIS_ENABLED) {
+      startMatchImageReanalysisWorker();
+    } else {
+      console.log("ℹ️ Rianalisi immagini match disattivata");
+    }
     startAttendanceLeaderboardScheduler(client);
 
     queueMicrotask(async () => {

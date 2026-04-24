@@ -25,10 +25,10 @@ const MATCH_IMPORT_TICK_MS = Number(
   process.env.MATCH_IMPORT_TICK_MS || 15 * 1000
 );
 const MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL = Number(
-  process.env.MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL || 15
+  process.env.MATCH_IMPORT_MAX_MESSAGES_PER_CHANNEL || 50
 );
 const MATCH_IMPORT_SINGLE_LATEST_ONLY =
-  String(process.env.MATCH_IMPORT_SINGLE_LATEST_ONLY || "true").toLowerCase() !== "false";
+  String(process.env.MATCH_IMPORT_SINGLE_LATEST_ONLY || "false").toLowerCase() === "true";
 
 let historyImportTimer = null;
 let historyImportRunning = false;

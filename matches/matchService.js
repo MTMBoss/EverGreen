@@ -25,6 +25,8 @@ const {
 const { isImageAttachment } = require("./matchMessageParser");
 
 const MATCH_IMAGE_ANALYSIS_VERSION = 6;
+const MATCH_IMAGE_ANALYSIS_ENABLED =
+  String(process.env.MATCH_IMAGE_ANALYSIS_ENABLED || "false").toLowerCase() === "true";
 
 function buildMatchWebUrl(baseUrl, slug) {
   if (!baseUrl) return `/matches/${slug}`;
@@ -174,11 +176,20 @@ async function completeMatchFromPart2({ parsed, message }) {
   let extracted = {
     maps: [],
     players: [],
-    needsReview: imageAttachments.length > 0,
+    needsReview: false,
     extractionSummary: "",
   };
 
-  if (imageAttachments.length > 0) {
+  if (!MATCH_IMAGE_ANALYSIS_ENABLED) {
+    extracted = {
+      maps: [],
+      players: [],
+      needsReview: false,
+      extractionSummary: imageAttachments.length > 0
+        ? "Analisi immagini disattivata: match pubblicato con screenshot allegati e solo dati testuali."
+        : "Analisi immagini disattivata e nessuna immagine allegata.",
+    };
+  } else if (imageAttachments.length > 0) {
     try {
       const {
         extractMatchDataFromImages,
@@ -221,6 +232,7 @@ async function completeMatchFromPart2({ parsed, message }) {
   const debugJson = buildAnalysisDebugJson({
     phase: "part2_completion",
     slug: match.slug,
+    imageAnalysisEnabled: MATCH_IMAGE_ANALYSIS_ENABLED,
     parsedMessage: parsed,
     screenshots: imageAttachments.map(asset => ({
       url: asset.url,
@@ -282,6 +294,27 @@ async function reanalyzeStoredMatchImages(matchId) {
       slug: match.slug,
       skipped: true,
       reason: "no_screenshots",
+      extractedMaps: 0,
+      extractedPlayers: 0,
+    };
+  }
+
+  if (!MATCH_IMAGE_ANALYSIS_ENABLED) {
+    await updateMatchAnalysisDebug(
+      match.id,
+      buildAnalysisDebugJson({
+        phase: "stored_match_reanalysis",
+        slug: match.slug,
+        imageAnalysisEnabled: false,
+        skipped: "image_analysis_disabled",
+      })
+    );
+    await setMatchAnalysisVersion(match.id, MATCH_IMAGE_ANALYSIS_VERSION);
+    return {
+      matchId: match.id,
+      slug: match.slug,
+      skipped: true,
+      reason: "image_analysis_disabled",
       extractedMaps: 0,
       extractedPlayers: 0,
     };
@@ -399,6 +432,7 @@ async function removeAllMatches() {
 }
 
 module.exports = {
+  MATCH_IMAGE_ANALYSIS_ENABLED,
   MATCH_IMAGE_ANALYSIS_VERSION,
   buildMatchWebUrl,
   createMatchDraftFromPart1,
