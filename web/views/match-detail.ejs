@@ -11,6 +11,43 @@
 <body class="hub-body">
     <%- include("partials/nav", { currentSection }) %>
 
+    <% 
+        const totalPlayers = match.player_stats_total_count || (match.players || []).length || 0;
+        const resultTone = /vitt/i.test(match.result_label || "") ? "good" : /sconf/i.test(match.result_label || "") ? "bad" : "warn";
+        const playerSections = [];
+        const knownMapOrderIndexes = new Set();
+
+        for (const map of match.maps || []) {
+            const orderIndex = Number(map.order_index || 0);
+            knownMapOrderIndexes.add(orderIndex);
+            playerSections.push({
+                orderIndex,
+                map,
+                players: (playersByMap.get(orderIndex) || []).slice(),
+            });
+        }
+
+        for (const [orderIndexRaw, sectionPlayers] of playersByMap.entries()) {
+            const orderIndex = Number(orderIndexRaw || 0);
+            if (knownMapOrderIndexes.has(orderIndex)) continue;
+
+            playerSections.push({
+                orderIndex,
+                map: {
+                    order_index: orderIndex,
+                    mode: "",
+                    map_name: "",
+                    side_name: "",
+                    team1_score: null,
+                    team2_score: null,
+                },
+                players: (sectionPlayers || []).slice(),
+            });
+        }
+
+        playerSections.sort((a, b) => Number(a.orderIndex || 0) - Number(b.orderIndex || 0));
+    %>
+
     <section class="hub-page-header">
         <div>
             <h1><%= match.team1 %> vs <%= match.team2 %></h1>
@@ -68,6 +105,39 @@
         </div>
     </section>
 
+    <section class="hub-card hub-result-hero">
+        <div class="hub-result-hero-top">
+            <div>
+                <div class="hub-result-eyebrow">Risultato Scrim</div>
+                <div class="hub-result-subline">
+                    <span><%= match.matchDateLabel || "Data da definire" %></span>
+                    <span><%= match.match_time || "Ora non disponibile" %></span>
+                    <span><%= (match.maps || []).length %> mappe</span>
+                    <span><%= totalPlayers %> player</span>
+                </div>
+            </div>
+            <span class="hub-badge <%= resultTone %>">
+                <%= match.result_label || "Risultato in attesa" %>
+            </span>
+        </div>
+        <div class="hub-result-scoreboard">
+            <article class="hub-result-team-card <%= match.winner_team === match.team1 ? 'winner' : '' %>">
+                <div class="hub-result-team-name"><%= match.team1 %></div>
+                <div class="hub-result-team-score"><%= match.team1_series_score ?? "-" %></div>
+            </article>
+            <div class="hub-result-score-separator">:</div>
+            <article class="hub-result-team-card <%= match.winner_team === match.team2 ? 'winner' : '' %>">
+                <div class="hub-result-team-name"><%= match.team2 %></div>
+                <div class="hub-result-team-score"><%= match.team2_series_score ?? "-" %></div>
+            </article>
+        </div>
+        <div class="hub-result-hero-bottom">
+            <div class="hub-mini-pill active">Vincitore: <%= match.winner_team || "In attesa" %></div>
+            <div class="hub-mini-pill">Review: <%= match.needs_review ? "manuale consigliata" : "allineata" %></div>
+            <div class="hub-mini-pill">Sorgente player: <%= match.player_stats_source === "database" ? "DB" : match.player_stats_source === "export_file" ? "File estratto" : "nessuna" %></div>
+        </div>
+    </section>
+
     <section class="hub-summary-grid">
         <article class="hub-grid-card">
             <div class="hub-summary-label">Data</div>
@@ -111,15 +181,21 @@
                 <p>La parte 1 prepara la struttura delle mappe, la parte 2 aggiorna punteggi e dettagli OCR.</p>
             </div>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px;">
+        <div class="hub-match-map-grid">
             <% for (const map of match.maps) { %>
-                <article class="hub-grid-card" style="margin:0; padding:16px;">
-                    <div class="hub-summary-label">Mappa <%= map.order_index %></div>
-                    <div class="hub-member-name" style="margin-top:8px;"><%= map.mode || "Modalità da definire" %></div>
-                    <div class="hub-member-sub"><%= map.map_name || "Mappa da definire" %></div>
-                    <div class="hub-member-sub"><%= map.side_name || "Side non definito" %></div>
-                    <div style="margin-top:12px; font-size:24px; font-weight:900;">
-                        <%= map.team1_score ?? "-" %> - <%= map.team2_score ?? "-" %>
+                <article class="hub-grid-card hub-match-map-card">
+                    <div class="hub-match-map-top">
+                        <div>
+                            <div class="hub-summary-label">Mappa <%= map.order_index %></div>
+                            <div class="hub-match-map-name"><%= map.map_name || "Mappa da definire" %></div>
+                        </div>
+                        <div class="hub-map-pill"><%= map.mode || "?" %></div>
+                    </div>
+                    <div class="hub-match-map-side"><%= map.side_name || "Side non definito" %></div>
+                    <div class="hub-match-map-score">
+                        <span><%= map.team1_score ?? "-" %></span>
+                        <span class="hub-match-map-score-separator">:</span>
+                        <span><%= map.team2_score ?? "-" %></span>
                     </div>
                 </article>
             <% } %>
@@ -156,7 +232,7 @@
                 <p>Qui puoi collegare ogni nome estratto a un player del roster. Gli alias salvati verranno riusati automaticamente sui nomi che si ripetono.</p>
             </div>
             <div class="hub-muted">
-                Totale righe: <strong><%= match.player_stats_total_count || (match.players || []).length || 0 %></strong>
+                Totale righe: <strong><%= totalPlayers %></strong>
             </div>
         </div>
         <% const playersImportedInDb = (match.players || []).some(player => player.id); %>
@@ -166,60 +242,87 @@
             </div>
         <% } %>
         <form method="post" action="/matches/<%= match.slug %>/players/link">
-        <div class="hub-table-wrap">
-            <table class="hub-table" style="min-width: 960px;">
-                <thead>
-                    <tr>
-                        <th>Mappa</th>
-                        <th>Team</th>
-                        <th>Nome Estratto</th>
-                        <th>Roster</th>
-                        <th>K / D / A</th>
-                        <th>Punti</th>
-                        <th>Tempo</th>
-                        <th>Impatto</th>
-                        <th>MVP</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% if (!(match.players || []).length) { %>
-                        <tr>
-                            <td colspan="8" class="hub-muted">Nessun dato player ancora disponibile.</td>
-                        </tr>
-                    <% } %>
-                    <% for (const player of match.players || []) { %>
-                        <tr>
-                            <td>Mappa <%= player.order_index || "-" %></td>
-                            <td><%= player.team_name || "-" %></td>
-                            <td>
-                                <div><%= player.player_name || "-" %></div>
-                                <% if (player.resolved_player_name) { %>
-                                    <div class="hub-member-sub">Risolto: <%= player.resolved_player_name %></div>
-                                <% } %>
-                            </td>
-                            <td>
-                                <% if (player.id) { %>
-                                    <select class="hub-input" name="links[<%= player.id %>]">
-                                        <option value="">Non collegato</option>
-                                        <% for (const member of roster || []) { %>
-                                            <option value="<%= member.id %>" <%= String(player.member_id || "") === String(member.id) ? "selected" : "" %>>
-                                                <%= member.label %><% if (member.discordLabel && member.discordLabel !== member.label) { %> | <%= member.discordLabel %><% } %>
-                                            </option>
-                                        <% } %>
-                                    </select>
-                                <% } else { %>
-                                    <span class="hub-muted">Importa nel DB</span>
-                                <% } %>
-                            </td>
-                            <td><%= player.kills ?? "-" %> / <%= player.deaths ?? "-" %> / <%= player.assists ?? "-" %></td>
-                            <td><%= player.points ?? "-" %></td>
-                            <td><%= player.time_played || "-" %></td>
-                            <td><%= player.impact ?? "-" %></td>
-                            <td><%= player.is_mvp ? "MVP" : "-" %></td>
-                        </tr>
-                    <% } %>
-                </tbody>
-            </table>
+        <% if (!(match.players || []).length) { %>
+            <div class="hub-muted">Nessun dato player ancora disponibile.</div>
+        <% } %>
+        <div class="hub-player-sections">
+            <% for (const section of playerSections) { %>
+                <% if (!(section.players || []).length) { continue; } %>
+                <% 
+                    const groupedPlayers = new Map();
+                    for (const player of section.players || []) {
+                        const teamName = String(player.team_name || "Team sconosciuto");
+                        if (!groupedPlayers.has(teamName)) groupedPlayers.set(teamName, []);
+                        groupedPlayers.get(teamName).push(player);
+                    }
+                    const teamGroups = Array.from(groupedPlayers.entries());
+                %>
+                <article class="hub-player-section">
+                    <div class="hub-player-section-head">
+                        <div>
+                            <div class="hub-summary-label">Mappa <%= section.map.order_index || section.orderIndex || "-" %></div>
+                            <div class="hub-player-section-title">
+                                <%= section.map.mode || "Modalità ?" %> · <%= section.map.map_name || "Mappa da definire" %>
+                            </div>
+                            <div class="hub-member-sub"><%= section.map.side_name || "Side non definito" %></div>
+                        </div>
+                        <div class="hub-player-section-score">
+                            <span><%= section.map.team1_score ?? "-" %></span>
+                            <span class="hub-player-section-score-separator">:</span>
+                            <span><%= section.map.team2_score ?? "-" %></span>
+                        </div>
+                    </div>
+                    <div class="hub-player-team-grid">
+                        <% for (const [teamName, teamPlayers] of teamGroups) { %>
+                            <article class="hub-player-team-card">
+                                <div class="hub-player-team-head">
+                                    <div class="hub-player-team-name"><%= teamName || "Team sconosciuto" %></div>
+                                    <div class="hub-mini-pill"><%= teamPlayers.length %> player</div>
+                                </div>
+                                <div class="hub-player-list">
+                                    <% for (let index = 0; index < teamPlayers.length; index += 1) { %>
+                                        <% const player = teamPlayers[index]; %>
+                                        <div class="hub-player-row">
+                                            <div class="hub-player-rank"><%= index + 1 %></div>
+                                            <div class="hub-player-main">
+                                                <div class="hub-player-name-line">
+                                                    <strong><%= player.player_name || "-" %></strong>
+                                                    <% if (player.is_mvp) { %>
+                                                        <span class="hub-player-mvp">MVP</span>
+                                                    <% } %>
+                                                </div>
+                                                <% if (player.resolved_player_name) { %>
+                                                    <div class="hub-member-sub">Risolto: <%= player.resolved_player_name %></div>
+                                                <% } %>
+                                                <div class="hub-player-metrics">
+                                                    <span class="hub-mini-pill">Punti <strong><%= player.points ?? "-" %></strong></span>
+                                                    <span class="hub-mini-pill">K/D/A <strong><%= player.kills ?? "-" %> / <%= player.deaths ?? "-" %> / <%= player.assists ?? "-" %></strong></span>
+                                                    <span class="hub-mini-pill">Tempo <strong><%= player.time_played || "-" %></strong></span>
+                                                    <span class="hub-mini-pill">Impatto <strong><%= player.impact ?? "-" %></strong></span>
+                                                </div>
+                                            </div>
+                                            <div class="hub-player-roster-cell">
+                                                <% if (player.id) { %>
+                                                    <select class="hub-input" name="links[<%= player.id %>]">
+                                                        <option value="">Non collegato</option>
+                                                        <% for (const member of roster || []) { %>
+                                                            <option value="<%= member.id %>" <%= String(player.member_id || "") === String(member.id) ? "selected" : "" %>>
+                                                                <%= member.label %><% if (member.discordLabel && member.discordLabel !== member.label) { %> | <%= member.discordLabel %><% } %>
+                                                            </option>
+                                                        <% } %>
+                                                    </select>
+                                                <% } else { %>
+                                                    <span class="hub-muted">Importa nel DB</span>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            </article>
+                        <% } %>
+                    </div>
+                </article>
+            <% } %>
         </div>
         <% if ((match.players || []).length && playersImportedInDb) { %>
             <div class="hub-actions" style="margin-top:16px;">
