@@ -23,10 +23,18 @@
                     Archivio match azzerato. Il worker ripartira automaticamente dai canali Parte 1 e Parte 2 gia configurati.
                 </div>
             <% } %>
+            <% if (playersImported) { %>
+                <div class="hub-notice success" style="margin-top: 14px;">
+                    Player importati dal file estratto. Match aggiornati: <strong><%= importedCount || 0 %></strong>.
+                </div>
+            <% } %>
         </div>
         <div class="hub-actions">
             <a class="hub-button secondary" href="/dashboard">Dashboard</a>
             <a class="hub-button secondary" href="/presenze">Presenze</a>
+            <form method="post" action="/matches/import-player-stats" onsubmit="return confirm('Vuoi importare nel DB tutti i player estratti dal file match-player-stats.json?');">
+                <button class="hub-button secondary" type="submit">Importa Player Estratti</button>
+            </form>
             <form method="post" action="/matches/rebuild" onsubmit="return confirm('Vuoi cancellare tutti i match salvati e rifare la lettura completa delle chat?');">
                 <button class="hub-button danger" type="submit">Rebuild Match</button>
             </form>
@@ -49,6 +57,7 @@
                         <th>Data</th>
                         <th>Stato</th>
                         <th>Risultato</th>
+                        <th>Player</th>
                         <th>Review</th>
                         <th>Apri</th>
                     </tr>
@@ -74,6 +83,16 @@
                                     <%= match.team1_series_score ?? "-" %>-<%= match.team2_series_score ?? "-" %>
                                 <% } else { %>
                                     <span class="hub-muted">In attesa di parte 2</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <% if (match.player_stats_total_count) { %>
+                                    <div><strong><%= match.player_stats_total_count %></strong> righe</div>
+                                    <div class="hub-member-sub">
+                                        <%= match.player_stats_source === "database" ? "DB" : "File estratto" %>
+                                    </div>
+                                <% } else { %>
+                                    <span class="hub-muted">Nessun player</span>
                                 <% } %>
                             </td>
                             <td>

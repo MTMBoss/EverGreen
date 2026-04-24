@@ -15,7 +15,11 @@
         <div>
             <h1><%= match.team1 %> vs <%= match.team2 %></h1>
             <p>
-                <% if (extractedPlayers) { %>
+                <% if (importedPlayers) { %>
+                    Player del match importati nel DB dal file estratto. Ora puoi anche collegarli al roster dal pannello.
+                <% } else if (match.player_stats_source === "export_file") { %>
+                    Player mostrati dal file estratto offline. Se vuoi collegarli al roster, importali prima nel DB con il pulsante dedicato.
+                <% } else if (extractedPlayers) { %>
                     Player estratti dagli screenshot. Ora puoi collegarli al roster e il sistema ricorderà i nomi ripetuti.
                 <% } else if (linkedPlayers) { %>
                     Collegamenti roster salvati correttamente. Alias automatici applicati: <%= autoLinked || 0 %>.
@@ -37,6 +41,11 @@
             </div>
         </div>
         <div class="hub-actions">
+            <% if (match.player_stats_source === "export_file") { %>
+                <form method="post" action="/matches/<%= match.slug %>/import-player-stats" style="display:inline;">
+                    <button class="hub-button secondary" type="submit">Importa player nel DB</button>
+                </form>
+            <% } %>
             <form method="post" action="/matches/<%= match.slug %>/extract-players" style="display:inline;">
                 <button class="hub-button secondary" type="submit">Estrai player da screenshot</button>
             </form>
@@ -79,6 +88,19 @@
             <div class="hub-summary-label">Review</div>
             <div class="hub-summary-value" style="font-size:22px;"><%= match.needs_review ? "SI" : "NO" %></div>
             <div class="hub-summary-sub"><%= match.needs_review ? "Controllo manuale consigliato" : "Dati allineati" %></div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Player</div>
+            <div class="hub-summary-value" style="font-size:22px;"><%= match.player_stats_total_count || (match.players || []).length || 0 %></div>
+            <div class="hub-summary-sub">
+                <% if (match.player_stats_source === "database") { %>
+                    Caricati dal DB
+                <% } else if (match.player_stats_source === "export_file") { %>
+                    Dal file estratto offline
+                <% } else { %>
+                    Non ancora disponibili
+                <% } %>
+            </div>
         </article>
     </section>
 
@@ -133,7 +155,16 @@
                 <h2>Player estratti</h2>
                 <p>Qui puoi collegare ogni nome estratto a un player del roster. Gli alias salvati verranno riusati automaticamente sui nomi che si ripetono.</p>
             </div>
+            <div class="hub-muted">
+                Totale righe: <strong><%= match.player_stats_total_count || (match.players || []).length || 0 %></strong>
+            </div>
         </div>
+        <% const playersImportedInDb = (match.players || []).some(player => player.id); %>
+        <% if (match.player_stats_source === "export_file") { %>
+            <div class="hub-notice" style="margin-bottom:16px;">
+                Questi player arrivano dal file <code>exports/match-player-stats.json</code> e sono mostrati in sola lettura. Usa <strong>Importa player nel DB</strong> per poterli collegare al roster.
+            </div>
+        <% } %>
         <form method="post" action="/matches/<%= match.slug %>/players/link">
         <div class="hub-table-wrap">
             <table class="hub-table" style="min-width: 960px;">
@@ -167,14 +198,18 @@
                                 <% } %>
                             </td>
                             <td>
-                                <select class="hub-input" name="links[<%= player.id %>]">
-                                    <option value="">Non collegato</option>
-                                    <% for (const member of roster || []) { %>
-                                        <option value="<%= member.id %>" <%= String(player.member_id || "") === String(member.id) ? "selected" : "" %>>
-                                            <%= member.label %><% if (member.discordLabel && member.discordLabel !== member.label) { %> | <%= member.discordLabel %><% } %>
-                                        </option>
-                                    <% } %>
-                                </select>
+                                <% if (player.id) { %>
+                                    <select class="hub-input" name="links[<%= player.id %>]">
+                                        <option value="">Non collegato</option>
+                                        <% for (const member of roster || []) { %>
+                                            <option value="<%= member.id %>" <%= String(player.member_id || "") === String(member.id) ? "selected" : "" %>>
+                                                <%= member.label %><% if (member.discordLabel && member.discordLabel !== member.label) { %> | <%= member.discordLabel %><% } %>
+                                            </option>
+                                        <% } %>
+                                    </select>
+                                <% } else { %>
+                                    <span class="hub-muted">Importa nel DB</span>
+                                <% } %>
                             </td>
                             <td><%= player.kills ?? "-" %> / <%= player.deaths ?? "-" %> / <%= player.assists ?? "-" %></td>
                             <td><%= player.points ?? "-" %></td>
@@ -186,7 +221,7 @@
                 </tbody>
             </table>
         </div>
-        <% if ((match.players || []).length) { %>
+        <% if ((match.players || []).length && playersImportedInDb) { %>
             <div class="hub-actions" style="margin-top:16px;">
                 <button class="hub-button" type="submit">Salva collegamenti roster</button>
             </div>

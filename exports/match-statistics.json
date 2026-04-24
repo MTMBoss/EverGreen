@@ -1,0 +1,424 @@
+{
+  "generatedAt": "2026-04-24T07:18:49.292Z",
+  "sourceFile": "exports/site-match-review-queue.json",
+  "totals": {
+    "matches": 74,
+    "published": 73,
+    "drafts": 1,
+    "cancelled": 0,
+    "wins": 12,
+    "losses": 61,
+    "matchWinRate": 16.44,
+    "mapsWithScore": 0,
+    "mapWins": 0,
+    "mapLosses": 0,
+    "mapWinRate": 0
+  },
+  "opponents": [
+    {
+      "label": "Psychofusion",
+      "count": 7
+    },
+    {
+      "label": "HZK",
+      "count": 6
+    },
+    {
+      "label": "Insanity",
+      "count": 5
+    },
+    {
+      "label": "Godfather",
+      "count": 4
+    },
+    {
+      "label": "Abxolute 1",
+      "count": 3
+    },
+    {
+      "label": "EOS",
+      "count": 3
+    },
+    {
+      "label": "k9nine",
+      "count": 3
+    },
+    {
+      "label": "RKN",
+      "count": 3
+    },
+    {
+      "label": "Vexus",
+      "count": 3
+    },
+    {
+      "label": "Capoia Family",
+      "count": 2
+    },
+    {
+      "label": "EOS 2",
+      "count": 2
+    },
+    {
+      "label": "ETs",
+      "count": 2
+    },
+    {
+      "label": "Godfather 1",
+      "count": 2
+    },
+    {
+      "label": "Obey",
+      "count": 2
+    },
+    {
+      "label": ".Zip",
+      "count": 1
+    },
+    {
+      "label": "7s",
+      "count": 1
+    },
+    {
+      "label": "Abxolute",
+      "count": 1
+    },
+    {
+      "label": "Abxolute 2",
+      "count": 1
+    },
+    {
+      "label": "Angels",
+      "count": 1
+    },
+    {
+      "label": "d3th",
+      "count": 1
+    },
+    {
+      "label": "Dynasty",
+      "count": 1
+    },
+    {
+      "label": "Eight",
+      "count": 1
+    },
+    {
+      "label": "ewr ewr",
+      "count": 1
+    },
+    {
+      "label": "Fiveguys",
+      "count": 1
+    },
+    {
+      "label": "FT",
+      "count": 1
+    },
+    {
+      "label": "GOD",
+      "count": 1
+    },
+    {
+      "label": "Godfather 2",
+      "count": 1
+    },
+    {
+      "label": "Heaven",
+      "count": 1
+    },
+    {
+      "label": "Heaven 2",
+      "count": 1
+    },
+    {
+      "label": "Insurgent",
+      "count": 1
+    },
+    {
+      "label": "Island boys",
+      "count": 1
+    },
+    {
+      "label": "LunatiX",
+      "count": 1
+    },
+    {
+      "label": "MostNuked",
+      "count": 1
+    },
+    {
+      "label": "QI",
+      "count": 1
+    },
+    {
+      "label": "Requiem",
+      "count": 1
+    },
+    {
+      "label": "RKN R2",
+      "count": 1
+    },
+    {
+      "label": "Spartans",
+      "count": 1
+    },
+    {
+      "label": "Team Kobra",
+      "count": 1
+    },
+    {
+      "label": "Void",
+      "count": 1
+    },
+    {
+      "label": "x ONE",
+      "count": 1
+    }
+  ],
+  "months": [
+    {
+      "label": "2026-02",
+      "count": 18
+    },
+    {
+      "label": "2026-01",
+      "count": 14
+    },
+    {
+      "label": "2026-03",
+      "count": 13
+    },
+    {
+      "label": "2026-04",
+      "count": 13
+    },
+    {
+      "label": "2025-12",
+      "count": 9
+    },
+    {
+      "label": "2025-11",
+      "count": 6
+    }
+  ],
+  "modes": [
+    {
+      "label": "Hp",
+      "count": 127
+    },
+    {
+      "label": "Ced",
+      "count": 112
+    },
+    {
+      "label": "Ctl",
+      "count": 63
+    },
+    {
+      "label": "Ct",
+      "count": 4
+    }
+  ],
+  "maps": [
+    {
+      "label": "Hacienda",
+      "count": 35
+    },
+    {
+      "label": "Summit",
+      "count": 31
+    },
+    {
+      "label": "Standoff",
+      "count": 30
+    },
+    {
+      "label": "Tunisia",
+      "count": 29
+    },
+    {
+      "label": "Takeoff",
+      "count": 27
+    },
+    {
+      "label": "Raid",
+      "count": 25
+    },
+    {
+      "label": "Slums",
+      "count": 18
+    },
+    {
+      "label": "Meltdown",
+      "count": 17
+    },
+    {
+      "label": "Arsenal",
+      "count": 15
+    },
+    {
+      "label": "Firing",
+      "count": 11
+    },
+    {
+      "label": "Apocalypse",
+      "count": 10
+    },
+    {
+      "label": "Combine",
+      "count": 10
+    },
+    {
+      "label": "Firing Range",
+      "count": 10
+    },
+    {
+      "label": "Coastal",
+      "count": 9
+    },
+    {
+      "label": "Crossfire",
+      "count": 6
+    },
+    {
+      "label": "Crossroads Strike",
+      "count": 6
+    },
+    {
+      "label": "Kurohana",
+      "count": 5
+    },
+    {
+      "label": "Costal",
+      "count": 3
+    },
+    {
+      "label": "Meldown",
+      "count": 2
+    },
+    {
+      "label": "Standof",
+      "count": 2
+    },
+    {
+      "label": "Apocalipse",
+      "count": 1
+    },
+    {
+      "label": "Cross Road",
+      "count": 1
+    },
+    {
+      "label": "Crossroad",
+      "count": 1
+    },
+    {
+      "label": "Firing range",
+      "count": 1
+    },
+    {
+      "label": "Meldawon",
+      "count": 1
+    }
+  ],
+  "sides": [
+    {
+      "label": "Rosso",
+      "count": 150
+    },
+    {
+      "label": "Blu",
+      "count": 119
+    },
+    {
+      "label": "Side non definito",
+      "count": 12
+    },
+    {
+      "label": "Blu (dq)",
+      "count": 2
+    },
+    {
+      "label": "Red",
+      "count": 2
+    },
+    {
+      "label": "Rosso (canna pistola)",
+      "count": 2
+    },
+    {
+      "label": "Rosso (dq 2 tempest)",
+      "count": 2
+    },
+    {
+      "label": "Blu (2 dq)",
+      "count": 1
+    },
+    {
+      "label": "Blu (canna e lw)",
+      "count": 1
+    },
+    {
+      "label": "Blu (dq 2 tempest)",
+      "count": 1
+    },
+    {
+      "label": "Blu (dq jolly)",
+      "count": 1
+    },
+    {
+      "label": "Blu (dq sniper)",
+      "count": 1
+    },
+    {
+      "label": "Blu (man of war)",
+      "count": 1
+    },
+    {
+      "label": "Blu (X)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (dq 2 anilator)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (dq canna pistola)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (dq loro)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (dq nostro)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (dq serie)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (dq skin)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (dq sniper)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (dq uss)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (dq)",
+      "count": 1
+    },
+    {
+      "label": "Rosso (X)",
+      "count": 1
+    }
+  ],
+  "players": []
+}

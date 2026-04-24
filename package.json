@@ -12,6 +12,7 @@
     "matches:site-to-review": "node scripts/build-review-queue-from-site-snapshot.js",
     "matches:autofill-review": "node scripts/autofill-match-review.js",
     "matches:extract-player-stats": "node scripts/extract-all-match-player-stats.js",
+    "matches:import-player-stats": "node scripts/import-match-player-stats.js",
     "matches:import-review": "node scripts/import-match-review.js",
     "matches:stats": "node scripts/build-match-statistics.js",
     "push": "git add . && git commit -m \"update\" && git push",

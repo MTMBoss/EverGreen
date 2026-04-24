@@ -27,6 +27,12 @@ const {
   removeAllMatches,
 } = require("../matches/matchService");
 const {
+  buildExportedPlayerStatsIndex,
+  getExportedMatchPlayerStats,
+  flattenExportedPlayersForView,
+  importPlayerStatsFromExportFile,
+} = require("../matches/playerStatsImport");
+const {
   getScheduleAvailabilityForDate,
   makeEmptyDeclaration,
   countDeclaredSlots,
@@ -44,14 +50,19 @@ function createWebRouter(client) {
     requireAdmin,
     asyncHandler(async (_req, res) => {
       const today = getTodayIsoDate();
+      const exportedPlayerStats = buildExportedPlayerStatsIndex();
       const [dayView, matches] = await Promise.all([
         getDayView(today),
         getMatchList(),
       ]);
 
-      const recentMatches = matches.slice(0, 5);
-      const publishedMatches = matches.filter(match => match.status === "published");
-      const draftMatches = matches.filter(match => match.status === "draft");
+      const matchView = matches.map(match =>
+        enrichMatchWithExportedPlayerStats(match, exportedPlayerStats)
+      );
+
+      const recentMatches = matchView.slice(0, 5);
+      const publishedMatches = matchView.filter(match => match.status === "published");
+      const draftMatches = matchView.filter(match => match.status === "draft");
 
       res.render("dashboard", {
         pageTitle: "EverGreen Dashboard",
@@ -60,11 +71,11 @@ function createWebRouter(client) {
         dayView,
         recentMatches: recentMatches.map(presentMatchForView),
         stats: {
-          totalMatches: matches.length,
+          totalMatches: matchView.length,
           publishedMatches: publishedMatches.length,
           draftMatches: draftMatches.length,
-          cancelledMatches: matches.filter(match => match.status === "cancelled").length,
-          reviewMatches: matches.filter(match => match.needs_review).length,
+          cancelledMatches: matchView.filter(match => match.status === "cancelled").length,
+          reviewMatches: matchView.filter(match => match.needs_review).length,
         },
       });
     })
@@ -187,11 +198,16 @@ function createWebRouter(client) {
     requireAdmin,
     asyncHandler(async (_req, res) => {
       const matches = await getMatchList();
+      const exportedPlayerStats = buildExportedPlayerStatsIndex();
 
       res.render("matches", {
         pageTitle: "Match Center",
-        matches: matches.map(presentMatchForView),
+        matches: matches
+          .map(match => enrichMatchWithExportedPlayerStats(match, exportedPlayerStats))
+          .map(presentMatchForView),
         rebuilt: _req.query.rebuilt === "1",
+        playersImported: _req.query.playersImported === "1",
+        importedCount: Number(_req.query.importedCount || 0),
         currentSection: "scrim",
       });
     })
@@ -208,6 +224,26 @@ function createWebRouter(client) {
         res.status(404).send("Match non trovato.");
         return;
       }
+
+      if (!(match.players || []).length) {
+        const exportedStats = getExportedMatchPlayerStats(match.slug);
+        const exportedPlayers = flattenExportedPlayersForView(exportedStats);
+
+        if (exportedPlayers.length) {
+          match.players = exportedPlayers;
+          match.player_stats_source = "export_file";
+          match.player_stats_export_count = exportedPlayers.length;
+        }
+      }
+
+      if ((match.players || []).length && !match.player_stats_source) {
+        match.player_stats_source = "database";
+      }
+
+      const exportBackedPlayerCount =
+        Number(match.player_stats_export_count || 0) ||
+        Number((match.players || []).length || 0);
+      match.player_stats_total_count = exportBackedPlayerCount;
 
       const playersByMap = new Map();
       for (const player of match.players || []) {
@@ -230,10 +266,22 @@ function createWebRouter(client) {
         reanalyzed: req.query.reanalyzed === "1",
         extractedPlayers: req.query.extractedPlayers === "1",
         linkedPlayers: req.query.linkedPlayers === "1",
+        importedPlayers: req.query.importedPlayers === "1",
         autoLinked: Number(req.query.autoLinked || 0),
         saved: req.query.saved === "1",
         currentSection: "scrim",
       });
+    })
+  );
+
+  router.post(
+    "/matches/import-player-stats",
+    requireAdmin,
+    asyncHandler(async (_req, res) => {
+      const result = await importPlayerStatsFromExportFile();
+      res.redirect(
+        `/matches?playersImported=1&importedCount=${encodeURIComponent(result.updated)}`
+      );
     })
   );
 
@@ -254,6 +302,22 @@ function createWebRouter(client) {
       });
 
       res.redirect("/matches?rebuilt=1");
+    })
+  );
+
+  router.post(
+    "/matches/:slug/import-player-stats",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const match = await getMatchDetailBySlug(req.params.slug);
+
+      if (!match) {
+        res.status(404).send("Match non trovato.");
+        return;
+      }
+
+      await importPlayerStatsFromExportFile({ slug: match.slug, limit: 1 });
+      res.redirect(`/matches/${match.slug}?importedPlayers=1`);
     })
   );
 
@@ -488,6 +552,27 @@ function presentMatchForView(match) {
     ...match,
     matchDateLabel: formatMatchDateLabel(match?.match_date),
     ...getMatchStatusMeta(match?.status),
+  };
+}
+
+function enrichMatchWithExportedPlayerStats(match, exportedPlayerStats) {
+  const dbPlayerCount = Array.isArray(match?.players) ? match.players.length : 0;
+  const exported = exportedPlayerStats?.get(match?.slug) || null;
+
+  if (!dbPlayerCount && exported?.count) {
+    return {
+      ...match,
+      player_stats_source: "export_file",
+      player_stats_export_count: exported.count,
+      player_stats_total_count: exported.count,
+    };
+  }
+
+  return {
+    ...match,
+    player_stats_source: dbPlayerCount ? "database" : "",
+    player_stats_export_count: exported?.count || 0,
+    player_stats_total_count: dbPlayerCount || exported?.count || 0,
   };
 }
 

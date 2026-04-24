@@ -12,6 +12,9 @@ const OUTPUT_PATH =
 
 const limitArg = process.argv.find(arg => arg.startsWith("--limit="));
 const slugArg = process.argv.find(arg => arg.startsWith("--slug="));
+const resumeArg = process.argv.includes("--resume");
+const retryEmptyArg = process.argv.includes("--retry-empty");
+const retryIncompleteArg = process.argv.includes("--retry-incomplete");
 const limit = limitArg ? Math.max(1, Number(limitArg.split("=")[1] || 0)) : 0;
 const targetSlug = slugArg ? String(slugArg.split("=")[1] || "").trim() : "";
 
@@ -137,6 +140,40 @@ function buildTextReport(match) {
   return lines.join("\n").trim();
 }
 
+function getExistingOutput() {
+  if (!fs.existsSync(OUTPUT_PATH)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(OUTPUT_PATH, "utf8"));
+  } catch (error) {
+    console.warn(`⚠️ Output esistente ignorato (${OUTPUT_PATH}): ${error.message}`);
+    return null;
+  }
+}
+
+function writeOutput(results, orderedSlugs = []) {
+  const sortedResults =
+    orderedSlugs.length > 0
+      ? [...results].sort((left, right) => {
+          const leftIndex = orderedSlugs.indexOf(left.slug);
+          const rightIndex = orderedSlugs.indexOf(right.slug);
+          return leftIndex - rightIndex;
+        })
+      : results;
+
+  const output = {
+    generatedAt: new Date().toISOString(),
+    sourceFile: INPUT_PATH,
+    totalMatches: sortedResults.length,
+    matches: sortedResults,
+  };
+
+  fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
+  fs.writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2), "utf8");
+}
+
 async function processEntry(entry, index, total) {
   console.log(`ℹ️ Estrazione player bulk [${index + 1}/${total}]: ${entry.slug}`);
 
@@ -178,6 +215,9 @@ async function processEntry(entry, index, total) {
 async function main() {
   const payload = getInputPayload();
   let matches = Array.isArray(payload.matches) ? payload.matches : [];
+  const existingOutput = resumeArg ? getExistingOutput() : null;
+  const existingMatches = Array.isArray(existingOutput?.matches) ? existingOutput.matches : [];
+  const existingBySlug = new Map(existingMatches.map(match => [match.slug, match]));
 
   if (targetSlug) {
     matches = matches.filter(match => match.slug === targetSlug);
@@ -187,21 +227,48 @@ async function main() {
     matches = matches.slice(0, limit);
   }
 
+  const orderedSlugs = matches.map(match => match.slug);
+
   const results = [];
-  for (let index = 0; index < matches.length; index += 1) {
-    const result = await processEntry(matches[index], index, matches.length);
-    results.push(result);
+  const pendingMatches = [];
+
+  for (const match of matches) {
+    const existing = existingBySlug.get(match.slug);
+    const shouldRetryExisting = retryEmptyArg && Number(existing?.extractedPlayers || 0) <= 0;
+    const expectedPlayers = (Array.isArray(match.screenshots) ? match.screenshots.length : 0) * 10;
+    const shouldRetryIncomplete =
+      retryIncompleteArg &&
+      expectedPlayers > 0 &&
+      Number(existing?.extractedPlayers || 0) > 0 &&
+      Number(existing?.extractedPlayers || 0) < expectedPlayers;
+
+    if (existing && !shouldRetryExisting && !shouldRetryIncomplete) {
+      results.push(existing);
+      continue;
+    }
+    pendingMatches.push(match);
   }
 
-  const output = {
-    generatedAt: new Date().toISOString(),
-    sourceFile: INPUT_PATH,
-    totalMatches: results.length,
-    matches: results,
-  };
+  if (resumeArg) {
+    console.log(`ℹ️ Ripresa attiva: ${results.length} match già presenti, ${pendingMatches.length} da elaborare`);
+  }
 
-  fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
-  fs.writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2), "utf8");
+  if (retryEmptyArg) {
+    console.log(`ℹ️ Retry match vuoti attivo: ${pendingMatches.length} match selezionati per nuova estrazione`);
+  }
+
+  if (retryIncompleteArg) {
+    console.log(`ℹ️ Retry match incompleti attivo: ${pendingMatches.length} match selezionati per nuova estrazione`);
+  }
+
+  for (let index = 0; index < pendingMatches.length; index += 1) {
+    const result = await processEntry(pendingMatches[index], index, pendingMatches.length);
+    results.push(result);
+    writeOutput(results, orderedSlugs);
+    console.log(`✅ Salvataggio progressivo completato: ${result.slug} (${result.extractedPlayers || 0} player)`);
+  }
+
+  writeOutput(results, orderedSlugs);
 
   console.log(`✅ Export player stats creato: ${OUTPUT_PATH}`);
   console.log(`ℹ️ Match processati: ${results.length}`);
