@@ -21,6 +21,8 @@ const {
   getMatchList,
   getMatchDetailBySlug,
   reanalyzeStoredMatchImages,
+  extractPlayersFromStoredMatch,
+  saveMatchPlayerAssignments,
   setMatchStatusValue,
   removeAllMatches,
 } = require("../matches/matchService");
@@ -200,6 +202,7 @@ function createWebRouter(client) {
     requireAdmin,
     asyncHandler(async (req, res) => {
       const match = await getMatchDetailBySlug(req.params.slug);
+      const roster = await getTrackedRoster();
 
       if (!match) {
         res.status(404).send("Match non trovato.");
@@ -217,7 +220,17 @@ function createWebRouter(client) {
         pageTitle: `${match.team1} vs ${match.team2}`,
         match: presentMatchForView(match),
         playersByMap,
+        roster: roster
+          .map(member => ({
+            id: member.id,
+            label: member.label || member.ingame_name || member.nickname || member.display_name,
+            discordLabel: member.discordLabel || member.nickname || member.display_name || "",
+          }))
+          .sort((a, b) => String(a.label).localeCompare(String(b.label), "it")),
         reanalyzed: req.query.reanalyzed === "1",
+        extractedPlayers: req.query.extractedPlayers === "1",
+        linkedPlayers: req.query.linkedPlayers === "1",
+        autoLinked: Number(req.query.autoLinked || 0),
         saved: req.query.saved === "1",
         currentSection: "scrim",
       });
@@ -245,6 +258,22 @@ function createWebRouter(client) {
   );
 
   router.post(
+    "/matches/:slug/extract-players",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const match = await getMatchDetailBySlug(req.params.slug);
+
+      if (!match) {
+        res.status(404).send("Match non trovato.");
+        return;
+      }
+
+      await extractPlayersFromStoredMatch(match.id);
+      res.redirect(`/matches/${match.slug}?extractedPlayers=1`);
+    })
+  );
+
+  router.post(
     "/matches/:slug/reanalyze",
     requireAdmin,
     asyncHandler(async (req, res) => {
@@ -257,6 +286,29 @@ function createWebRouter(client) {
 
       await reanalyzeStoredMatchImages(match.id);
       res.redirect(`/matches/${match.slug}?reanalyzed=1`);
+    })
+  );
+
+  router.post(
+    "/matches/:slug/players/link",
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const match = await getMatchDetailBySlug(req.params.slug);
+      if (!match) {
+        res.status(404).send("Match non trovato.");
+        return;
+      }
+
+      const roster = await getTrackedRoster();
+      const result = await saveMatchPlayerAssignments(
+        match.id,
+        req.body.links || {},
+        roster
+      );
+
+      res.redirect(
+        `/matches/${match.slug}?linkedPlayers=1&autoLinked=${encodeURIComponent(result.autoLinked)}`
+      );
     })
   );
 

@@ -15,7 +15,11 @@
         <div>
             <h1><%= match.team1 %> vs <%= match.team2 %></h1>
             <p>
-                <% if (reanalyzed) { %>
+                <% if (extractedPlayers) { %>
+                    Player estratti dagli screenshot. Ora puoi collegarli al roster e il sistema ricorderà i nomi ripetuti.
+                <% } else if (linkedPlayers) { %>
+                    Collegamenti roster salvati correttamente. Alias automatici applicati: <%= autoLinked || 0 %>.
+                <% } else if (reanalyzed) { %>
                     Immagini del match rianalizzate correttamente con il parser attuale.
                 <% } else if (saved) { %>
                     Stato match aggiornato correttamente dal pannello.
@@ -33,6 +37,9 @@
             </div>
         </div>
         <div class="hub-actions">
+            <form method="post" action="/matches/<%= match.slug %>/extract-players" style="display:inline;">
+                <button class="hub-button secondary" type="submit">Estrai player da screenshot</button>
+            </form>
             <form method="post" action="/matches/<%= match.slug %>/reanalyze" style="display:inline;">
                 <button class="hub-button secondary" type="submit">Rianalizza immagini</button>
             </form>
@@ -124,16 +131,18 @@
         <div class="hub-table-head">
             <div>
                 <h2>Player estratti</h2>
-                <p>Se l'OCR della parte 2 trova i giocatori, li trovi qui organizzati per mappa.</p>
+                <p>Qui puoi collegare ogni nome estratto a un player del roster. Gli alias salvati verranno riusati automaticamente sui nomi che si ripetono.</p>
             </div>
         </div>
+        <form method="post" action="/matches/<%= match.slug %>/players/link">
         <div class="hub-table-wrap">
             <table class="hub-table" style="min-width: 960px;">
                 <thead>
                     <tr>
                         <th>Mappa</th>
                         <th>Team</th>
-                        <th>Player</th>
+                        <th>Nome Estratto</th>
+                        <th>Roster</th>
                         <th>K / D / A</th>
                         <th>Punti</th>
                         <th>Tempo</th>
@@ -151,7 +160,22 @@
                         <tr>
                             <td>Mappa <%= player.order_index || "-" %></td>
                             <td><%= player.team_name || "-" %></td>
-                            <td><%= player.player_name || "-" %></td>
+                            <td>
+                                <div><%= player.player_name || "-" %></div>
+                                <% if (player.resolved_player_name) { %>
+                                    <div class="hub-member-sub">Risolto: <%= player.resolved_player_name %></div>
+                                <% } %>
+                            </td>
+                            <td>
+                                <select class="hub-input" name="links[<%= player.id %>]">
+                                    <option value="">Non collegato</option>
+                                    <% for (const member of roster || []) { %>
+                                        <option value="<%= member.id %>" <%= String(player.member_id || "") === String(member.id) ? "selected" : "" %>>
+                                            <%= member.label %><% if (member.discordLabel && member.discordLabel !== member.label) { %> | <%= member.discordLabel %><% } %>
+                                        </option>
+                                    <% } %>
+                                </select>
+                            </td>
                             <td><%= player.kills ?? "-" %> / <%= player.deaths ?? "-" %> / <%= player.assists ?? "-" %></td>
                             <td><%= player.points ?? "-" %></td>
                             <td><%= player.time_played || "-" %></td>
@@ -162,6 +186,12 @@
                 </tbody>
             </table>
         </div>
+        <% if ((match.players || []).length) { %>
+            <div class="hub-actions" style="margin-top:16px;">
+                <button class="hub-button" type="submit">Salva collegamenti roster</button>
+            </div>
+        <% } %>
+        </form>
     </section>
 
     <section class="hub-card" style="margin-bottom:18px;">

@@ -1,6 +1,18 @@
-const { pool } = require("../attendance/db");
+const { pool, ensureDbReady } = require("../attendance/db");
+
+function buildNormalizedPlayerName(name) {
+  const base = String(name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+  return base || String(name || "").trim().toLowerCase();
+}
 
 async function createMatchTables() {
+  await ensureDbReady();
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS matches (
       id SERIAL PRIMARY KEY,
@@ -81,6 +93,27 @@ async function createMatchTables() {
   `);
 
   await pool.query(`
+    ALTER TABLE match_players
+    ADD COLUMN IF NOT EXISTS member_id INTEGER NULL REFERENCES members(id) ON DELETE SET NULL
+  `);
+
+  await pool.query(`
+    ALTER TABLE match_players
+    ADD COLUMN IF NOT EXISTS resolved_player_name TEXT NOT NULL DEFAULT ''
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS match_player_aliases (
+      raw_name TEXT PRIMARY KEY,
+      normalized_name TEXT NOT NULL DEFAULT '',
+      member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+      resolved_player_name TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS match_assets (
       id SERIAL PRIMARY KEY,
       match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
@@ -115,6 +148,16 @@ async function createMatchTables() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_match_players_match_id
     ON match_players (match_id)
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_match_players_member_id
+    ON match_players (member_id)
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_match_player_aliases_normalized_name
+    ON match_player_aliases (normalized_name)
   `);
 
   await pool.query(`
@@ -407,7 +450,9 @@ async function replaceMatchPlayers(matchId, players) {
         points,
         time_played,
         impact,
-        is_mvp
+        is_mvp,
+        member_id,
+        resolved_player_name
       )
       VALUES (
         $1,
@@ -418,7 +463,7 @@ async function replaceMatchPlayers(matchId, players) {
             AND order_index = $2
           LIMIT 1
         ),
-        $3,$4,$5,$6,$7,$8,$9,$10,$11
+        $3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
       )
       `,
       [
@@ -433,6 +478,8 @@ async function replaceMatchPlayers(matchId, players) {
         player.timePlayed || "",
         player.impact ?? null,
         Boolean(player.isMvp),
+        player.memberId ?? null,
+        player.resolvedPlayerName || "",
       ]
     );
   }
@@ -698,6 +745,92 @@ async function updateMatchAnalysisDebug(matchId, debugJson) {
   );
 }
 
+async function findPlayerAliasByRawName(rawName) {
+  const raw = String(rawName || "").trim();
+  const normalized = buildNormalizedPlayerName(raw);
+
+  if (!raw && !normalized) return null;
+
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM match_player_aliases
+    WHERE raw_name = $1
+       OR (normalized_name <> '' AND normalized_name = $2)
+    ORDER BY CASE WHEN raw_name = $1 THEN 0 ELSE 1 END
+    LIMIT 1
+    `,
+    [raw, normalized]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function upsertPlayerAlias(rawName, memberId, resolvedPlayerName) {
+  const raw = String(rawName || "").trim();
+  const normalized = buildNormalizedPlayerName(raw);
+
+  if (!raw || !memberId) return;
+
+  await pool.query(
+    `
+    INSERT INTO match_player_aliases (
+      raw_name,
+      normalized_name,
+      member_id,
+      resolved_player_name
+    )
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (raw_name) DO UPDATE SET
+      normalized_name = EXCLUDED.normalized_name,
+      member_id = EXCLUDED.member_id,
+      resolved_player_name = EXCLUDED.resolved_player_name,
+      updated_at = NOW()
+    `,
+    [raw, normalized, memberId, String(resolvedPlayerName || "")]
+  );
+}
+
+async function updateMatchPlayerLink(playerId, memberId, resolvedPlayerName) {
+  await pool.query(
+    `
+    UPDATE match_players
+    SET
+      member_id = $2,
+      resolved_player_name = $3
+    WHERE id = $1
+    `,
+    [playerId, memberId ?? null, String(resolvedPlayerName || "")]
+  );
+}
+
+async function applyAliasToMatchingPlayers(rawName, memberId, resolvedPlayerName) {
+  const raw = String(rawName || "").trim();
+  const normalized = buildNormalizedPlayerName(raw);
+
+  if (!raw || !memberId) return 0;
+
+  const result = await pool.query(
+    `
+    UPDATE match_players
+    SET
+      member_id = $2,
+      resolved_player_name = $3
+    WHERE member_id IS NULL
+      AND (
+        player_name = $1
+        OR (
+          $4 <> ''
+          AND regexp_replace(lower(player_name), '[^a-z0-9]+', '', 'g') = $4
+        )
+      )
+    `,
+    [raw, memberId, String(resolvedPlayerName || ""), normalized]
+  );
+
+  return Number(result.rowCount || 0);
+}
+
 async function deleteMatchById(matchId) {
   await pool.query(`DELETE FROM matches WHERE id = $1`, [matchId]);
 }
@@ -725,6 +858,10 @@ module.exports = {
   setMatchStatus,
   updateMatchAnalysisDebug,
   setMatchAnalysisVersion,
+  findPlayerAliasByRawName,
+  upsertPlayerAlias,
+  updateMatchPlayerLink,
+  applyAliasToMatchingPlayers,
   deleteMatchById,
   deleteAllMatches,
 };

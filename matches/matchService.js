@@ -15,6 +15,10 @@ const {
   setMatchStatus,
   updateMatchAnalysisDebug,
   setMatchAnalysisVersion,
+  findPlayerAliasByRawName,
+  upsertPlayerAlias,
+  updateMatchPlayerLink,
+  applyAliasToMatchingPlayers,
   deleteMatchById,
   deleteAllMatches,
 } = require("./matchRepository");
@@ -27,6 +31,11 @@ const { isImageAttachment } = require("./matchMessageParser");
 const MATCH_IMAGE_ANALYSIS_VERSION = 6;
 const MATCH_IMAGE_ANALYSIS_ENABLED =
   String(process.env.MATCH_IMAGE_ANALYSIS_ENABLED || "false").toLowerCase() === "true";
+
+function normalizeRosterLabel(member) {
+  if (!member) return "";
+  return String(member.ingame_name || member.nickname || member.display_name || "").trim();
+}
 
 function buildMatchWebUrl(baseUrl, slug) {
   if (!baseUrl) return `/matches/${slug}`;
@@ -402,6 +411,130 @@ async function getMatchesNeedingImageReanalysis(limit = 1) {
   return listMatchesNeedingImageReanalysis(MATCH_IMAGE_ANALYSIS_VERSION, limit);
 }
 
+async function extractPlayersFromStoredMatch(matchId) {
+  const match = await getMatchById(matchId);
+
+  if (!match) {
+    throw new Error("Match non trovato.");
+  }
+
+  const screenshots = (match.assets || [])
+    .filter(asset => asset.asset_type === "screenshot")
+    .map(asset => ({
+      url: asset.asset_url,
+      sortOrder: asset.sort_order || 0,
+      sourceMessageId: asset.source_message_id || "",
+    }));
+
+  if (!screenshots.length) {
+    throw new Error("Nessuno screenshot disponibile per questo match.");
+  }
+
+  const { extractPlayersFromStoredMatchData } = require("./manualPlayerExtraction");
+  const extractedPlayers = await extractPlayersFromStoredMatchData({
+    screenshots,
+    maps: match.maps || [],
+    team1: match.team1,
+    team2: match.team2,
+  });
+
+  const resolvedPlayers = [];
+  for (const player of extractedPlayers) {
+    const alias = await findPlayerAliasByRawName(player.playerName);
+    resolvedPlayers.push({
+      ...player,
+      memberId: alias?.member_id ?? null,
+      resolvedPlayerName: alias?.resolved_player_name || "",
+    });
+  }
+
+  await replaceMatchPlayers(match.id, resolvedPlayers);
+
+  const linkedPlayers = resolvedPlayers.filter(player => player.memberId).length;
+  await updateMatchSummary(match.id, {
+    resultLabel: match.result_label || "",
+    winnerTeam: match.winner_team || "",
+    team1SeriesScore: match.team1_series_score,
+    team2SeriesScore: match.team2_series_score,
+    needsReview: resolvedPlayers.length > 0 && linkedPlayers !== resolvedPlayers.length,
+  });
+
+  await updateMatchAnalysisDebug(
+    match.id,
+    buildAnalysisDebugJson({
+      phase: "manual_player_extraction",
+      slug: match.slug,
+      screenshots,
+      extractedPlayers: resolvedPlayers,
+      extractionSummary: `Player estratti: ${resolvedPlayers.length}. Collegati automaticamente via alias: ${linkedPlayers}.`,
+    })
+  );
+
+  return {
+    matchId: match.id,
+    slug: match.slug,
+    extractedPlayers: resolvedPlayers.length,
+    autoLinkedPlayers: linkedPlayers,
+  };
+}
+
+async function saveMatchPlayerAssignments(matchId, assignments, roster) {
+  const match = await getMatchById(matchId);
+  if (!match) {
+    throw new Error("Match non trovato.");
+  }
+
+  const rosterById = new Map((roster || []).map(member => [String(member.id), member]));
+  const playersById = new Map((match.players || []).map(player => [String(player.id), player]));
+
+  let linked = 0;
+  let autoLinked = 0;
+
+  for (const [playerId, memberIdRaw] of Object.entries(assignments || {})) {
+    const player = playersById.get(String(playerId));
+    if (!player) continue;
+
+    const memberId = String(memberIdRaw || "").trim();
+    if (!memberId) {
+      await updateMatchPlayerLink(player.id, null, "");
+      continue;
+    }
+
+    const member = rosterById.get(memberId);
+    if (!member) continue;
+
+    const resolvedPlayerName = normalizeRosterLabel(member);
+
+    await updateMatchPlayerLink(player.id, member.id, resolvedPlayerName);
+    await upsertPlayerAlias(player.player_name || player.playerName || "", member.id, resolvedPlayerName);
+    autoLinked += await applyAliasToMatchingPlayers(
+      player.player_name || player.playerName || "",
+      member.id,
+      resolvedPlayerName
+    );
+    linked += 1;
+  }
+
+  const refreshedMatch = await getMatchById(matchId);
+  const unresolved = (refreshedMatch.players || []).filter(player => !player.member_id).length;
+
+  await updateMatchSummary(matchId, {
+    resultLabel: refreshedMatch.result_label || "",
+    winnerTeam: refreshedMatch.winner_team || "",
+    team1SeriesScore: refreshedMatch.team1_series_score,
+    team2SeriesScore: refreshedMatch.team2_series_score,
+    needsReview: unresolved > 0,
+  });
+
+  return {
+    matchId,
+    slug: refreshedMatch.slug,
+    linked,
+    autoLinked,
+    unresolved,
+  };
+}
+
 async function updateMatchManualData(matchId, payload) {
   await updateMatchSummary(matchId, {
     resultLabel: payload.resultLabel,
@@ -441,6 +574,8 @@ module.exports = {
   getMatchList,
   reanalyzeStoredMatchImages,
   getMatchesNeedingImageReanalysis,
+  extractPlayersFromStoredMatch,
+  saveMatchPlayerAssignments,
   updateMatchManualData,
   setMatchStatusValue,
   removeMatchById,
