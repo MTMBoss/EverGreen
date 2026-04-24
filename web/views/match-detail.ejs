@@ -55,7 +55,7 @@
                 <% if (importedPlayers) { %>
                     Player del match importati nel DB dal file estratto. Ora puoi anche collegarli al roster dal pannello.
                 <% } else if (match.player_stats_source === "export_file") { %>
-                    Player mostrati dal file estratto offline. Se vuoi collegarli al roster, importali prima nel DB con il pulsante dedicato.
+                    Player e punteggi letti automaticamente dalle immagini. Considerali dati provvisori finché non li confermi.
                 <% } else if (extractedPlayers) { %>
                     Player estratti dagli screenshot. Ora puoi collegarli al roster e il sistema ricorderà i nomi ripetuti.
                 <% } else if (linkedPlayers) { %>
@@ -134,7 +134,10 @@
         <div class="hub-result-hero-bottom">
             <div class="hub-mini-pill active">Vincitore: <%= match.winner_team || "In attesa" %></div>
             <div class="hub-mini-pill">Review: <%= match.needs_review ? "manuale consigliata" : "allineata" %></div>
-            <div class="hub-mini-pill">Sorgente player: <%= match.player_stats_source === "database" ? "DB" : match.player_stats_source === "export_file" ? "File estratto" : "nessuna" %></div>
+            <div class="hub-mini-pill">Sorgente player: <%= match.player_stats_source === "database" ? "DB" : match.player_stats_source === "export_file" ? "Provvisori da immagini" : "nessuna" %></div>
+            <% if (match.player_stats_provisional || match.map_scores_provisional) { %>
+                <div class="hub-mini-pill">Dati provvisori da immagini</div>
+            <% } %>
         </div>
     </section>
 
@@ -166,7 +169,7 @@
                 <% if (match.player_stats_source === "database") { %>
                     Caricati dal DB
                 <% } else if (match.player_stats_source === "export_file") { %>
-                    Dal file estratto offline
+                    Provvisori da immagini
                 <% } else { %>
                     Non ancora disponibili
                 <% } %>
@@ -178,7 +181,7 @@
         <div class="hub-table-head" style="padding:0 0 14px; border-bottom:none;">
             <div>
                 <h2>Mappe</h2>
-                <p>La parte 1 prepara la struttura delle mappe, la parte 2 aggiorna punteggi e dettagli OCR.</p>
+                <p>La parte 1 prepara la struttura delle mappe. Quando lo score arriva dalle immagini viene mostrato come provvisorio.</p>
             </div>
         </div>
         <div class="hub-match-map-grid">
@@ -189,7 +192,12 @@
                             <div class="hub-summary-label">Mappa <%= map.order_index %></div>
                             <div class="hub-match-map-name"><%= map.map_name || "Mappa da definire" %></div>
                         </div>
-                        <div class="hub-map-pill"><%= map.mode || "?" %></div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                            <div class="hub-map-pill"><%= map.mode || "?" %></div>
+                            <% if (map.score_source === "export_file") { %>
+                                <div class="hub-badge warn">Provvisorio</div>
+                            <% } %>
+                        </div>
                     </div>
                     <div class="hub-match-map-side"><%= map.side_name || "Side non definito" %></div>
                     <div class="hub-match-map-score">
@@ -238,7 +246,7 @@
         <% const playersImportedInDb = (match.players || []).some(player => player.id); %>
         <% if (match.player_stats_source === "export_file") { %>
             <div class="hub-notice" style="margin-bottom:16px;">
-                Questi player arrivano dal file <code>exports/match-player-stats.json</code> e sono mostrati in sola lettura. Usa <strong>Importa player nel DB</strong> per poterli collegare al roster.
+                Questi player arrivano dal file <code>exports/match-player-stats.json</code> e sono mostrati in sola lettura come dati <strong>provvisori</strong>. Usa <strong>Importa player nel DB</strong> per poterli collegare al roster dopo la verifica.
             </div>
         <% } %>
         <form method="post" action="/matches/<%= match.slug %>/players/link">

@@ -6,6 +6,7 @@ const {
   createMatchTables,
   getMatchBySlug,
   replaceMatchPlayers,
+  updateMatchMaps,
   updateMatchSummary,
   updateMatchAnalysisDebug,
   findPlayerAliasByRawName,
@@ -41,6 +42,13 @@ function countExportedPlayers(entry) {
   return flattenExportedPlayersForView(entry).length;
 }
 
+function countExportedScoredMaps(entry) {
+  return (entry?.maps || []).filter(mapBlock => {
+    const map = mapBlock?.map || {};
+    return map.team1Score !== null || map.team2Score !== null;
+  }).length;
+}
+
 function buildExportedPlayerStatsIndex(inputPath = DEFAULT_PLAYER_STATS_EXPORT_PATH) {
   const payload = readPlayerStatsExport(inputPath);
   const matches = Array.isArray(payload?.matches) ? payload.matches : [];
@@ -51,10 +59,74 @@ function buildExportedPlayerStatsIndex(inputPath = DEFAULT_PLAYER_STATS_EXPORT_P
       entry,
       count: countExportedPlayers(entry),
       extractedPlayers: normalizeInteger(entry.extractedPlayers) || 0,
+      scoredMaps: countExportedScoredMaps(entry),
     });
   }
 
   return index;
+}
+
+function normalizeMapForView(map) {
+  return {
+    order_index: normalizeInteger(map?.order_index ?? map?.orderIndex),
+    mode: String(map?.mode || map?.mode_name || ""),
+    map_name: String(map?.map_name || map?.mapName || map?.map || ""),
+    side_name: String(map?.side_name || map?.sideName || map?.side || ""),
+    team1_score: normalizeInteger(map?.team1_score ?? map?.team1Score),
+    team2_score: normalizeInteger(map?.team2_score ?? map?.team2Score),
+  };
+}
+
+function mergeExportedMapsForView(entry, existingMaps = []) {
+  const existingByOrder = new Map(
+    (existingMaps || []).map(map => {
+      const normalized = normalizeMapForView(map);
+      return [normalized.order_index || 0, normalized];
+    })
+  );
+
+  const exportedByOrder = new Map(
+    (entry?.maps || []).map(mapBlock => {
+      const normalized = normalizeMapForView(mapBlock?.map || {});
+      return [normalized.order_index || 0, normalized];
+    })
+  );
+
+  const allOrders = [...new Set([
+    ...existingByOrder.keys(),
+    ...exportedByOrder.keys(),
+  ])].sort((a, b) => a - b);
+
+  let provisionalScoreCount = 0;
+
+  const maps = allOrders.map(orderIndex => {
+    const existing = existingByOrder.get(orderIndex) || {};
+    const exported = exportedByOrder.get(orderIndex) || {};
+    const hasExistingScores =
+      existing.team1_score !== null || existing.team2_score !== null;
+    const hasExportedScores =
+      exported.team1_score !== null || exported.team2_score !== null;
+    const useExportedScores = !hasExistingScores && hasExportedScores;
+
+    if (useExportedScores) {
+      provisionalScoreCount += 1;
+    }
+
+    return {
+      order_index: orderIndex,
+      mode: existing.mode || exported.mode || "",
+      map_name: existing.map_name || exported.map_name || "",
+      side_name: existing.side_name || exported.side_name || "",
+      team1_score: useExportedScores ? exported.team1_score : existing.team1_score,
+      team2_score: useExportedScores ? exported.team2_score : existing.team2_score,
+      score_source: useExportedScores ? "export_file" : hasExistingScores ? "database" : "",
+    };
+  });
+
+  return {
+    maps,
+    provisionalScoreCount,
+  };
 }
 
 function flattenExportedPlayersForView(entry) {
@@ -117,6 +189,19 @@ async function flattenExportedPlayersForImport(entry) {
   return players.filter(player => player.teamName && player.playerName);
 }
 
+function flattenExportedMapsForImport(entry) {
+  return (entry?.maps || [])
+    .map(mapBlock => ({
+      orderIndex: normalizeInteger(mapBlock?.map?.orderIndex),
+      mode: String(mapBlock?.map?.mode || ""),
+      mapName: String(mapBlock?.map?.mapName || ""),
+      sideName: String(mapBlock?.map?.sideName || ""),
+      team1Score: normalizeInteger(mapBlock?.map?.team1Score),
+      team2Score: normalizeInteger(mapBlock?.map?.team2Score),
+    }))
+    .filter(map => map.orderIndex);
+}
+
 function buildImportDebug(entry, importedPlayers, inputPath) {
   return JSON.stringify(
     {
@@ -125,6 +210,9 @@ function buildImportDebug(entry, importedPlayers, inputPath) {
       title: entry.title || "",
       sourceFile: inputPath,
       importedPlayers,
+      importedMapsWithScore: flattenExportedMapsForImport(entry).filter(
+        map => map.team1Score !== null || map.team2Score !== null
+      ).length,
       extractedPlayers: Number(entry.extractedPlayers || 0),
       importedAt: new Date().toISOString(),
     },
@@ -172,6 +260,9 @@ async function importPlayerStatsFromExportFile({
       continue;
     }
 
+    const maps = flattenExportedMapsForImport(entry);
+    await updateMatchMaps(match.id, maps);
+
     const players = await flattenExportedPlayersForImport(entry);
     await replaceMatchPlayers(match.id, players);
 
@@ -200,7 +291,9 @@ module.exports = {
   readPlayerStatsExport,
   getExportedMatchPlayerStats,
   countExportedPlayers,
+  countExportedScoredMaps,
   buildExportedPlayerStatsIndex,
   flattenExportedPlayersForView,
+  mergeExportedMapsForView,
   importPlayerStatsFromExportFile,
 };

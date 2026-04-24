@@ -30,6 +30,7 @@ const {
   buildExportedPlayerStatsIndex,
   getExportedMatchPlayerStats,
   flattenExportedPlayersForView,
+  mergeExportedMapsForView,
   importPlayerStatsFromExportFile,
 } = require("../matches/playerStatsImport");
 const {
@@ -236,6 +237,18 @@ function createWebRouter(client) {
         }
       }
 
+      const exportedStats = getExportedMatchPlayerStats(match.slug);
+      if (exportedStats) {
+        const mergedMaps = mergeExportedMapsForView(exportedStats, match.maps || []);
+        if (mergedMaps.maps.length) {
+          match.maps = mergedMaps.maps;
+          if (mergedMaps.provisionalScoreCount > 0) {
+            match.map_scores_source = "export_file";
+            match.map_scores_provisional_count = mergedMaps.provisionalScoreCount;
+          }
+        }
+      }
+
       if ((match.players || []).length && !match.player_stats_source) {
         match.player_stats_source = "database";
       }
@@ -244,6 +257,8 @@ function createWebRouter(client) {
         Number(match.player_stats_export_count || 0) ||
         Number((match.players || []).length || 0);
       match.player_stats_total_count = exportBackedPlayerCount;
+      match.player_stats_provisional = match.player_stats_source === "export_file";
+      match.map_scores_provisional = match.map_scores_source === "export_file";
 
       const playersByMap = new Map();
       for (const player of match.players || []) {
@@ -565,6 +580,10 @@ function enrichMatchWithExportedPlayerStats(match, exportedPlayerStats) {
       player_stats_source: "export_file",
       player_stats_export_count: exported.count,
       player_stats_total_count: exported.count,
+      player_stats_provisional: true,
+      map_scores_source: exported.scoredMaps > 0 ? "export_file" : "",
+      map_scores_provisional_count: exported.scoredMaps || 0,
+      map_scores_provisional: exported.scoredMaps > 0,
     };
   }
 
@@ -573,6 +592,10 @@ function enrichMatchWithExportedPlayerStats(match, exportedPlayerStats) {
     player_stats_source: dbPlayerCount ? "database" : "",
     player_stats_export_count: exported?.count || 0,
     player_stats_total_count: dbPlayerCount || exported?.count || 0,
+    player_stats_provisional: !dbPlayerCount && (exported?.count || 0) > 0,
+    map_scores_source: exported?.scoredMaps > 0 ? "export_file" : "",
+    map_scores_provisional_count: exported?.scoredMaps || 0,
+    map_scores_provisional: exported?.scoredMaps > 0,
   };
 }
 

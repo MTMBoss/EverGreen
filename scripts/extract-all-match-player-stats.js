@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { extractPlayersFromStoredMatchData } = require("../matches/manualPlayerExtraction");
+const { extractMatchDataFromImages } = require("../matches/matchImageParser");
 
 const INPUT_PATH =
   process.argv[2] ||
@@ -15,6 +16,7 @@ const slugArg = process.argv.find(arg => arg.startsWith("--slug="));
 const resumeArg = process.argv.includes("--resume");
 const retryEmptyArg = process.argv.includes("--retry-empty");
 const retryIncompleteArg = process.argv.includes("--retry-incomplete");
+const retryMissingMapScoresArg = process.argv.includes("--retry-missing-map-scores");
 const limit = limitArg ? Math.max(1, Number(limitArg.split("=")[1] || 0)) : 0;
 const targetSlug = slugArg ? String(slugArg.split("=")[1] || "").trim() : "";
 
@@ -25,20 +27,47 @@ function getInputPayload() {
   return JSON.parse(fs.readFileSync(INPUT_PATH, "utf8"));
 }
 
-function buildMapInfoByOrder(entry) {
-  return new Map(
-    (entry.maps || []).map(map => [
-      Number(map.orderIndex || 0),
-      {
-        orderIndex: Number(map.orderIndex || 0),
-        mode: String(map.mode || map.modeName || ""),
-        mapName: String(map.mapName || map.map || ""),
-        sideName: String(map.sideName || map.side || ""),
-        team1Score: map.team1Score ?? null,
-        team2Score: map.team2Score ?? null,
-      },
-    ])
+function normalizeMapInfo(map = {}) {
+  return {
+    orderIndex: Number(map.orderIndex || map.order_index || 0),
+    mode: String(map.mode || map.modeName || ""),
+    mapName: String(map.mapName || map.map_name || map.map || ""),
+    sideName: String(map.sideName || map.side_name || map.side || ""),
+    team1Score: map.team1Score ?? map.team1_score ?? null,
+    team2Score: map.team2Score ?? map.team2_score ?? null,
+  };
+}
+
+function buildMapInfoByOrder(entry, extractedMaps = []) {
+  const byOrder = new Map(
+    (entry.maps || []).map(map => {
+      const normalized = normalizeMapInfo(map);
+      return [normalized.orderIndex, normalized];
+    })
   );
+
+  for (const extractedMap of extractedMaps || []) {
+    const normalized = normalizeMapInfo(extractedMap);
+    const existing = byOrder.get(normalized.orderIndex) || {};
+
+    byOrder.set(normalized.orderIndex, {
+      ...existing,
+      orderIndex: normalized.orderIndex || existing.orderIndex || 0,
+      mode: normalized.mode || existing.mode || "",
+      mapName: normalized.mapName || existing.mapName || "",
+      sideName: normalized.sideName || existing.sideName || "",
+      team1Score:
+        normalized.team1Score !== null && normalized.team1Score !== undefined
+          ? normalized.team1Score
+          : existing.team1Score ?? null,
+      team2Score:
+        normalized.team2Score !== null && normalized.team2Score !== undefined
+          ? normalized.team2Score
+          : existing.team2Score ?? null,
+    });
+  }
+
+  return byOrder;
 }
 
 function presentPlayer(player) {
@@ -60,9 +89,46 @@ function presentPlayer(player) {
   };
 }
 
-function groupPlayersByMapAndTeam(entry, players) {
-  const mapsByOrder = buildMapInfoByOrder(entry);
+function inflatePlayersFromExistingMatch(existingMatch) {
+  const players = [];
+
+  for (const mapBlock of existingMatch?.maps || []) {
+    const orderIndex = Number(mapBlock?.map?.orderIndex || 0);
+
+    for (const [teamName, teamPlayers] of Object.entries(mapBlock?.teams || {})) {
+      for (const player of teamPlayers || []) {
+        players.push({
+          orderIndex,
+          teamName: String(teamName || ""),
+          playerName: String(player.playerName || ""),
+          kills: player?.kda?.kills ?? null,
+          deaths: player?.kda?.deaths ?? null,
+          assists: player?.kda?.assists ?? null,
+          points: player?.points ?? null,
+          timePlayed: String(player?.timePlayed || ""),
+          impact: player?.impact ?? null,
+          isMvp: Boolean(player?.isMvp),
+        });
+      }
+    }
+  }
+
+  return players;
+}
+
+function groupPlayersByMapAndTeam(entry, players, extractedMaps = []) {
+  const mapsByOrder = buildMapInfoByOrder(entry, extractedMaps);
   const grouped = new Map();
+
+  for (const [orderIndex, mapInfo] of mapsByOrder.entries()) {
+    grouped.set(orderIndex, {
+      map: mapInfo,
+      teams: {
+        [entry.team1]: [],
+        [entry.team2]: [],
+      },
+    });
+  }
 
   for (const player of players || []) {
     const key = Number(player.orderIndex || 0);
@@ -174,30 +240,49 @@ function writeOutput(results, orderedSlugs = []) {
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2), "utf8");
 }
 
-async function processEntry(entry, index, total) {
+async function processEntry(entry, index, total, existingCurrentMatch = null) {
   console.log(`ℹ️ Estrazione player bulk [${index + 1}/${total}]: ${entry.slug}`);
 
   const screenshots = Array.isArray(entry.screenshots) ? entry.screenshots : [];
   if (!screenshots.length) {
-    return {
+    const match = {
       slug: entry.slug,
       title: `${entry.team1} vs ${entry.team2}`,
       seriesLabel: `${entry.series?.resultLabel || ""} ${entry.series?.team1SeriesScore ?? "-"}-${entry.series?.team2SeriesScore ?? "-"}`.trim(),
       extractedPlayers: 0,
-      maps: [],
-      textReport: "",
+      maps: groupPlayersByMapAndTeam(entry, [], []),
+    };
+
+    return {
+      ...match,
+      textReport: buildTextReport(match),
       skipped: "no_screenshots",
     };
   }
 
-  const players = await extractPlayersFromStoredMatchData({
+  const extractedMatchData = await extractMatchDataFromImages(
     screenshots,
-    maps: entry.maps || [],
-    team1: entry.team1,
-    team2: entry.team2,
-  });
+    entry.maps || [],
+    { team1: entry.team1, team2: entry.team2 }
+  );
 
-  const maps = groupPlayersByMapAndTeam(entry, players);
+  const shouldReuseExistingPlayers =
+    retryMissingMapScoresArg &&
+    !retryEmptyArg &&
+    !retryIncompleteArg &&
+    existingCurrentMatch &&
+    Number(existingCurrentMatch.extractedPlayers || 0) > 0;
+
+  const players = shouldReuseExistingPlayers
+    ? inflatePlayersFromExistingMatch(existingCurrentMatch)
+    : await extractPlayersFromStoredMatchData({
+        screenshots,
+        maps: entry.maps || [],
+        team1: entry.team1,
+        team2: entry.team2,
+      });
+
+  const maps = groupPlayersByMapAndTeam(entry, players, extractedMatchData.maps || []);
   const match = {
     slug: entry.slug,
     title: `${entry.team1} vs ${entry.team2}`,
@@ -214,7 +299,8 @@ async function processEntry(entry, index, total) {
 
 async function main() {
   const payload = getInputPayload();
-  let matches = Array.isArray(payload.matches) ? payload.matches : [];
+  const allMatches = Array.isArray(payload.matches) ? payload.matches : [];
+  let matches = [...allMatches];
   const existingOutput = resumeArg ? getExistingOutput() : null;
   const existingMatches = Array.isArray(existingOutput?.matches) ? existingOutput.matches : [];
   const existingBySlug = new Map(existingMatches.map(match => [match.slug, match]));
@@ -227,22 +313,42 @@ async function main() {
     matches = matches.slice(0, limit);
   }
 
-  const orderedSlugs = matches.map(match => match.slug);
+  const selectedSlugs = new Set(matches.map(match => match.slug));
+  const orderedSlugs = resumeArg
+    ? allMatches.map(match => match.slug)
+    : matches.map(match => match.slug);
 
-  const results = [];
+  const results = resumeArg
+    ? existingMatches.filter(match => !selectedSlugs.has(match.slug))
+    : [];
   const pendingMatches = [];
 
   for (const match of matches) {
     const existing = existingBySlug.get(match.slug);
     const shouldRetryExisting = retryEmptyArg && Number(existing?.extractedPlayers || 0) <= 0;
     const expectedPlayers = (Array.isArray(match.screenshots) ? match.screenshots.length : 0) * 10;
+    const existingScoredMaps = Array.isArray(existing?.maps)
+      ? existing.maps.filter(mapBlock => {
+          const map = mapBlock?.map || {};
+          return map.team1Score !== null || map.team2Score !== null;
+        }).length
+      : 0;
     const shouldRetryIncomplete =
       retryIncompleteArg &&
       expectedPlayers > 0 &&
       Number(existing?.extractedPlayers || 0) > 0 &&
       Number(existing?.extractedPlayers || 0) < expectedPlayers;
+    const shouldRetryMissingMapScores =
+      retryMissingMapScoresArg &&
+      (Array.isArray(match.screenshots) ? match.screenshots.length : 0) > 0 &&
+      existingScoredMaps === 0;
 
-    if (existing && !shouldRetryExisting && !shouldRetryIncomplete) {
+    if (
+      existing &&
+      !shouldRetryExisting &&
+      !shouldRetryIncomplete &&
+      !shouldRetryMissingMapScores
+    ) {
       results.push(existing);
       continue;
     }
@@ -261,8 +367,17 @@ async function main() {
     console.log(`ℹ️ Retry match incompleti attivo: ${pendingMatches.length} match selezionati per nuova estrazione`);
   }
 
+  if (retryMissingMapScoresArg) {
+    console.log(`ℹ️ Retry score mappe mancanti attivo: ${pendingMatches.length} match selezionati per nuova estrazione`);
+  }
+
   for (let index = 0; index < pendingMatches.length; index += 1) {
-    const result = await processEntry(pendingMatches[index], index, pendingMatches.length);
+    const result = await processEntry(
+      pendingMatches[index],
+      index,
+      pendingMatches.length,
+      existingBySlug.get(pendingMatches[index].slug) || null
+    );
     results.push(result);
     writeOutput(results, orderedSlugs);
     console.log(`✅ Salvataggio progressivo completato: ${result.slug} (${result.extractedPlayers || 0} player)`);

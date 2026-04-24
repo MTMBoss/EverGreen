@@ -57,6 +57,7 @@
                         <th>Data</th>
                         <th>Stato</th>
                         <th>Risultato</th>
+                        <th>Mappe</th>
                         <th>Player</th>
                         <th>Review</th>
                         <th>Apri</th>
@@ -86,10 +87,18 @@
                                 <% } %>
                             </td>
                             <td>
+                                <% if (match.map_scores_provisional_count) { %>
+                                    <div><strong><%= match.map_scores_provisional_count %></strong> con score</div>
+                                    <div class="hub-member-sub">Provvisori da immagini</div>
+                                <% } else { %>
+                                    <span class="hub-muted">Senza score</span>
+                                <% } %>
+                            </td>
+                            <td>
                                 <% if (match.player_stats_total_count) { %>
                                     <div><strong><%= match.player_stats_total_count %></strong> righe</div>
                                     <div class="hub-member-sub">
-                                        <%= match.player_stats_source === "database" ? "DB" : "File estratto" %>
+                                        <%= match.player_stats_source === "database" ? "DB" : "Provvisori da immagini" %>
                                     </div>
                                 <% } else { %>
                                     <span class="hub-muted">Nessun player</span>
