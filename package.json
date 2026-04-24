@@ -8,8 +8,11 @@
     "deploy": "node deploy-commands.js",
     "start:bot": "node index.js",
     "matches:export-review": "node scripts/export-match-review.js",
+    "matches:export-site": "node scripts/export-site-matches.js",
+    "matches:site-to-review": "node scripts/build-review-queue-from-site-snapshot.js",
     "matches:autofill-review": "node scripts/autofill-match-review.js",
     "matches:import-review": "node scripts/import-match-review.js",
+    "matches:stats": "node scripts/build-match-statistics.js",
     "push": "git add . && git commit -m \"update\" && git push",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
