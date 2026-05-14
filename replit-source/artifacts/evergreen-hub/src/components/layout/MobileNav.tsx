@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Shield, Users, Calendar, Crosshair, Target, ScrollText, Trophy, Lock, Menu } from "lucide-react";
+import { Shield, Users, Calendar, Crosshair, Target, ScrollText, Lock, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
@@ -10,7 +10,6 @@ export const NAV_LINKS = [
   { href: "/presenze", label: "Presenze", icon: Calendar },
   { href: "/equipaggiamenti", label: "Equipaggiamenti", icon: Crosshair },
   { href: "/vetrina", label: "Vetrina", icon: Target },
-  { href: "/scrim", label: "Scrim", icon: Trophy },
   { href: "/regolamento", label: "Regolamento", icon: ScrollText },
   { href: "/area-privata", label: "Area Privata", icon: Lock },
 ];

@@ -16,11 +16,6 @@ const {
   getImageAttachments,
   parseMatchMessage,
 } = require("../matches/matchMessageParser");
-const {
-  createMatchDraftFromPart1,
-  completeMatchFromPart2,
-  buildMatchWebUrl,
-} = require("../matches/matchService");
 
 const WEEK_SEPARATOR_PATH =
   process.env.WEEK_SEPARATOR_PATH || "./separator-week.png";
@@ -166,11 +161,9 @@ async function handleMatchContextCommand(interaction, client) {
     });
 
     await sendDefaultSeparator(part1Channel);
-    const draftMatch = await createMatchDraftFromPart1({ parsed, message });
-    const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, draftMatch.slug);
 
     await interaction.editReply({
-      content: `✅ Pubblicato\n🔗 Scheda match: ${webUrl}`,
+      content: `✅ Pubblicato in ${part1Channel}.`,
     });
     return true;
   }
@@ -190,20 +183,8 @@ async function handleMatchContextCommand(interaction, client) {
 
     await sendDefaultSeparator(part2Channel);
 
-    const completed = await completeMatchFromPart2({
-      parsed,
-      message,
-    });
-
-    const extractionMessage =
-      (completed.needsReview ? `\n🛠 Stato: da rivedere manualmente` : "") +
-      (completed.extractionSummary
-        ? `\nℹ️ ${completed.extractionSummary}`
-        : "");
-    const webUrl = buildMatchWebUrl(config.attendanceWebBaseUrl, completed.slug);
-
     await interaction.editReply({
-      content: `✅ Pubblicato${extractionMessage}\n🔗 Scheda match aggiornata: ${webUrl}`,
+      content: `✅ Pubblicato in ${part2Channel}.`,
     });
     return true;
   }

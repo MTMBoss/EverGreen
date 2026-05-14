@@ -10,18 +10,6 @@ const {
 } = require("../config/configStore");
 
 async function handleConfigCommand(interaction, client) {
-  if (
-    interaction.commandName === "set-canale-sorgente-parte1" ||
-    interaction.commandName === "set-canale-sorgente-parte2" ||
-    interaction.commandName === "import-match-storici"
-  ) {
-    await interaction.editReply({
-      content:
-        "ℹ️ Questo comando non serve più. Il bot usa automaticamente i canali Parte 1 e Parte 2 già configurati e continua la lettura storica in background.",
-    });
-    return true;
-  }
-
   if (interaction.commandName === "set-canale-parte1") {
     const channel = interaction.options.getChannel("canale", true);
     setTargetChannel1(channel.id);
@@ -110,7 +98,6 @@ async function handleConfigCommand(interaction, client) {
         `Parte 1: ${config.targetChannel1 ? `<#${config.targetChannel1}>` : "non impostato"}\n` +
         `Parte 2: ${config.targetChannel2 ? `<#${config.targetChannel2}>` : "non impostato"}\n` +
         `PNG: ${config.pngChannel ? `<#${config.pngChannel}>` : "non impostato"}\n` +
-        `Import match storico: automatico dai canali Parte 1 e Parte 2\n` +
         `Schedule: ${config.scheduleChannels.length > 0
           ? config.scheduleChannels.map(id => `<#${id}>`).join(", ")
           : "non impostato"}\n` +

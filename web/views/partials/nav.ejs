@@ -32,10 +32,6 @@
                 <span class="hub-nav-icon">RO</span>
                 <span>Roster</span>
             </a>
-            <a class="hub-nav-link <%= currentSection === 'scrim' ? 'active' : '' %>" href="/matches">
-                <span class="hub-nav-icon">SC</span>
-                <span>Scrim</span>
-            </a>
             <a class="hub-nav-link" href="/logout">
                 <span class="hub-nav-icon">LO</span>
                 <span>Logout</span>
@@ -58,7 +54,6 @@
                 <a class="hub-button secondary" href="/dashboard">Dashboard</a>
                 <a class="hub-button secondary" href="/presenze?date=<%= typeof date !== 'undefined' ? date : '' %>">Presenze</a>
                 <a class="hub-button secondary" href="/roster">Roster</a>
-                <a class="hub-button secondary" href="/matches">Scrim</a>
                 <a class="hub-button danger" href="/logout">Logout</a>
             </div>
         </div>

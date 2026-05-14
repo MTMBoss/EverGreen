@@ -15,8 +15,7 @@
         <div>
             <h1>Dashboard Operativa</h1>
             <p>
-                Hub centrale del team: presenze di oggi, stato dei match pubblicati e bozze create dalla parte 1
-                in attesa del completamento con la parte 2.
+                Hub centrale del team: presenze di oggi, copertura per fascia oraria e roster operativo.
             </p>
             <div class="hub-chip">
                 <span class="hub-chip-dot"></span>
@@ -26,7 +25,7 @@
 
         <div class="hub-actions">
             <a class="hub-button secondary" href="/presenze?date=<%= today %>">Vai alle presenze</a>
-            <a class="hub-button secondary" href="/matches">Apri Match Center</a>
+            <a class="hub-button secondary" href="/calendario">Apri calendario</a>
         </div>
     </section>
 
@@ -42,71 +41,67 @@
             <div class="hub-summary-sub">Copertura completa 21-23</div>
         </article>
         <article class="hub-grid-card">
-            <div class="hub-summary-label">Match totali</div>
-            <div class="hub-summary-value"><%= stats.totalMatches %></div>
-            <div class="hub-summary-sub">Bozze e pubblicati nel database web</div>
+            <div class="hub-summary-label">Parziali oggi</div>
+            <div class="hub-summary-value"><%= Math.max(dayView.summary.anyPresenceCount - dayView.summary.fullPresenceCount, 0) %></div>
+            <div class="hub-summary-sub">Presenti solo in alcune fasce</div>
         </article>
         <article class="hub-grid-card">
-            <div class="hub-summary-label">Match completati</div>
-            <div class="hub-summary-value"><%= stats.publishedMatches %></div>
-            <div class="hub-summary-sub">Con parte 2 già collegata</div>
+            <div class="hub-summary-label">Assenti oggi</div>
+            <div class="hub-summary-value"><%= dayView.summary.absentCount %></div>
+            <div class="hub-summary-sub">Nessuna fascia confermata</div>
         </article>
         <article class="hub-grid-card">
-            <div class="hub-summary-label">Bozze aperte</div>
-            <div class="hub-summary-value"><%= stats.draftMatches %></div>
-            <div class="hub-summary-sub">Creati da parte 1, in attesa di update</div>
+            <div class="hub-summary-label">Slot 21-22</div>
+            <div class="hub-summary-value"><%= dayView.summary.slot21Count %></div>
+            <div class="hub-summary-sub">Disponibili nella prima fascia</div>
         </article>
         <article class="hub-grid-card">
-            <div class="hub-summary-label">Cancellate</div>
-            <div class="hub-summary-value"><%= stats.cancelledMatches %></div>
-            <div class="hub-summary-sub">Scrim chiuse manualmente dal pannello</div>
+            <div class="hub-summary-label">Slot 22-23</div>
+            <div class="hub-summary-value"><%= dayView.summary.slot22Count %></div>
+            <div class="hub-summary-sub">Disponibili nella seconda fascia</div>
         </article>
         <article class="hub-grid-card">
-            <div class="hub-summary-label">Da rivedere</div>
-            <div class="hub-summary-value"><%= stats.reviewMatches %></div>
-            <div class="hub-summary-sub">OCR o risultati da verificare</div>
+            <div class="hub-summary-label">Slot 23-00</div>
+            <div class="hub-summary-value"><%= dayView.summary.slot23Count %></div>
+            <div class="hub-summary-sub">Disponibili nella terza fascia</div>
         </article>
     </section>
 
     <section class="hub-card hub-table-card">
         <div class="hub-table-head">
             <div>
-                <h2>Match recenti</h2>
-                <p>La parte 1 crea subito una scheda web. La parte 2 aggiorna la stessa scheda con risultati e immagini.</p>
+                <h2>Presenze di oggi</h2>
+                <p>Vista rapida delle conferme salvate per il roster attivo.</p>
             </div>
         </div>
         <div class="hub-table-wrap">
-            <table class="hub-table" style="min-width: 960px;">
+            <table class="hub-table" style="min-width: 760px;">
                 <thead>
                     <tr>
-                        <th>Match</th>
-                        <th>Data</th>
                         <th>Stato</th>
-                        <th>Serie</th>
-                        <th>Review</th>
+                        <th>Player</th>
+                        <th>Fasce</th>
                         <th>Apri</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <% for (const match of recentMatches) { %>
+                    <% for (const entry of dayView.entries) { %>
                         <tr>
                             <td>
-                                <div class="hub-member-name"><%= match.team1 %> vs <%= match.team2 %></div>
-                                <div class="hub-member-sub"><%= match.slug %></div>
-                            </td>
-                            <td><%= match.matchDateLabel || "Senza data" %> <%= match.match_time || "" %></td>
-                            <td>
-                                <span class="hub-badge <%= match.statusTone %>">
-                                    <%= match.statusLabel %>
+                                <span class="hub-badge <%= entry.status === 'Presente' ? 'good' : entry.status === 'Assente' ? 'bad' : 'warn' %>">
+                                    <%= entry.status %>
                                 </span>
                             </td>
-                            <td><%= match.team1_series_score ?? "-" %> - <%= match.team2_series_score ?? "-" %></td>
                             <td>
-                                <span class="hub-badge <%= match.needs_review ? 'warn' : 'good' %>">
-                                    <%= match.needs_review ? 'Da rivedere' : 'OK' %>
-                                </span>
+                                <div class="hub-member-name"><%= entry.label %></div>
+                                <div class="hub-member-sub"><%= entry.discordLabel %></div>
                             </td>
-                            <td><a class="hub-day-link" href="/matches/<%= match.slug %>">Apri match</a></td>
+                            <td>
+                                <span class="hub-mini-pill <%= Number(entry.slot_21_22) === 1 ? 'active' : '' %>">21</span>
+                                <span class="hub-mini-pill <%= Number(entry.slot_22_23) === 1 ? 'active' : '' %>">22</span>
+                                <span class="hub-mini-pill <%= Number(entry.slot_23_00) === 1 ? 'active' : '' %>">23</span>
+                            </td>
+                            <td><a class="hub-day-link" href="/presenze?date=<%= today %>">Apri giorno</a></td>
                         </tr>
                     <% } %>
                 </tbody>

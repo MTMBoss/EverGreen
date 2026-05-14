@@ -12,4 +12,4 @@ Questa cartella serve come base di migrazione grafica e componentistica:
   librerie condivise importate dal workspace Replit
 
 Il progetto reale che continua a girare su Northflank resta quello nella root del
-repository (`app/`, `attendance/`, `matches/`, `web/`, ecc.).
+repository (`app/`, `attendance/`, `web/`, ecc.).

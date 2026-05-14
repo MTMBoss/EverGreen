@@ -4,7 +4,6 @@ const path = require("path");
 const { pool, ensureDbReady } = require("../attendance/db");
 
 const LEGACY_CONFIG_PATH = path.join(__dirname, "..", "config.json");
-const MATCH_IMPORT_STATE_VERSION = 5;
 
 const DEFAULT_CONFIG = {
   attendanceLeaderboardChannel: process.env.ATTENDANCE_LEADERBOARD_CHANNEL || "",
@@ -13,8 +12,6 @@ const DEFAULT_CONFIG = {
   targetChannel1: process.env.TARGET_CHANNEL_1 || "",
   targetChannel2: process.env.TARGET_CHANNEL_2 || "",
   pngChannel: process.env.PNG_CHANNEL || "",
-  sourceChannelPart1: process.env.SOURCE_CHANNEL_PART_1 || "",
-  sourceChannelPart2: process.env.SOURCE_CHANNEL_PART_2 || "",
   scheduleChannels: process.env.SCHEDULE_CHANNELS
     ? process.env.SCHEDULE_CHANNELS.split(",").map(id => id.trim()).filter(Boolean)
     : [],
@@ -30,14 +27,6 @@ const DEFAULT_CONFIG = {
     : [],
   attendanceWebBaseUrl: process.env.ATTENDANCE_WEB_BASE_URL || "",
   commandDeploymentHash: "",
-  matchImportState: {
-    version: MATCH_IMPORT_STATE_VERSION,
-    sourceChannelPart1: "",
-    sourceChannelPart2: "",
-    part1Before: "",
-    part2Before: "",
-    completed: false,
-  },
 
   currentSchedule: null,
   publicationState: {},
@@ -61,8 +50,6 @@ function normalizeConfigValue(key, value) {
     case "targetChannel1":
     case "targetChannel2":
     case "pngChannel":
-    case "sourceChannelPart1":
-    case "sourceChannelPart2":
     case "scheduleAnnouncementChannel":
     case "requiredRoleId":
     case "optionalRoleId":
@@ -72,21 +59,6 @@ function normalizeConfigValue(key, value) {
     case "attendanceWebBaseUrl":
     case "commandDeploymentHash":
       return typeof value === "string" ? value : "";
-
-    case "matchImportState":
-      return value && typeof value === "object" && !Array.isArray(value)
-        ? {
-            version:
-              Number(value.version || 0) > 0
-                ? Number(value.version)
-                : MATCH_IMPORT_STATE_VERSION,
-            sourceChannelPart1: String(value.sourceChannelPart1 || ""),
-            sourceChannelPart2: String(value.sourceChannelPart2 || ""),
-            part1Before: String(value.part1Before || ""),
-            part2Before: String(value.part2Before || ""),
-            completed: Boolean(value.completed),
-          }
-        : cloneConfig(DEFAULT_CONFIG).matchImportState;
 
     case "scheduleChannels":
     case "attendanceRoleIds":
@@ -258,18 +230,6 @@ function setPngChannel(channelId) {
   });
 }
 
-function setSourceChannelPart1(channelId) {
-  return updateConfig(config => {
-    config.sourceChannelPart1 = channelId;
-  });
-}
-
-function setSourceChannelPart2(channelId) {
-  return updateConfig(config => {
-    config.sourceChannelPart2 = channelId;
-  });
-}
-
 function getChannelPublicationState(channelId) {
   const config = readConfig();
   const state = config.publicationState?.[channelId];
@@ -354,22 +314,13 @@ function setCommandDeploymentHash(hash) {
   });
 }
 
-function setMatchImportState(state) {
-  return updateConfig(config => {
-    config.matchImportState = normalizeConfigValue("matchImportState", state);
-  });
-}
-
 module.exports = {
-  MATCH_IMPORT_STATE_VERSION,
   initializeConfigStore,
   readConfig,
   writeConfig,
   setTargetChannel1,
   setTargetChannel2,
   setPngChannel,
-  setSourceChannelPart1,
-  setSourceChannelPart2,
   getChannelPublicationState,
   setChannelPublicationState,
   setScheduleChannels,
@@ -382,5 +333,4 @@ module.exports = {
   setAttendanceRoleIds,
   setAttendanceWebBaseUrl,
   setCommandDeploymentHash,
-  setMatchImportState,
 };

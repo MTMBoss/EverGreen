@@ -14,7 +14,6 @@ import Attendance from "@/pages/Attendance";
 import Equipment from "@/pages/Equipment";
 import Showcase from "@/pages/Showcase";
 import Rules from "@/pages/Rules";
-import Scrims from "@/pages/Scrims";
 import PrivateArea from "@/pages/PrivateArea";
 
 const queryClient = new QueryClient({
@@ -36,7 +35,6 @@ function Router() {
         <Route path="/equipaggiamenti" component={Equipment} />
         <Route path="/vetrina" component={Showcase} />
         <Route path="/regolamento" component={Rules} />
-        <Route path="/scrim" component={Scrims} />
         <Route path="/area-privata" component={PrivateArea} />
         <Route component={NotFound} />
       </Switch>

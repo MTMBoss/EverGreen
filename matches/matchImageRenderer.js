@@ -3,10 +3,10 @@ const path = require("path");
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
 
 const BACKGROUND_PATH =
-  process.env.MATCH_BG_PATH || path.join(__dirname, "assets", "match-bg.png");
+  process.env.MATCH_BG_PATH || path.join(__dirname, "..", "assets", "match-bg.png");
 
 const LOGO_PATH =
-  process.env.MATCH_LOGO_PATH || path.join(__dirname, "assets", "logo.png");
+  process.env.MATCH_LOGO_PATH || path.join(__dirname, "..", "assets", "logo.png");
 
 const BASE_WIDTH = 1080;
 const BASE_HEIGHT = 1920;

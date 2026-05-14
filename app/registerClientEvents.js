@@ -27,18 +27,6 @@ const {
 } = require("../attendance/attendanceScheduler");
 const { scheduleRosterSync, runRosterSync } = require("../attendance/rosterAutoSync");
 const { startAttendanceWebServer } = require("../web/server");
-const { createMatchTables } = require("../matches/matchRepository");
-const {
-  handleAutoMatchSourceMessage,
-  handleAutoMatchSourceDelete,
-  startAutoMatchImportWorker,
-} = require("../matches/autoMatchImporter");
-const {
-  MATCH_IMAGE_ANALYSIS_ENABLED,
-} = require("../matches/matchService");
-const {
-  startMatchImageReanalysisWorker,
-} = require("../matches/matchImageReanalysisWorker");
 const { startScheduler } = require("../schedule/scheduler");
 const { handleMatchContextCommand } = require("./matchContextCommands");
 const { handleConfigCommand } = require("./configCommands");
@@ -50,13 +38,6 @@ function registerClientEvents(client) {
     startAttendanceReminderScheduler(client);
     startAttendanceRosterSyncScheduler(client);
     startAttendanceWebServer(client);
-    await createMatchTables();
-    startAutoMatchImportWorker(client);
-    if (MATCH_IMAGE_ANALYSIS_ENABLED) {
-      startMatchImageReanalysisWorker();
-    } else {
-      console.log("ℹ️ Rianalisi immagini match disattivata");
-    }
     startAttendanceLeaderboardScheduler(client);
 
     queueMicrotask(async () => {
@@ -147,7 +128,6 @@ function registerClientEvents(client) {
 
   client.on(Events.MessageCreate, async message => {
     try {
-      await handleAutoMatchSourceMessage(message, client);
       await handleMessageCreate(message);
     } catch (error) {
       console.error("❌ Errore logger messageCreate:", error);
@@ -164,7 +144,6 @@ function registerClientEvents(client) {
 
   client.on(Events.MessageDelete, async message => {
     try {
-      await handleAutoMatchSourceDelete(message);
       await handleMessageDelete(message);
     } catch (error) {
       console.error("❌ Errore logger messageDelete:", error);

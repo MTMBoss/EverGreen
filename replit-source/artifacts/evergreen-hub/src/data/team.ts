@@ -123,82 +123,11 @@ export const LOADOUTS: Loadout[] = [
   }
 ];
 
-export interface Scrim {
-  id: string;
-  opponent: string;
-  date: string; // ISO
-  format: string; // e.g. "Best of 5"
-  modes: string[];
-  maps: string[];
-  lineup: { role: string; playerId: string }[];
-  status: "Confermato" | "Da Confermare" | "Annullato" | "Completato";
-  notes?: string;
-  score?: string; // "3 - 1"
-  isPrivate?: boolean;
-  privateStrategy?: string;
-}
-
-export const SCRIMS: Scrim[] = [
-  {
-    id: "s1",
-    opponent: "Nova Esports ITA",
-    date: "2026-10-15T21:00:00Z",
-    format: "Best of 5",
-    modes: ["Hardpoint", "Search & Destroy", "Control", "Hardpoint", "Search & Destroy"],
-    maps: ["Standoff", "Crash", "Raid", "Summit", "Crossfire"],
-    lineup: [
-      { role: "Captain", playerId: "p2" },
-      { role: "Slayer", playerId: "p1" },
-      { role: "Anchor", playerId: "p3" },
-      { role: "Support", playerId: "p4" },
-      { role: "Flex", playerId: "p5" }
-    ],
-    status: "Confermato",
-    notes: "Attenzione ai loro push su B. Giocano molto aggressivi.",
-    isPrivate: true,
-    privateStrategy: "Focus su P2 per l'Anchor. Il Flex deve ruotare prima su P3. Se perdiamo P1, reset completo e hold per P2."
-  },
-  {
-    id: "s2",
-    opponent: "Crimson Elite",
-    date: "2026-10-16T22:00:00Z",
-    format: "Best of 3",
-    modes: ["Hardpoint", "Search & Destroy", "Control"],
-    maps: ["Firing Range", "Standoff", "Takeoff"],
-    lineup: [
-      { role: "Captain", playerId: "p2" },
-      { role: "Slayer", playerId: "p1" },
-      { role: "Anchor", playerId: "p8" },
-      { role: "Support", playerId: "p4" },
-      { role: "Sniper", playerId: "p6" }
-    ],
-    status: "Da Confermare",
-    notes: "In attesa di conferma host."
-  },
-  {
-    id: "s3",
-    opponent: "Team QLASH EU",
-    date: "2026-10-12T21:30:00Z",
-    format: "Best of 5",
-    modes: ["Hardpoint", "Search & Destroy", "Control", "Hardpoint", "Search & Destroy"],
-    maps: ["Summit", "Crossfire", "Standoff", "Raid", "Crash"],
-    lineup: [
-      { role: "Captain", playerId: "p2" },
-      { role: "Slayer", playerId: "p1" },
-      { role: "Anchor", playerId: "p3" },
-      { role: "Support", playerId: "p4" },
-      { role: "Flex", playerId: "p5" }
-    ],
-    status: "Completato",
-    score: "3 - 2"
-  }
-];
-
 export const ANNOUNCEMENTS = [
-  { id: "a1", date: "2026-10-14T09:00:00Z", title: "Nuovo Orario Scrim", content: "A partire da settimana prossima le scrim ufficiali si terranno alle 21:30 e non più alle 21:00. Aggiornate le presenze.", authorId: "p10" },
-  { id: "a2", date: "2026-10-12T15:30:00Z", title: "Vittoria QLASH EU", content: "Ottimo lavoro ragazzi per la win di ieri. NyxZ caricherà i VOD stasera per la review con il coach.", authorId: "p9" },
+  { id: "a1", date: "2026-10-14T09:00:00Z", title: "Nuovo Orario Presenze", content: "A partire da settimana prossima la finestra operativa principale sara alle 21:30. Aggiornate le presenze.", authorId: "p10" },
+  { id: "a2", date: "2026-10-12T15:30:00Z", title: "Note Settimanali", content: "Il coach pubblichera le note operative stasera. Controllate l'area riservata per le indicazioni.", authorId: "p9" },
   { id: "a3", date: "2026-10-10T11:00:00Z", title: "Aggiornamento Loadout", content: "Ho aggiornato la sezione equipaggiamenti con i nuovi setup per il Fennec post-nerf. Testateli in pub.", authorId: "p2" },
-  { id: "a4", date: "2026-10-05T18:00:00Z", title: "Benvenuto Vanta", content: "Diamo il benvenuto a Vanta nel roster come Sub Sniper. Si unirà a noi per le scrim di venerdì.", authorId: "p10" }
+  { id: "a4", date: "2026-10-05T18:00:00Z", title: "Benvenuto Vanta", content: "Diamo il benvenuto a Vanta nel roster come Sub Sniper. Sara disponibile nelle fasce serali.", authorId: "p10" }
 ];
 
 export const RULES = [
@@ -214,7 +143,7 @@ export const RULES = [
     category: "2. Presenze e Puntualità",
     articles: [
       "2.1 La compilazione del modulo presenze settimanale è obbligatoria entro la domenica sera.",
-      "2.2 Ritardo massimo consentito per le scrim: 5 minuti.",
+      "2.2 Ritardo massimo consentito per le attivita programmate: 5 minuti.",
       "2.3 Assenze non giustificate portano a un warning ufficiale."
     ]
   },
@@ -227,11 +156,11 @@ export const RULES = [
     ]
   },
   {
-    category: "4. Scrim e Tornei",
+    category: "4. Tornei e Attivita Ufficiali",
     articles: [
       "4.1 Riscaldamento obbligatorio 30 min prima dell'inizio.",
-      "4.2 Vietato trasmettere (streaming) le scrim senza consenso.",
-      "4.3 VOD review obbligatoria il giorno successivo ai tornei."
+      "4.2 Vietato trasmettere (streaming) contenuti interni senza consenso.",
+      "4.3 Riunione tecnica obbligatoria il giorno successivo ai tornei."
     ]
   }
 ];

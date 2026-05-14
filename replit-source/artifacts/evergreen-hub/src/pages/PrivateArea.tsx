@@ -133,7 +133,7 @@ export default function PrivateArea() {
                   <tr>
                     <td className="px-4 py-3 font-medium">Saetta</td>
                     <td className="px-4 py-3 font-mono text-xs">01/10/2026</td>
-                    <td className="px-4 py-3">Ritardo di 15 min alla scrim contro QLASH.</td>
+                    <td className="px-4 py-3">Ritardo di 15 min alla sessione obbligatoria.</td>
                     <td className="px-4 py-3"><span className="text-yellow-500 font-mono text-xs">WARNING 1</span></td>
                   </tr>
                   <tr>

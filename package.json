@@ -7,14 +7,6 @@
     "deploy:commands": "node deploy-commands.js",
     "deploy": "node deploy-commands.js",
     "start:bot": "node index.js",
-    "matches:export-review": "node scripts/export-match-review.js",
-    "matches:export-site": "node scripts/export-site-matches.js",
-    "matches:site-to-review": "node scripts/build-review-queue-from-site-snapshot.js",
-    "matches:autofill-review": "node scripts/autofill-match-review.js",
-    "matches:extract-player-stats": "node scripts/extract-all-match-player-stats.js",
-    "matches:import-player-stats": "node scripts/import-match-player-stats.js",
-    "matches:import-review": "node scripts/import-match-review.js",
-    "matches:stats": "node scripts/build-match-statistics.js",
     "push": "git add . && git commit -m \"update\" && git push",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -33,8 +25,6 @@
     "ejs": "^3.1.10",
     "express": "^4.21.2",
     "node-cron": "^4.2.1",
-    "pg": "^8.12.0",
-    "sharp": "^0.34.5",
-    "tesseract.js": "^7.0.0"
+    "pg": "^8.12.0"
   }
 }
