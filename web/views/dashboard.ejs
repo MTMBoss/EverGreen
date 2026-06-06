@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+    <link rel="stylesheet" href="/assets/hub.css" />
+</head>
+
+<body class="hub-body">
+    <%- include("partials/nav", { currentSection }) %>
+
+    <section class="hub-page-header">
+        <div>
+            <h1>Dashboard Operativa</h1>
+            <p>
+                Hub centrale del team: presenze di oggi, copertura per fascia oraria e roster operativo.
+            </p>
+            <div class="hub-chip">
+                <span class="hub-chip-dot"></span>
+                Giorno attivo: <%= today %>
+            </div>
+        </div>
+
+        <div class="hub-actions">
+            <a class="hub-button secondary" href="/presenze?date=<%= today %>">Vai alle presenze</a>
+            <a class="hub-button secondary" href="/calendario">Apri calendario</a>
+        </div>
+    </section>
+
+    <section class="hub-summary-grid">
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Presenti oggi</div>
+            <div class="hub-summary-value"><%= dayView.summary.anyPresenceCount %></div>
+            <div class="hub-summary-sub">Roster con almeno una fascia confermata</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Full presence</div>
+            <div class="hub-summary-value"><%= dayView.summary.fullPresenceCount %></div>
+            <div class="hub-summary-sub">Copertura completa 21-23</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Parziali oggi</div>
+            <div class="hub-summary-value"><%= Math.max(dayView.summary.anyPresenceCount - dayView.summary.fullPresenceCount, 0) %></div>
+            <div class="hub-summary-sub">Presenti solo in alcune fasce</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Assenti oggi</div>
+            <div class="hub-summary-value"><%= dayView.summary.absentCount %></div>
+            <div class="hub-summary-sub">Nessuna fascia confermata</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Slot 21-22</div>
+            <div class="hub-summary-value"><%= dayView.summary.slot21Count %></div>
+            <div class="hub-summary-sub">Disponibili nella prima fascia</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Slot 22-23</div>
+            <div class="hub-summary-value"><%= dayView.summary.slot22Count %></div>
+            <div class="hub-summary-sub">Disponibili nella seconda fascia</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Slot 23-00</div>
+            <div class="hub-summary-value"><%= dayView.summary.slot23Count %></div>
+            <div class="hub-summary-sub">Disponibili nella terza fascia</div>
+        </article>
+    </section>
+
+    <section class="hub-card hub-table-card">
+        <div class="hub-table-head">
+            <div>
+                <h2>Presenze di oggi</h2>
+                <p>Vista rapida delle conferme salvate per il roster attivo.</p>
+            </div>
+        </div>
+        <div class="hub-table-wrap">
+            <table class="hub-table" style="min-width: 760px;">
+                <thead>
+                    <tr>
+                        <th>Stato</th>
+                        <th>Player</th>
+                        <th>Fasce</th>
+                        <th>Apri</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (const entry of dayView.entries) { %>
+                        <tr>
+                            <td>
+                                <span class="hub-badge <%= entry.status === 'Presente' ? 'good' : entry.status === 'Assente' ? 'bad' : 'warn' %>">
+                                    <%= entry.status %>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="hub-member-name"><%= entry.label %></div>
+                                <div class="hub-member-sub"><%= entry.discordLabel %></div>
+                            </td>
+                            <td>
+                                <span class="hub-mini-pill <%= Number(entry.slot_21_22) === 1 ? 'active' : '' %>">21</span>
+                                <span class="hub-mini-pill <%= Number(entry.slot_22_23) === 1 ? 'active' : '' %>">22</span>
+                                <span class="hub-mini-pill <%= Number(entry.slot_23_00) === 1 ? 'active' : '' %>">23</span>
+                            </td>
+                            <td><a class="hub-day-link" href="/presenze?date=<%= today %>">Apri giorno</a></td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    </main>
+</div>
+</body>
+
+</html>

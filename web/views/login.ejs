@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login pannello EverGreen</title>
+    <link rel="stylesheet" href="/assets/hub.css" />
+</head>
+
+<body class="hub-login">
+    <div class="hub-login-card">
+        <div class="hub-login-brand">
+            <img src="/assets/evergreen-logo.png" alt="EverGreen logo" onerror="this.style.display='none'">
+            <div>
+                <div class="hub-login-eyebrow">EverGreen Competitive Hub</div>
+                <h1>Accesso admin</h1>
+            </div>
+        </div>
+
+        <p>
+            Da qui gestisci presenze reali, calendario e roster del team con l'interfaccia hub del bot.
+        </p>
+
+        <% if (error) { %>
+            <div class="hub-flash error"><%= error %></div>
+        <% } %>
+
+        <form method="post" action="/login">
+            <label class="hub-label" for="token">Token admin</label>
+            <input id="token" class="hub-input" type="password" name="token" placeholder="Inserisci il token admin" required />
+            <button class="hub-button" type="submit" style="margin-top: 14px;">Accedi al pannello</button>
+        </form>
+    </div>
+</body>
+
+</html>

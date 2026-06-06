@@ -1,0 +1,34 @@
+{
+  "name": "bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy:commands": "node deploy-commands.js",
+    "deploy": "node deploy-commands.js",
+    "start:bot": "node index.js",
+    "check:js": "node scripts/check-js.js",
+    "check:voice": "node scripts/check-voice-signaling.js",
+    "test": "npm run check:js && npm run check:voice"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.97",
+    "dayjs": "^1.11.13",
+    "discord.js": "^14.25.1",
+    "dotenv": "^17.3.1",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "node-cron": "^4.2.1",
+    "pg": "^8.12.0",
+    "sharp": "^0.34.5",
+    "tesseract.js": "^7.0.0",
+    "ws": "^8.21.0"
+  }
+}

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+    <link rel="stylesheet" href="/assets/hub.css" />
+</head>
+
+<body class="hub-body">
+    <%- include("partials/nav", { currentSection, date }) %>
+
+    <section class="hub-page-header">
+        <div>
+            <h1>Presenze Operative</h1>
+            <p>
+                Il nuovo pannello unisce due dati diversi: quello che i player hanno dichiarato via reaction
+                allo schedule e la presenza effettiva che confermi tu manualmente nel roster reale.
+            </p>
+            <div class="hub-chip">
+                <span class="hub-chip-dot"></span>
+                Giorno attivo: <%= date %>
+            </div>
+        </div>
+
+        <div class="hub-actions">
+            <a class="hub-button secondary" href="/calendario">Apri calendario</a>
+            <a class="hub-button secondary" href="/roster">Apri roster</a>
+            <a class="hub-button danger" href="/logout">Logout</a>
+        </div>
+    </section>
+
+    <% if (saved) { %>
+        <div class="hub-flash success">✅ Modifiche salvate correttamente.</div>
+    <% } %>
+
+    <% if (syncCount) { %>
+        <div class="hub-flash info">🔄 Roster sincronizzato. Membri trovati: <strong><%= syncCount %></strong></div>
+    <% } %>
+
+    <section class="hub-panel">
+        <div class="hub-toolbar">
+            <div>
+                <form method="get" action="/presenze" class="hub-toolbar-group">
+                    <div class="hub-field">
+                        <label for="date">Giorno operativo</label>
+                        <input id="date" class="hub-input" type="date" name="date" value="<%= date %>" />
+                    </div>
+                    <button class="hub-button" type="submit">Apri giorno</button>
+                </form>
+
+                <div class="hub-hint">
+                    Lo schedule rappresenta la disponibilità dichiarata dai player su Discord. Le checkbox qui sotto
+                    invece rappresentano la presenza effettiva che vuoi registrare nel database del bot.
+                </div>
+            </div>
+
+            <div>
+                <form method="post" action="/sync-roster">
+                    <button class="hub-button secondary" type="submit">Sincronizza roster</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="hub-summary-grid">
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Roster attivo</div>
+            <div class="hub-summary-value"><%= dayView.summary.totalMembers %></div>
+            <div class="hub-summary-sub">Player monitorati nel giorno selezionato</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Dichiarati da schedule</div>
+            <div class="hub-summary-value"><%= scheduleAvailability.declaredCount %></div>
+            <div class="hub-summary-sub">Hanno reagito almeno a una fascia</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Presenti reali</div>
+            <div class="hub-summary-value"><%= dayView.summary.anyPresenceCount %></div>
+            <div class="hub-summary-sub">Confermati almeno una fascia</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Mismatch</div>
+            <div class="hub-summary-value"><%= dayView.entries.filter(entry => entry.mismatchCount > 0).length %></div>
+            <div class="hub-summary-sub">Schedule e presenza reale non allineati</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Sched. 21-22</div>
+            <div class="hub-summary-value"><%= scheduleAvailability.slotCounts.slot_21_22 %></div>
+            <div class="hub-summary-sub">Reaction 1️⃣ sul giorno</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Sched. 22-23</div>
+            <div class="hub-summary-value"><%= scheduleAvailability.slotCounts.slot_22_23 %></div>
+            <div class="hub-summary-sub">Reaction 2️⃣ sul giorno</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Sched. 23-00</div>
+            <div class="hub-summary-value"><%= scheduleAvailability.slotCounts.slot_23_00 %></div>
+            <div class="hub-summary-sub">Reaction 3️⃣ sul giorno</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Assenti reali</div>
+            <div class="hub-summary-value"><%= dayView.summary.absentCount %></div>
+            <div class="hub-summary-sub">Nessuna fascia confermata nel sistema</div>
+        </article>
+    </section>
+
+    <form id="bulk-save-form" method="post" action="/presenze/<%= date %>/save-all">
+        <section class="hub-card hub-table-card">
+            <div class="hub-table-head">
+                <div>
+                    <h2>Registro giornaliero</h2>
+                    <p>
+                        Colonne schedule = cosa hanno dichiarato su Discord. Colonne effettive = realtà operativa del team.
+                    </p>
+                </div>
+                <div class="hub-muted">Player mostrati: <strong><%= dayView.entries.length %></strong></div>
+            </div>
+
+            <div class="hub-table-wrap">
+                <table class="hub-table">
+                    <thead>
+                        <tr>
+                            <th>Membro</th>
+                            <th>Ruoli</th>
+                            <th>Schedule dichiarato</th>
+                            <th>21-22 reale</th>
+                            <th>22-23 reale</th>
+                            <th>23-00 reale</th>
+                            <th>Note</th>
+                            <th>Sync</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% for (const entry of dayView.entries) { %>
+                            <% const syncClass = entry.mismatchCount === 0 ? "good" : entry.declaredSlotCount > entry.actualSlotCount ? "warn" : "bad"; %>
+                            <tr id="member-<%= entry.discord_user_id %>">
+                                <td>
+                                    <div style="display:flex; gap:12px; align-items:flex-start;">
+                                        <% if (entry.avatarUrl) { %>
+                                            <img src="<%= entry.avatarUrl %>" alt="<%= entry.label %>"
+                                                style="width:44px; height:44px; border-radius:14px; object-fit:cover; border:1px solid rgba(255,255,255,.08);" />
+                                        <% } else { %>
+                                            <div class="hub-avatar" style="width:44px; height:44px; border-radius:14px; font-size:14px;">
+                                                <%= (entry.label || "?").slice(0, 2).toUpperCase() %>
+                                            </div>
+                                        <% } %>
+                                        <div>
+                                            <div class="hub-member-name"><%= entry.label %></div>
+                                            <div class="hub-member-sub">Discord: <%= entry.discordLabel %></div>
+                                            <div class="hub-member-sub"><%= entry.discord_user_id %></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <% if (entry.tracked_roles.length) { %>
+                                        <% for (const role of entry.tracked_roles) { %>
+                                            <span class="hub-role-pill"><%= role.roleName %></span>
+                                        <% } %>
+                                    <% } else { %>
+                                        <span class="hub-muted">Nessun ruolo tracciato</span>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <div>
+                                        <span class="hub-mini-pill <%= entry.declaredSchedule.slot_21_22 ? 'active' : '' %>">1️⃣ 21</span>
+                                        <span class="hub-mini-pill <%= entry.declaredSchedule.slot_22_23 ? 'active' : '' %>">2️⃣ 22</span>
+                                        <span class="hub-mini-pill <%= entry.declaredSchedule.slot_23_00 ? 'active' : '' %>">3️⃣ 23</span>
+                                    </div>
+                                    <div class="hub-member-sub">
+                                        <%= entry.declaredSlotCount > 0 ? `${entry.declaredSlotCount} fasce dichiarate` : "Nessuna reaction sullo schedule" %>
+                                    </div>
+                                </td>
+                                <td>
+                                    <label class="hub-slot-pill">
+                                        <input class="track-change" type="checkbox"
+                                            name="members[<%= entry.discord_user_id %>][slot_21_22]"
+                                            value="1" <%= Number(entry.slot_21_22) === 1 ? "checked" : "" %> />
+                                        <span>21-22</span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <label class="hub-slot-pill">
+                                        <input class="track-change" type="checkbox"
+                                            name="members[<%= entry.discord_user_id %>][slot_22_23]"
+                                            value="1" <%= Number(entry.slot_22_23) === 1 ? "checked" : "" %> />
+                                        <span>22-23</span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <label class="hub-slot-pill">
+                                        <input class="track-change" type="checkbox"
+                                            name="members[<%= entry.discord_user_id %>][slot_23_00]"
+                                            value="1" <%= Number(entry.slot_23_00) === 1 ? "checked" : "" %> />
+                                        <span>23-00</span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <textarea class="hub-textarea track-change" rows="2"
+                                        name="members[<%= entry.discord_user_id %>][note]"
+                                        placeholder="Nota operativa"><%= entry.notes || "" %></textarea>
+                                </td>
+                                <td>
+                                    <span class="hub-badge <%= syncClass %>"><%= entry.syncLabel %></span>
+                                    <div class="hub-member-sub">
+                                        <%= entry.mismatchCount === 0 ? "Schedule e presenza reale coincidono." : `${entry.mismatchCount} fasce diverse tra Discord e presenza reale.` %>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <div class="hub-savebar">
+            <div class="hub-muted">
+                <strong id="dirty-text" style="color: var(--text);">Nessuna modifica non salvata</strong><br />
+                Qui registri la presenza effettiva, anche se diversa da quella dichiarata nello schedule.
+            </div>
+            <div class="hub-save-actions">
+                <button class="hub-button" type="submit">Salva tutto</button>
+            </div>
+        </div>
+    </form>
+
+    </main>
+</div>
+
+<script>
+    (function () {
+        const form = document.getElementById("bulk-save-form");
+        const dirtyText = document.getElementById("dirty-text");
+        let dirty = false;
+
+        function setDirty(value) {
+            dirty = value;
+            dirtyText.textContent = dirty
+                ? "Ci sono modifiche non salvate"
+                : "Nessuna modifica non salvata";
+        }
+
+        document.querySelectorAll(".track-change").forEach((el) => {
+            el.addEventListener("change", () => setDirty(true));
+            el.addEventListener("input", () => setDirty(true));
+        });
+
+        form.addEventListener("submit", () => {
+            setDirty(false);
+        });
+
+        window.addEventListener("beforeunload", (event) => {
+            if (!dirty) return;
+            event.preventDefault();
+            event.returnValue = "";
+        });
+    })();
+</script>
+</body>
+
+</html>

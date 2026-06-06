@@ -1,0 +1,20 @@
+{
+  "attendanceLeaderboardChannel": "",
+  "attendanceLeaderboardMessageId": "",
+  "attendanceLeaderboardDefaultType": "settimana",
+  "targetChannel1": "",
+  "targetChannel2": "",
+  "pngChannel": "",
+  "scheduleChannels": [],
+  "scheduleAnnouncementChannel": "",
+  "requiredRoleId": "",
+  "optionalRoleId": "",
+  "attendanceChannel": "",
+  "attendanceReminderChannel": "",
+  "attendanceReminderUserId": "",
+  "attendanceRoleIds": [],
+  "attendanceWebBaseUrl": "",
+  "commandDeploymentHash": "",
+  "currentSchedule": null,
+  "publicationState": {}
+}

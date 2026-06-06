@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+    <link rel="stylesheet" href="/assets/hub.css" />
+</head>
+
+<body class="hub-body">
+    <%- include("partials/nav", { currentSection }) %>
+
+    <section class="hub-page-header">
+        <div>
+            <h1>Calendario Presenze</h1>
+            <p>
+                Vista mensile del roster competitivo. Rimane collegata ai dati reali del bot, ma ora usa la stessa
+                interfaccia hub del nuovo layout.
+            </p>
+            <div class="hub-chip">
+                <span class="hub-chip-dot"></span>
+                Mese attivo: <%= month %>
+            </div>
+        </div>
+
+        <div class="hub-actions">
+            <a class="hub-button secondary" href="/presenze">Vai a oggi</a>
+            <a class="hub-button secondary" href="/calendario?month=<%= prevMonth %>">← Mese precedente</a>
+            <a class="hub-button secondary" href="/calendario?month=<%= nextMonth %>">Mese successivo →</a>
+            <a class="hub-button danger" href="/logout">Logout</a>
+        </div>
+    </section>
+
+    <section class="hub-summary-grid">
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Periodo</div>
+            <div class="hub-summary-value"><%= calendarView.title %></div>
+            <div class="hub-summary-sub">Vista calendario operativa</div>
+        </article>
+        <article class="hub-grid-card">
+            <div class="hub-summary-label">Giorni con dati</div>
+            <div class="hub-summary-value"><%= Array.from(calendarView.summaryByDate.keys()).length %></div>
+            <div class="hub-summary-sub">Date con almeno una riga salvata</div>
+        </article>
+    </section>
+
+    <section class="hub-calendar-grid">
+        <div class="hub-weekday">Lun</div>
+        <div class="hub-weekday">Mar</div>
+        <div class="hub-weekday">Mer</div>
+        <div class="hub-weekday">Gio</div>
+        <div class="hub-weekday">Ven</div>
+        <div class="hub-weekday">Sab</div>
+        <div class="hub-weekday">Dom</div>
+
+        <% for (const row of grid) { %>
+            <% for (const cell of row) { %>
+                <% if (!cell) { %>
+                    <div class="hub-day-card empty"></div>
+                <% } else { %>
+                    <div class="hub-day-card">
+                        <div class="hub-day-number"><%= cell.day %></div>
+
+                        <% if (cell.summary) { %>
+                            <div class="hub-day-stats">
+                                Roster: <strong><%= cell.summary.totalMembers %></strong><br />
+                                Presenti: <strong><%= cell.summary.anyPresenceCount %></strong><br />
+                                Full: <strong><%= cell.summary.fullPresenceCount %></strong><br />
+                                Assenti: <strong><%= cell.summary.absentCount %></strong>
+                            </div>
+                        <% } else { %>
+                            <div class="hub-day-stats">Nessun dato salvato</div>
+                        <% } %>
+
+                        <a class="hub-day-link" href="/presenze?date=<%= cell.date %>">Apri giorno</a>
+                    </div>
+                <% } %>
+            <% } %>
+        <% } %>
+    </section>
+
+    </main>
+</div>
+</body>
+
+</html>
