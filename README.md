@@ -1,6 +1,8 @@
 # EverGreen
 
-Bot Discord e pannello web per presenze, roster, calendario e gestione match.
+Bot Discord per schedule e pubblicazione match parte 1/2.
+
+<!-- Bot Discord e pannello web per presenze, roster, calendario e gestione match. -->
 
 ## Setup dopo il clone
 
@@ -18,10 +20,11 @@ Le variabili minime per l'avvio sono:
 - `CLIENT_ID`
 - `GUILD_ID`
 - `DATABASE_URL`
-- `WEB_ADMIN_TOKEN`
 
+<!--
 Per usare l'API roster aggiungi anche `ROSTER_API_TOKEN`. Se non viene impostato,
 l'API usa `WEB_ADMIN_TOKEN` come fallback.
+-->
 
 Avvio:
 
@@ -39,6 +42,7 @@ Per creare un file locale di esempio:
 Copy-Item config.example.json config.json
 ```
 
+<!--
 ## Pannello web
 
 Il pannello admin usa `WEB_ADMIN_TOKEN` e include:
@@ -60,3 +64,4 @@ Autenticazione supportata:
 - header `Authorization: Bearer <ROSTER_API_TOKEN>`
 - header `X-Roster-Token: <ROSTER_API_TOKEN>`
 - query `?token=<ROSTER_API_TOKEN>`
+-->

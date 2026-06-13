@@ -38,6 +38,7 @@ async function ensureDbReady() {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
+    /*
     await pool.query(`
       CREATE TABLE IF NOT EXISTS members (
         id SERIAL PRIMARY KEY,
@@ -105,6 +106,7 @@ async function ensureDbReady() {
         WHERE p.member_id = m.id
       )
     `);
+    */
   })().catch(error => {
     initPromise = null;
     throw error;

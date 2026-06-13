@@ -11,11 +11,15 @@ const {
   readConfig,
   setCommandDeploymentHash,
 } = require("../config/configStore");
+/*
 const { initializeAttendance } = require("../attendance/attendanceService");
+*/
 const { ensureCommandsDeployed } = require("../discord/deployCommands");
 const { registerClientEvents } = require("./registerClientEvents");
 
+/*
 initializeAttendance();
+*/
 
 const client = new Client({
   intents: [

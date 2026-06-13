@@ -2,7 +2,9 @@ const {
   readConfig,
   setTargetChannel1,
   setTargetChannel2,
+  /*
   setPngChannel,
+  */
   setScheduleChannels,
   setScheduleAnnouncementChannel,
   setRequiredRoleId,
@@ -30,6 +32,7 @@ async function handleConfigCommand(interaction) {
     return true;
   }
 
+  /*
   if (interaction.commandName === "set-canale-png") {
     const channel = interaction.options.getChannel("canale", true);
     setPngChannel(channel.id);
@@ -39,6 +42,7 @@ async function handleConfigCommand(interaction) {
     });
     return true;
   }
+  */
 
   if (interaction.commandName === "set-canali-schedule") {
     const channel1 = interaction.options.getChannel("canale1", true);
@@ -97,7 +101,9 @@ async function handleConfigCommand(interaction) {
         `**Configurazione attuale**\n` +
         `Parte 1: ${config.targetChannel1 ? `<#${config.targetChannel1}>` : "non impostato"}\n` +
         `Parte 2: ${config.targetChannel2 ? `<#${config.targetChannel2}>` : "non impostato"}\n` +
+        /*
         `PNG: ${config.pngChannel ? `<#${config.pngChannel}>` : "non impostato"}\n` +
+        */
         `Schedule: ${config.scheduleChannels.length > 0
           ? config.scheduleChannels.map(id => `<#${id}>`).join(", ")
           : "non impostato"}\n` +
@@ -110,6 +116,7 @@ async function handleConfigCommand(interaction) {
         `Ruolo opzionale schedule: ${config.optionalRoleId
           ? `<@&${config.optionalRoleId}>`
           : "non impostato"}\n` +
+        /*
         `Canale presenze: ${config.attendanceChannel
           ? `<#${config.attendanceChannel}>`
           : "non impostato"}\n` +
@@ -124,6 +131,8 @@ async function handleConfigCommand(interaction) {
           : "non impostato"}\n` +
         `URL pannello presenze: ${config.attendanceWebBaseUrl || "non impostato"}\n` +
         `Logger canali: attivo`,
+        */
+        `Logger canali: disattivato`,
     });
     return true;
   }

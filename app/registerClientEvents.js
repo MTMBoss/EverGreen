@@ -1,5 +1,6 @@
 const { Events } = require("discord.js");
 
+/*
 const { readConfig } = require("../config/configStore");
 const {
   handleMessageCreate,
@@ -27,6 +28,7 @@ const {
 } = require("../attendance/attendanceScheduler");
 const { scheduleRosterSync, runRosterSync } = require("../attendance/rosterAutoSync");
 const { startAttendanceWebServer } = require("../web/server");
+*/
 const { createMatchTables } = require("../matches/matchRepository");
 const { startScheduler } = require("../schedule/scheduler");
 const { handleMatchContextCommand } = require("./matchContextCommands");
@@ -36,10 +38,12 @@ function registerClientEvents(client) {
   client.once(Events.ClientReady, async () => {
     console.log(`✅ Loggato come ${client.user.tag}`);
     startScheduler(client);
+    await createMatchTables();
+
+    /*
     startAttendanceReminderScheduler(client);
     startAttendanceRosterSyncScheduler(client);
     startAttendanceWebServer(client);
-    await createMatchTables();
     startAttendanceLeaderboardScheduler(client);
 
     queueMicrotask(async () => {
@@ -65,8 +69,10 @@ function registerClientEvents(client) {
         );
       }
     });
+    */
   });
 
+  /*
   client.on(Events.GuildMemberAdd, member => {
     scheduleRosterSync(member.guild, "member_add");
   });
@@ -158,14 +164,18 @@ function registerClientEvents(client) {
     }
   });
 
+  */
+
   client.on(Events.InteractionCreate, async interaction => {
     let deferred = false;
 
     try {
+      /*
       if (interaction.isButton() || interaction.isStringSelectMenu()) {
         const handled = await handleAttendanceComponent(interaction);
         if (handled) return;
       }
+      */
 
       if (interaction.isMessageContextMenuCommand()) {
         await handleMatchContextCommand(interaction, client);
@@ -176,6 +186,7 @@ function registerClientEvents(client) {
         return;
       }
 
+      /*
       const isPublicLeaderboard =
         interaction.commandName === "leaderboard-presenze";
 
@@ -184,13 +195,17 @@ function registerClientEvents(client) {
       } else {
         await interaction.deferReply({ flags: 64 });
       }
+      */
 
+      await interaction.deferReply({ flags: 64 });
       deferred = true;
 
+      /*
       if (isAttendanceCommand(interaction.commandName)) {
         await handleAttendanceSlashCommand(interaction, client);
         return;
       }
+      */
 
       const handled = await handleConfigCommand(interaction);
       if (handled) return;

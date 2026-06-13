@@ -9,7 +9,9 @@ const {
   getSeparatorActions,
   commitSeparatorState,
 } = require("../matches/publicationTracker");
+/*
 const { renderMatchImage } = require("../matches/matchImageRenderer");
+*/
 const {
   buildPart1Message,
   buildPart2Draft,
@@ -68,8 +70,10 @@ async function ensureDateSeparators(channel, dateLine) {
 async function handleMatchContextCommand(interaction, client) {
   if (
     interaction.commandName !== "Prepara Parte 2" &&
-    interaction.commandName !== "Pubblica Match" &&
-    interaction.commandName !== "Pubblica PNG"
+    interaction.commandName !== "Pubblica Match"
+    /*
+    && interaction.commandName !== "Pubblica PNG"
+    */
   ) {
     return false;
   }
@@ -86,6 +90,7 @@ async function handleMatchContextCommand(interaction, client) {
     return true;
   }
 
+  /*
   if (interaction.commandName === "Pubblica PNG") {
     const config = readConfig();
     const pngChannel = config.pngChannel
@@ -128,6 +133,7 @@ async function handleMatchContextCommand(interaction, client) {
     });
     return true;
   }
+  */
 
   const config = readConfig();
   const images = getImageAttachments(message);

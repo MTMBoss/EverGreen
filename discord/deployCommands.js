@@ -19,6 +19,7 @@ const commands = [
     name: "Prepara Parte 2",
     type: ApplicationCommandType.Message,
   },
+  /*
   {
     name: "Pubblica PNG",
     type: ApplicationCommandType.Message,
@@ -81,6 +82,7 @@ const commands = [
         )
     )
     .toJSON(),
+  */
 
   new SlashCommandBuilder()
     .setName("set-canale-parte1")
@@ -108,6 +110,7 @@ const commands = [
     )
     .toJSON(),
 
+  /*
   new SlashCommandBuilder()
     .setName("set-canale-png")
     .setDescription("Imposta il canale di destinazione per i match in PNG")
@@ -120,6 +123,7 @@ const commands = [
         .setRequired(true)
     )
     .toJSON(),
+  */
 
   new SlashCommandBuilder()
     .setName("set-canali-schedule")
@@ -172,6 +176,7 @@ const commands = [
     )
     .toJSON(),
 
+  /*
   new SlashCommandBuilder()
     .setName("set-canale-presenze")
     .setDescription("Imposta il canale dove pubblicare le presenze")
@@ -370,6 +375,7 @@ const commands = [
         .setRequired(false)
     )
     .toJSON(),
+  */
 
   new SlashCommandBuilder()
     .setName("mostra-config")

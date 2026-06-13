@@ -6,12 +6,16 @@ const { pool, ensureDbReady } = require("../attendance/db");
 const LEGACY_CONFIG_PATH = path.join(__dirname, "..", "config.json");
 
 const DEFAULT_CONFIG = {
+  /*
   attendanceLeaderboardChannel: process.env.ATTENDANCE_LEADERBOARD_CHANNEL || "",
   attendanceLeaderboardMessageId: "",
   attendanceLeaderboardDefaultType: process.env.ATTENDANCE_LEADERBOARD_DEFAULT_TYPE || "settimana",
+  */
   targetChannel1: process.env.TARGET_CHANNEL_1 || "",
   targetChannel2: process.env.TARGET_CHANNEL_2 || "",
+  /*
   pngChannel: process.env.PNG_CHANNEL || "",
+  */
   scheduleChannels: process.env.SCHEDULE_CHANNELS
     ? process.env.SCHEDULE_CHANNELS.split(",").map(id => id.trim()).filter(Boolean)
     : [],
@@ -19,6 +23,7 @@ const DEFAULT_CONFIG = {
   requiredRoleId: process.env.REQUIRED_ROLE_ID || "",
   optionalRoleId: process.env.OPTIONAL_ROLE_ID || "",
 
+  /*
   attendanceChannel: process.env.ATTENDANCE_CHANNEL || "",
   attendanceReminderChannel: process.env.ATTENDANCE_REMINDER_CHANNEL || "",
   attendanceReminderUserId: process.env.ATTENDANCE_REMINDER_USER_ID || "",
@@ -26,6 +31,7 @@ const DEFAULT_CONFIG = {
     ? process.env.ATTENDANCE_ROLE_IDS.split(",").map(id => id.trim()).filter(Boolean)
     : [],
   attendanceWebBaseUrl: process.env.ATTENDANCE_WEB_BASE_URL || "",
+  */
   commandDeploymentHash: "",
 
   currentSchedule: null,
@@ -44,24 +50,32 @@ function cloneConfig(value) {
 
 function normalizeConfigValue(key, value) {
   switch (key) {
+    /*
     case "attendanceLeaderboardChannel":
     case "attendanceLeaderboardMessageId":
     case "attendanceLeaderboardDefaultType":
+    */
     case "targetChannel1":
     case "targetChannel2":
+    /*
     case "pngChannel":
+    */
     case "scheduleAnnouncementChannel":
     case "requiredRoleId":
     case "optionalRoleId":
+    /*
     case "attendanceChannel":
     case "attendanceReminderChannel":
     case "attendanceReminderUserId":
     case "attendanceWebBaseUrl":
+    */
     case "commandDeploymentHash":
       return typeof value === "string" ? value : "";
 
     case "scheduleChannels":
+    /*
     case "attendanceRoleIds":
+    */
       return Array.isArray(value)
         ? value.filter(Boolean).map(item => String(item))
         : [];
@@ -224,11 +238,13 @@ function setTargetChannel2(channelId) {
   });
 }
 
+/*
 function setPngChannel(channelId) {
   return updateConfig(config => {
     config.pngChannel = channelId;
   });
 }
+*/
 
 function getChannelPublicationState(channelId) {
   const config = readConfig();
@@ -276,6 +292,7 @@ function setOptionalRoleId(roleId) {
   });
 }
 
+/*
 function setAttendanceChannel(channelId) {
   return updateConfig(config => {
     config.attendanceChannel = channelId;
@@ -307,6 +324,7 @@ function setAttendanceWebBaseUrl(url) {
     config.attendanceWebBaseUrl = typeof url === "string" ? url : "";
   });
 }
+*/
 
 function setCommandDeploymentHash(hash) {
   return updateConfig(config => {
@@ -320,17 +338,21 @@ module.exports = {
   writeConfig,
   setTargetChannel1,
   setTargetChannel2,
+  /*
   setPngChannel,
+  */
   getChannelPublicationState,
   setChannelPublicationState,
   setScheduleChannels,
   setScheduleAnnouncementChannel,
   setRequiredRoleId,
   setOptionalRoleId,
+  /*
   setAttendanceChannel,
   setAttendanceReminderChannel,
   setAttendanceReminderUserId,
   setAttendanceRoleIds,
   setAttendanceWebBaseUrl,
+  */
   setCommandDeploymentHash,
 };
